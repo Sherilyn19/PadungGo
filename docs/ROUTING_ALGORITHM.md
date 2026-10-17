@@ -1,9 +1,9 @@
 # PadungGo — Routing Algorithm Specification
 
-> **Status:** Proposed design — not yet implemented  
-> **Project:** PadungGo, an open-source commuter journey planner for selected verified routes in Cebu City, Mandaue City, and Lapu-Lapu City  
-> **Backend:** Python + Django REST Framework  
-> **Database:** PostgreSQL (Supabase), with PostGIS where appropriate  
+> **Status:** Proposed design — not yet implemented
+> **Project:** PadungGo, an open-source commuter journey planner whose full vision covers location-to-location journeys throughout Cebu City, Mandaue City, and Lapu-Lapu City
+> **Backend:** Python + Django REST Framework
+> **Database:** Supabase PostgreSQL with PostGIS
 > **MVP limit:** Direct public-transport journeys or journeys with **at most one transfer**
 
 ## 1. Purpose and guiding rule
@@ -18,7 +18,8 @@ This document is a **design specification**, not a declaration that data has bee
 
 ### 2.1 Supported journeys
 
-- Selected interconnected **Cebu City–Mandaue City–Lapu-Lapu City** public-transport corridors, only where current service and directional stop information have been verified.
+- Full vision: journeys within a city, barangay or community and between any of the three cities; no required city sequence. Arbitrary valid endpoints do not guarantee verified connectivity.
+- MVP: a smaller verified interconnected subset, where current service and directional stops support the request. **01K, 23D, 20A and 03Q are the initial research batch**, not permanent network limits or confirmed services.
 - Jeepney and bus services for which sufficient records exist.
 - Zero or one public-transport transfer. A direct trip has one vehicle leg; a one-transfer trip has two vehicle legs.
 - Multiple *distinct, valid* alternatives for outbound and return trips when the data supports them.
@@ -74,7 +75,7 @@ Verification checklist before a route pattern is activated:
 
 1. Identify route code, vehicle category, and operator/variant when available.
 2. Confirm **current service** using reliable evidence.
-3. Confirm both directions **separately**; do not assume symmetry.
+3. Confirm each direction **separately**; do not assume symmetry.
 4. Confirm safe/authorized boarding, alighting, and transfer points.
 5. Confirm the applicable fare category, rules, source, and effective date.
 6. Retain source URLs or evidence, observed date, verification date, and reviewer notes.
@@ -84,7 +85,7 @@ A verified pattern may have partial time data. That does **not** justify inventi
 
 ## 4. Minimum routing data model
 
-The existing blueprint includes `locations`, `routes`, `route_stops`, `fare_rules`, `route_sources`, and `route_verification`. For correct directional routing, the implementation must additionally **represent route patterns and stops separately**; exact table names may be reconciled with `DATABASE_DESIGN.md` before migrations.
+The canonical proposed entities are defined in [DATABASE_DESIGN.md](DATABASE_DESIGN.md): `Area`, `Location`, `Stop`, `Route`, `RoutePattern`, `PatternStop`, `RouteSegment`, `TransferConnection`, `FareRule`, `DataSource`, `RouteEvidence` and `RecordEvidence`. This replaces the earlier route_stops/route_sources blueprint; physical names remain an implementation detail. Routing consumes directional patterns and stop occurrences rather than fixed codes or city endpoints.
 
 | Concept | Fields required by routing | Reason |
 |---|---|---|
@@ -190,7 +191,7 @@ No real-time vehicle ETA should be claimed without a genuine, authorized live ve
 
 ### Step 7 — Rank and diversify meaningful choices
 
-Present up to a configured number of **distinct valid itineraries** (for example, three), if that many exist:
+Aim for **3–5 distinct valid itineraries**; default limit 5, returning fewer when fewer exist:
 
 1. **Lowest fare:** only when total fares are comparable and known.
 2. **Shortest estimated duration:** only where sufficiently comparable total durations are available; otherwise label as *estimated riding/walking time excluding unknown waiting*.
@@ -224,53 +225,29 @@ Return:   plan(origin=B, destination=A)
 
 The return search independently selects eligible boarding points, direction-specific patterns, transfers, fares, and walking legs. It may return **different routes, different transfer points, a different number of alternatives, or no verified option**. Always rank return options independently.
 
-The MVP API may use the **same** `POST /api/v1/journeys/plan` endpoint for both directions; a dedicated `/return` endpoint is optional and not necessary to implement the algorithm.
+The canonical MVP uses **only** `POST /api/v1/journeys/plan` for both directions. No dedicated `/return` endpoint is specified; see [API_DESIGN.md](API_DESIGN.md).
 
 ## 7. API contract expectations
 
-Example request (*synthetic coordinates only; not a demonstrated Cebu journey*):
+[API_DESIGN.md](API_DESIGN.md) owns exact request/response types. Use
+`POST /api/v1/journeys/plan` with coordinate-or-location-ID endpoints,
+`max_transfers` 0–1, `limit` 1–5 (default 5), and `sort_by`.
+The same endpoint computes an independent return request.
 
-```json
-{
-  "origin": {"latitude": 10.3100, "longitude": 123.9200},
-  "destination": {"latitude": 10.3200, "longitude": 123.9400},
-  "max_transfers": 1,
-  "sort_by": "fewest_transfers"
-}
-```
+Return `journey_options`, `request_coverage_status`, `reason`, `ranking`
+and `warnings`. Each option contains ordered segments, per-leg fares, total
+fare completeness, walking/waiting/riding components, known subtotals, complete
+total only when supported, public evidence and limitations.
 
-The response schema should have a high-level shape like:
+Use HTTP 400 for invalid requests and HTTP 200 with an empty option list and
+explicit reason for valid unsupported/no-journey requests, including points
+outside the intended area. Database or required-provider failures use safe
+HTTP 503 errors rather than being misrepresented as missing coverage. Do not
+expose private reviewer details or raw database exceptions.
 
-```text
-journey_options[]
-  id
-  transfers
-  segments[]
-    mode: walk | ride | transfer_walk
-    board/alight (where applicable)
-    route_pattern_id and direction (ride segments)
-    distance_m
-    duration_seconds_or_null
-  fare
-    per_leg_amounts_or_null[]
-    total_centavos_or_null
-    fare_source_ids[]
-  time
-    walking_seconds_or_null
-    waiting_seconds_or_null
-    riding_seconds_or_null
-    total_seconds_or_null
-    total_is_complete: boolean
-    uncertainty_notes[]
-  evidence[]
-    source_id
-    verified_at
-    status
-  warnings[]
-request_coverage_status
-```
-
-Use stable validation errors, e.g. `400` for malformed coordinates, and a successful `200` response with an empty list and an explicit reason when no verified itinerary exists. Do not reveal private administration records, raw database exceptions, or secrets. API exact types and names must be synchronized with `API_DESIGN.md` before implementation.
+When cheapest/fastest cannot fairly order all results, use fewest transfers
+then known walking distance with deterministic tie-breaks and disclose the
+fallback. Unknown values must never win a ranking by being interpreted as zero.
 
 ## 8. Failure handling and user messaging
 
@@ -323,7 +300,7 @@ Use **synthetic route patterns** in tests, clearly separated from real Cebu rout
 | Invalid/out-of-range coordinates | Server rejects clearly and safely. |
 | GPS is denied | Manual methods remain usable. |
 
-**MVP done means:** At least one *real, source-evidenced* connected corridor can be queried in both directions where verified data exists; all returned legs honor stop direction and verified eligibility; fare/time components are labeled honestly; backend tests for the cases above pass; React presents understandable instructions and error states. If real data is insufficient, do not represent synthetic demos as verified commuter guidance.
+**MVP done means:** At least one *real, source-evidenced* connected subset can be queried in both directions where verified data exists; all returned legs honor stop direction and verified eligibility; fare/time components are labeled honestly; backend tests for the cases above pass; React presents understandable instructions and error states. If real data is insufficient, do not represent synthetic demos as verified commuter guidance.
 
 ## 11. Step-by-step implementation order (later; no code in this document)
 
@@ -345,13 +322,13 @@ Each milestone requires a passing test and a documented Git commit before expand
 
 These must be resolved before promising specific behaviors:
 
-1. **MVP corridor and first verified route patterns:** route operators, direction variants, actual boarding/alighting points, and source reuse rights.
+1. **MVP subset and first verified route patterns:** route operators, direction variants, actual boarding/alighting points, and source reuse rights.
 2. **Walking eligibility:** maximum candidate radius, whether we have a compliant pedestrian routing service, and how to handle inaccessible streets/bridges.
 3. **Fare rules:** official fare-matrix structure, rounding, passenger categories, and source/effective dates.
 4. **Waiting-time basis:** whether verified headways/schedules exist; without them, waiting stays unknown.
 5. **Travel-time ranking:** whether sufficiently comparable totals exist to call an option “fastest.”
-6. **Database schema reconciliation:** choose final `Stop`, `RoutePattern`, and `PatternStop` entities and ensure `DATABASE_DESIGN.md` / `API_DESIGN.md` match before migrations.
-7. **Initial result limit:** default up to three distinct options; display fewer if fewer are supported.
+6. **Proposed schema:** `DATABASE_DESIGN.md` now defines direction-aware entities; owner review precedes migrations.
+7. **Result limit resolved in this design:** default 5, aiming for 3–5 distinct alternatives and returning fewer when fewer exist.
 
 ---
 

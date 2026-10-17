@@ -33,3 +33,7 @@ See [Route Verification](docs/DATA_VERIFICATION.md).
 ## Licensing
 
 By contributing original code or text, you agree it can be distributed under the repository's MIT License. Data from other publishers must be licensed or permissioned separately.
+
+## Product scope for contributors
+
+Support same-city, same-barangay and intercity journeys throughout Cebu City, Mandaue City and Lapu-Lapu City. The MVP uses a verified subset; 01K, 23D, 20A and 03Q are initial research only. Expand the dataset without hardcoding codes in routing. Verify each directional pattern independently and disclose unknown fare/time fields. Canonical stored statuses are `candidate`, `documented`, `verified` and `needs_review`.

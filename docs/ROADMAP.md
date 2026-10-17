@@ -1,24 +1,31 @@
 # Solo Developer Roadmap
 
-**This is a planning target, not proof of registration or a confirmed competition deadline.** The participant reports that organizers clarified that a repository must **not predate October 3, 2026**. Therefore a new repository created after that date is consistent with this stated restriction. Still verify registration, the 20-day submission date, and required October 25 in-person participation.
+**Planning summary, not completed work.** See
+[DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for canonical gates and criteria.
+
+PadungGo's full vision covers location-to-location journeys within and across
+the entire areas of Cebu City, Mandaue City and Lapu-Lapu City. The solo hackathon
+MVP demonstrates a smaller verified interconnected subset with direct journeys
+and at most one transfer. 01K, 23D, 20A and 03Q are an initial research batch,
+not the complete intended network. Geographic selection never guarantees coverage.
 
 | Work phase | Required result |
 |---|---|
-| Repository & route investigation | New GitHub repository; short list of truly interconnected route variants |
-| Verified starter dataset | 4-6 connected directional patterns where evidence supports them |
-| Django API & database | Structured locations/routes/sources responses and migrations |
-| React map & selectors | GPS, search, map pin, and curated location list |
-| Trip engine | Direct and one-transfer journey suggestions |
-| Journey information | Return alternatives, fare breakdown, walking/waiting/riding estimates as supported |
-| Quality & release | Source history, unit tests, README, video demo, deployment |
+| Design and eligibility | Consistent documents; registration complete and post-October-3 initialization allowed per participant |
+| Evidence readiness | Verified directional patterns, eligible stops and safe connections; no arbitrary route quota |
+| Backend and database | Django/DRF, Supabase PostgreSQL/PostGIS, migrations, Admin and validated imports |
+| Planner/API | Generic search, sourced fares, honest time components, distinct alternatives and independent returns |
+| Frontend | Four input methods for both endpoints, map plus text, accessible errors and limited-coverage messaging |
+| Quality and release | Automated checks, tested setup, changelog, deployment, GitHub submission and 1-minute video |
+| Coverage expansion | Add verified intra-city and intercity patterns/places without changing route logic |
+| Future improvements | Multiple transfers and measured infrastructure improvements after MVP completion |
 
-## Minimum acceptance tests
+Test directionality, invalid transfers, unverified exclusions, unknown fare/time
+propagation, fewer-than-three results, asymmetric returns, GPS denial and API
+failure versus no-results. Synthetic fixtures prove algorithms, not real coverage.
 
-- Forward-only stop ordering respected, no impossible reversed trip.
-- A→B and B→A can recommend **different** patterns.
-- A one-transfer trip uses a verifiable and safe transfer connection.
-- Unverified routes are excluded from trusted recommendations.
-- Fare amounts use a documented rule; travel distance comes from route legs.
-- Unknown waiting time is marked unknown.
-- GPS permission denial still allows non-GPS location selection.
-- No result found is presented clearly rather than substituted with a made-up journey.
+The participant confirms organizers allow initialization after October 3 and
+registration is complete. Submission is due **October 23, 2026 at 11:59 PM**
+(Philippine time used for planning). The repository is private during development;
+plan public release and verify judge access for submission. The pictured October 25
+attendance requirement remains a separate event. See [mechanics review](NEXT_STEPS.md).

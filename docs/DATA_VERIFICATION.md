@@ -16,10 +16,10 @@ Transportation advice must be grounded in reliable **current** service informati
 
 | Status | Meaning | Recommended publicly? |
 |---|---|---|
-| Candidate | Found in a directory or research lead | No |
-| Documented | Published evidence, current operations unconfirmed | No |
-| Verified | Current routes and directions reviewed and supported | Yes |
-| Needs review | Evidence stale, contradictory or disputed | No |
+| candidate | Found in a directory or research lead | No |
+| documented | Published evidence, current operations unconfirmed | No |
+| verified | Current routes and directions reviewed and supported | Yes |
+| needs_review | Evidence stale, contradictory or disputed | No |
 
 ## Data-quality principles
 
@@ -27,12 +27,12 @@ Transportation advice must be grounded in reliable **current** service informati
 - Stop order and travel direction matter; A→B does not imply B→A is valid on the same path.
 - Fare calculation must use **travelled distance by boarded leg**, not a straight line between origin and destination.
 - No invented waiting times, live arrival predictions or route coverage claims.
-- Document why a route moves from Candidate/Documented to Verified.
+- Document why a route moves from candidate/documented to verified.
 - Remove route suggestions from trusted results if supporting evidence becomes invalid.
 
 ## Initial research targets (not verified route claims)
 
-Codes to investigate include **01K, 20A, 23D, and 03Q**. These are leads only; neither their operation nor their full routing is established by this document. Verify operator, geographic alignment, transfer feasibility and each direction before importing as Verified.
+Codes to investigate include **01K, 20A, 23D, and 03Q**. These are leads only; neither their operation nor their full routing is established by this document. Verify operator, geographic alignment, transfer feasibility and each direction before importing as verified.
 
 ## Suggested evidence entry template
 
@@ -47,6 +47,12 @@ Coordinates provenance / dataset permission:
 Fare rule and effective date:
 Conflicting evidence:
 Reviewed by / review date:
-Status: Candidate | Documented | Verified | Needs review
+Status: candidate | documented | verified | needs_review
 Notes:
 ```
+
+## Scope and completeness
+
+The full vision covers locations within and across Cebu City, Mandaue City and Lapu-Lapu City; the MVP uses a smaller verified interconnected subset. 01K, 23D, 20A and 03Q are only the initial research batch, not permanent network limits. Review each direction independently; an unverified reverse direction does not invalidate a verified forward pattern.
+
+Physical-route eligibility and estimate completeness are separate. Missing fare or waiting information remains unknown and does not justify inventing a value. Stop/access or directional evidence missing does exclude the affected guidance. Set record review intervals appropriate to source quality and observed service changes; expired/conflicting support moves affected records to needs_review.

@@ -10,9 +10,18 @@
 > commuters understand what to ride, where to go, how much it costs, and
 > what to expect.
 
-PadungGo is an open-source web-based public transportation journey
-planner designed for a limited, verified, and interconnected set of
-routes across Cebu City, Mandaue City, and Lapu-Lapu City.
+PadungGo is an open-source, location-to-location public transportation journey
+planner whose full vision covers journeys **within and across the entire areas
+of Cebu City, Mandaue City, and Lapu-Lapu City**, including neighborhoods and
+barangays within the same city. Location selection does not guarantee a route.
+
+The **initial hackathon MVP** will demonstrate this vision using a smaller,
+verified, interconnected subset of jeepney and bus services. **01K, 23D, 20A,
+and 03Q are the initial research batch**, not the permanent network boundary
+or proof of current operation. Coverage expands as evidence is verified.
+
+**Current status:** documentation and design only. This repository contains no
+runnable application or verified transport dataset. Features below are planned.
 
 ## Why PadungGo Exists
 
@@ -37,7 +46,7 @@ PadungGo provides:
 
 -   GPS, map selection, manual search, and curated location selection
 -   Direct and verified one-transfer routes
--   Multiple valid alternatives when available
+-   Ideally 3–5 distinct valid alternatives, returning fewer when fewer exist
 -   Fare estimation
 -   Walking, waiting, and riding duration breakdown
 -   Independent return-trip recommendations
@@ -89,14 +98,15 @@ because return routes are not always simple reversals.
 
 ## Coverage
 
-Initial coverage:
+Full intended geographic area:
 
 -   Cebu City
 -   Mandaue City
 -   Lapu-Lapu City
 
-The project starts with a verified interconnected corridor before
-expansion.
+The MVP starts with a verified interconnected subset before expansion. Same-city,
+same-barangay and intercity requests use the same planner; no fixed city sequence
+is assumed. A geographically valid point may still have no verified journey.
 
 ## Architecture
 
@@ -129,7 +139,7 @@ expansion.
 
 ### Database
 
--   PostgreSQL
+-   Supabase PostgreSQL
 -   PostGIS
 
 ## Repository Structure
@@ -215,6 +225,47 @@ The project follows:
 -   Open-source licensing
 -   Documentation-first development
 
+The supplied mechanics images require a GitHub repository with a proper license,
+a repository submission plus a **1-minute usage video**, and personal attendance
+on **October 25, 2026**. Teams may have 1–4 people, so solo work fits that size
+rule. If the system incorporates an AI model, it must be open source/open weights;
+AI is not required by this design. Judges and named core organizers cannot enter.
+
+The images allocate documentation 30%, technical soundness 60%, and infrastructure
+and deployment 10%; originality has no separate weight. These are requirements,
+not a claim of implementation compliance. The participant confirms that organizers
+allow initialization after October 3 and that registration is complete. The repo
+is currently private during development. Submission is due **October 23, 2026,
+11:59 PM** (Philippine time used for planning). Plan public release for the
+open-source submission. See the [mechanics review and documentation audit](docs/NEXT_STEPS.md).
+
+## Design documents
+
+- [Product requirements](docs/PRODUCT_REQUIREMENTS.md) and [user flow](docs/USER_FLOW.md)
+- [Architecture](docs/ARCHITECTURE.md) and [database design](docs/DATABASE_DESIGN.md)
+- [API contract](docs/API_DESIGN.md) and [routing algorithm](docs/ROUTING_ALGORITHM.md)
+- [Development roadmap](docs/DEVELOPMENT_ROADMAP.md), [data sources](docs/DATA_SOURCES.md),
+  and [verification standard](docs/DATA_VERIFICATION.md)
+- [Contributing](CONTRIBUTING.md), [changelog](CHANGELOG.md), and [setup](docs/REPOSITORY_SETUP.md)
+
 ## 🚌 PadungGo
 
 **Padulong sa imong destinasyon, mas sayon.**
+
+### AI assistance
+
+- Open-weight instruction model
+- Hosted open-weight inference API
+- Grounded explanation panel for planner results, evidence and uncertainty
+
+The AI explains deterministic results. It does not discover routes, calculate
+fares, validate directions or invent missing data. Personal hardware and local
+configuration are not part of this project documentation.
+
+### Deployment requirement
+
+PadungGo's competition deliverable must run as a deployed application. Local
+development is only for building and testing. Production deployment must include
+the frontend, Django API, Supabase PostgreSQL/PostGIS database and hosted AI
+inference behind the backend. Ollama may be used privately during development but
+is not the production runtime.

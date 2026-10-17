@@ -1,62 +1,108 @@
 # Proposed Architecture
 
-**Status: design only — implementation not started.**
+**Status: design only; implementation not started.** The full product is a
+location-to-location public transportation planner throughout Cebu City, Mandaue
+City and Lapu-Lapu City, including intra-city, same-barangay and intercity trips.
+The MVP uses a smaller verified interconnected subset. 01K, 23D, 20A and 03Q are
+initial research leads, not architecture constants. A selectable location does
+not guarantee a verified journey.
+
+## Components and approved stack
 
 ```text
-Browser (React + TypeScript + MapLibre)
-    | HTTPS JSON API
+Browser: React + TypeScript + Vite + Tailwind CSS + shadcn/ui + MapLibre GL JS
+    | HTTPS JSON; four endpoint-selection methods
     v
-Django + Django REST Framework
-    |-- Location and nearby-stop service
-    |-- Direction-aware route finder: direct + one transfer
-    |-- Alternative ranking: cheapest / duration / fewest transfers
-    |-- Fare calculator (versioned sourced rules)
-    |-- Duration service: walking / waiting (when known) / riding
-    |-- Route provenance and verification filtering
-    |-- Django Admin: curated route and source records
+Python + Django + Django REST Framework
+    |-- Location resolution and intended-area validation
+    |-- Verified nearby-stop and pedestrian-access service
+    |-- Directed network search: direct + at most one transfer in MVP
+    |-- Fare service: versioned source-backed policies
+    |-- Duration service: walking / waiting / riding; null when unknown
+    |-- Deduplication and ranking: aim for 3–5 distinct alternatives
+    |-- Public provenance and coverage limitations
+    |-- Authenticated Django Admin: data import, review and evidence history
+    v
+Supabase PostgreSQL + PostGIS
     |
-    v
-PostgreSQL (Supabase; PostGIS when appropriate)
+    +-- Licensed source/evidence records and reviewed directional network
 ```
 
-## Proposed core database entities
+Use one modular backend, not separate microservices. Frontend and backend may be
+deployed independently where practical. MapLibre renders maps; it does not itself
+supply licensed tiles, geocoding or pedestrian routing. Choose compliant providers
+or curated verified pedestrian links before promising navigable walking guidance.
+No live vehicle feed or AI model is required.
 
-1. `Route`: route identifier, operator, vehicle type, assigned fare rule.
-2. `RoutePattern`: one travel direction / variant, geometry, verified status and date.
-3. `Stop`: geographic point, name, city, boarding/alighting rules.
-4. `PatternStop`: ordered stops for a directional route pattern; cumulative distance.
-5. `RouteSegment`: successive stops, length, optional observed travel duration.
-6. `FareRule`: vehicle/fare class, effective date, distance bands/rounding rules, authoritative source.
-7. `DataSource`: publisher, URL, publication/retrieval dates, license/permissions.
-8. `RouteEvidence`: verification record, source, observer/reviewer, notes and observed date.
+## Canonical data and API designs
 
-Route patterns must distinguish directions and variants even if route codes match. Use integer centavos for money, and treat fare brackets and rounding as policy-derived rules.
+[DATABASE_DESIGN.md](DATABASE_DESIGN.md) owns the schema: Area, Location, Stop,
+Route, RoutePattern, PatternStop, RouteSegment, TransferConnection, FareRule,
+DataSource, RouteEvidence and RecordEvidence. Stop occurrences and route direction
+are distinct. Distances are meters, durations seconds and money integer centavos.
 
-## Backend routes (planned)
+[API_DESIGN.md](API_DESIGN.md) owns exact shapes and error states:
 
-- `GET /api/health/`
-- `GET /api/locations/`
-- `GET /api/routes/`
-- `GET /api/routes/{id}/`
-- `POST /api/journeys/plan/`
+- GET /api/v1/health
+- GET /api/v1/locations
+- GET /api/v1/routes
+- GET /api/v1/routes/{id}
+- POST /api/v1/journeys/plan
 
-The same planning endpoint handles A→B and B→A; each returns **all available valid alternatives up to a reasonable cap**, independently ranked.
+The same planner handles independent A→B and B→A queries. A separate return
+endpoint is unnecessary. Public reads exclude unreviewed transport guidance.
 
-## Journey planner (MVP)
+## Journey pipeline
 
-1. Normalize GPS/map/search/dropdown selections to coordinates.
-2. Find nearby valid boarding and final alighting points; account for pedestrian access.
-3. Search verified direct route patterns in forward stop order.
-4. Search verified one-transfer combinations with safe walking transfers.
-5. Calculate separate ride fares; use actual fare rounding and discount policy where confirmed.
-6. Estimate pedestrian/vehicle durations and only add waiting if a verified timetable/headway supports it.
-7. Rank, deduplicate, return up to several valid journeys; never fabricate missing options.
-8. Repeat the search with origin/destination reversed for a return request.
+1. Normalize GPS, selected search result, map pin or predefined location for both
+   endpoints to coordinates; distinguish geographic scope from dataset coverage.
+2. Find eligible stop occurrences reachable through supported pedestrian access.
+3. Search verified directional patterns in forward occurrence order.
+4. Enumerate validated one-transfer connections; reject impossible line crossings.
+5. Compute per-boarding fares using sourced policy and traveled route distance.
+6. Propagate unknown walking/waiting/riding estimates and incomplete totals.
+7. Deduplicate, rank supported comparisons and return at most five real options.
+8. Run the same pipeline independently for requested return travel.
 
-## Privacy and security
+Search policy limits transfers; the graph/schema support additional transfers in
+later releases. Spatial indexes and bounded candidate sets are sufficient initial
+growth measures. Profile before adding caching, queues or distributed services.
 
-- No commuter registration or route history database for the MVP.
-- GPS requires explicit browser permission; allow manual alternative.
-- Protect database credentials and Django secret keys on the server.
-- Scope CORS to deployed frontend origins; validate input coordinates and rate-limit costly requests.
-- Don't use unlicensed commercial route data or unrestricted geocoding/tiles without provider permission.
+## Trust, privacy and deployment
+
+Keep Django secrets, Supabase credentials and private provider keys server-side.
+The browser calls DRF rather than accessing administrative database tables.
+Browser-visible map tokens must be designed for public use and restricted where
+the provider supports it. Use least privilege, HTTPS, exact CORS origins, request
+validation, throttling and auditable authorized administrative changes.
+
+Do not store commuter GPS history; redact precise coordinates from logs. Keep
+private reviewer details separate from public provenance. Retain third-party
+attribution/permissions. Deployment requires tested migrations, environment
+documentation, backups/restore checks, frontend build and backend health checks.
+None of these operational controls is claimed to exist in the current starter.
+
+## AI explanation layer
+
+An open-weight model may explain a completed itinerary, source evidence and
+uncertainty through a server-side Django service. The deterministic planner
+remains authoritative for route discovery, direction validation, fare calculation
+and verification status. Ollama is a private local runtime option; production
+hosting is a later deployment decision. Kiro, ACP and MCP remain workshop or
+development context unless a deliberate production integration is specified.
+
+## Production deployment
+
+The submitted MVP must run remotely rather than depend on the owner's computer:
+
+```text
+Browser
+  → Deployed React frontend
+  → Deployed Django/DRF API
+      → Supabase PostgreSQL/PostGIS
+      → Hosted open-weight model endpoint
+```
+
+The model endpoint is called server-side so credentials stay private. Ollama is
+optional for local development only. The deployment provider, hosted model
+provider, domains and budget remain decisions before implementation.
