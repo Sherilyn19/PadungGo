@@ -16,6 +16,7 @@ from transit.planner.loader import load_network, resolve_location
 from transit.planner.models import Endpoint
 
 from .errors import error_response
+from .geometry import attach_ride_geometry
 from .serializers import PlanRequestSerializer
 
 MAX_LIMIT = 50
@@ -218,7 +219,9 @@ def plan_journey(request):
     except PlannerError as exc:
         return error_response("invalid_request", str(exc), http=http_status.HTTP_400_BAD_REQUEST)
 
-    return Response(result.to_dict())
+    payload = result.to_dict()
+    attach_ride_geometry(payload["journey_options"])
+    return Response(payload)
 
 
 plan_journey.throttle_scope = "plan"
