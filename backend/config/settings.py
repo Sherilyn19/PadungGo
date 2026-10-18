@@ -88,6 +88,8 @@ if GIS_ENABLED:
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Serves collected static files (Django Admin CSS/JS) under gunicorn.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -156,6 +158,18 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Only warn about a missing staticfiles/ dir in production builds.
+WHITENOISE_AUTOREFRESH = DEBUG or _RUNNING_TESTS
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if _RUNNING_TESTS
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        )
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -184,10 +198,14 @@ CORS_ALLOW_CREDENTIALS = False
 # --- Security headers (effective when DEBUG is off) ------------------------
 
 if not DEBUG and not _RUNNING_TESTS:
+    # On Fly.io, HTTPS is enforced at the edge (force_https in fly.toml), and
+    # internal health checks use plain HTTP, so keep this False there.
     SECURE_SSL_REDIRECT = _bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+    SECURE_REDIRECT_EXEMPT = [r"^health$", r"^api/v1/health$"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Needed for Django Admin login over HTTPS, e.g. https://padunggo-api.fly.dev
     CSRF_TRUSTED_ORIGINS = _csv("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 # --- Planner configuration -------------------------------------------------
