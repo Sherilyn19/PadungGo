@@ -295,74 +295,124 @@ def _allowed_statuses(allow_documented: bool) -> frozenset[str]:
     return frozenset({"verified", "documented"} if allow_documented else {"verified"})
 
 
-def _enumerate_direct(network, req, origin_stops, dest_stops, statuses, passenger_category, on):
-    origin_ids = {c.stop_id for c in origin_stops}
-    dest_ids = {c.stop_id for c in dest_stops}
-    straight = {c.stop_id: c.straight_line_m for c in origin_stops}
-    straight.update({c.stop_id: c.straight_line_m for c in dest_stops})
-    options = []
+def _occurrence_index(network: Network, statuses) -> dict[str, list]:
+    """stop_id -> [(pattern, occurrence)] for patterns inside the status gate."""
+    index: dict[str, list] = {}
     for pattern in network.patterns:
         if pattern.status not in statuses:
             continue
-        route = network.routes[pattern.route_id]
-        for b_stop in origin_ids:
-            for board in _board_occurrences(pattern, b_stop):
-                for a_stop in dest_ids:
-                    for alight in _alight_occurrences(pattern, a_stop):
-                        if alight.sequence <= board.sequence:
-                            continue  # must go forward along the directed pattern
-                        o_name = network.stops[b_stop].name
-                        d_name = network.stops[a_stop].name
-                        segs = [
-                            _walk_segment("origin", o_name, straight.get(b_stop, 0.0)),
-                            _ride_segment(network, pattern, route, board, alight,
-                                          passenger_category=passenger_category, on=on),
-                            _walk_segment(d_name, "destination", straight.get(a_stop, 0.0)),
-                        ]
-                        options.append(_assemble_option(network, segs, transfers=0))
-    return options
+        for occ in pattern.stops:
+            index.setdefault(occ.stop_id, []).append((pattern, occ))
+    return index
 
 
-def _enumerate_one_transfer(network, req, origin_stops, dest_stops, statuses,
-                            passenger_category, on):
-    origin_ids = {c.stop_id for c in origin_stops}
+def _best_alight(pattern: PatternData, board: PatternStopData, dest_ids: set,
+                 straight: dict) -> Optional[PatternStopData]:
+    """Nearest-to-destination later alighting occurrence on this pattern."""
+    best = None
+    for occ in pattern.stops:
+        if occ.sequence <= board.sequence or not occ.can_alight or occ.stop_id not in dest_ids:
+            continue
+        key = (straight.get(occ.stop_id, 0.0), occ.distance_along_m - board.distance_along_m)
+        if best is None or key < best[0]:
+            best = (key, occ)
+    return best[1] if best else None
+
+
+def _enumerate_direct(network, req, origin_stops, dest_stops, statuses, passenger_category, on,
+                      index=None):
+    """One candidate per pattern: board nearest the origin, alight nearest the destination."""
+    index = index if index is not None else _occurrence_index(network, statuses)
     dest_ids = {c.stop_id for c in dest_stops}
     straight = {c.stop_id: c.straight_line_m for c in origin_stops}
     straight.update({c.stop_id: c.straight_line_m for c in dest_stops})
 
-    # Directed transfer index: from_stop -> list[(to_stop, transfer)]
+    best: dict[str, tuple] = {}
+    for oc in origin_stops:  # nearest first
+        for pattern, board in index.get(oc.stop_id, ()):
+            if not board.can_board or pattern.id in best:
+                continue
+            alight = _best_alight(pattern, board, dest_ids, straight)
+            if alight is not None:
+                best[pattern.id] = (pattern, board, alight)
+
+    options = []
+    for pattern, board, alight in best.values():
+        route = network.routes[pattern.route_id]
+        segs = [
+            _walk_segment("origin", network.stops[board.stop_id].name, straight.get(board.stop_id, 0.0)),
+            _ride_segment(network, pattern, route, board, alight,
+                          passenger_category=passenger_category, on=on),
+            _walk_segment(network.stops[alight.stop_id].name, "destination",
+                          straight.get(alight.stop_id, 0.0)),
+        ]
+        options.append(_assemble_option(network, segs, transfers=0))
+    return options
+
+
+MAX_TRANSFER_CANDIDATES = 40
+
+
+def _enumerate_one_transfer(network, req, origin_stops, dest_stops, statuses,
+                            passenger_category, on, index=None, direct_patterns=frozenset()):
+    """At most one transfer via explicit directed TransferConnections.
+
+    Indexed search: only second-leg patterns that actually reach a stop near the
+    destination are considered. Keeps the shortest-riding candidate per
+    (first pattern, second pattern) pair and skips pairs whose second pattern
+    alone already serves the trip directly.
+    """
+    index = index if index is not None else _occurrence_index(network, statuses)
+    dest_ids = {c.stop_id for c in dest_stops}
+    straight = {c.stop_id: c.straight_line_m for c in origin_stops}
+    straight.update({c.stop_id: c.straight_line_m for c in dest_stops})
+
     transfers_by_from: dict[str, list] = {}
     for t in network.transfers:
-        if t.status not in statuses:
-            continue
-        transfers_by_from.setdefault(t.from_stop_id, []).append(t)
+        if t.status in statuses:
+            transfers_by_from.setdefault(t.from_stop_id, []).append(t)
 
-    verified_patterns = [p for p in network.patterns if p.status in statuses]
+    # Patterns that can finish the trip, and the earliest dest-alight sequence.
+    finishers: dict[str, int] = {}
+    for dc in dest_stops:
+        for pattern, occ in index.get(dc.stop_id, ()):
+            if occ.can_alight:
+                finishers[pattern.id] = max(finishers.get(pattern.id, -1), occ.sequence)
+
+    best: dict[tuple, tuple] = {}
+    seen_boards: set = set()
+    for oc in origin_stops:
+        for p1, board1 in index.get(oc.stop_id, ()):
+            if not board1.can_board or p1.id in direct_patterns or p1.id in seen_boards:
+                continue
+            seen_boards.add(p1.id)  # nearest boarding occurrence only
+            for alight1 in p1.stops:
+                if alight1.sequence <= board1.sequence or not alight1.can_alight:
+                    continue
+                for t in transfers_by_from.get(alight1.stop_id, ()):
+                    for p2, board2 in index.get(t.to_stop_id, ()):
+                        if (p2.id == p1.id or not board2.can_board
+                                or p2.id in direct_patterns
+                                or finishers.get(p2.id, -1) <= board2.sequence):
+                            continue
+                        alight2 = _best_alight(p2, board2, dest_ids, straight)
+                        if alight2 is None:
+                            continue
+                        ride = ((alight1.distance_along_m - board1.distance_along_m)
+                                + (alight2.distance_along_m - board2.distance_along_m))
+                        key = (p1.id, p2.id)
+                        if key not in best or ride < best[key][0]:
+                            best[key] = (ride, p1, board1, alight1, t, p2, board2, alight2)
+
+    chosen = sorted(best.values(), key=lambda c: (c[0], c[1].id, c[5].id))[:MAX_TRANSFER_CANDIDATES]
     options = []
-    for p1 in verified_patterns:
-        r1 = network.routes[p1.route_id]
-        for ob in origin_ids:
-            for board1 in _board_occurrences(p1, ob):
-                # alight p1 at any later occurrence that has an outgoing transfer
-                for alight1 in p1.stops:
-                    if alight1.sequence <= board1.sequence or not alight1.can_alight:
-                        continue
-                    for t in transfers_by_from.get(alight1.stop_id, []):
-                        for p2 in verified_patterns:
-                            if p2.id == p1.id:
-                                continue
-                            r2 = network.routes[p2.route_id]
-                            for board2 in _board_occurrences(p2, t.to_stop_id):
-                                for db in dest_ids:
-                                    for alight2 in _alight_occurrences(p2, db):
-                                        if alight2.sequence <= board2.sequence:
-                                            continue
-                                        segs = _build_transfer_segments(
-                                            network, p1, r1, board1, alight1,
-                                            t, p2, r2, board2, alight2,
-                                            straight, passenger_category, on,
-                                        )
-                                        options.append(_assemble_option(network, segs, transfers=1))
+    for _, p1, board1, alight1, t, p2, board2, alight2 in chosen:
+        segs = _build_transfer_segments(
+            network, p1, network.routes[p1.route_id], board1, alight1,
+            t, p2, network.routes[p2.route_id], board2, alight2,
+            straight, passenger_category, on,
+        )
+        options.append(_assemble_option(network, segs, transfers=1))
     return options
 
 
@@ -517,11 +567,16 @@ def plan_journeys(network: Network, req: PlanRequest, *, config: Optional[dict] 
             warnings=["No eligible verified boarding/alighting stop near one or both endpoints."],
         )
 
+    index = _occurrence_index(network, statuses)
     options = _enumerate_direct(network, req, origin_stops, dest_stops, statuses,
-                                passenger_category, on)
+                                passenger_category, on, index=index)
     if req.max_transfers >= 1:
+        direct_patterns = frozenset(
+            seg["route_pattern_id"] for o in options for seg in o["segments"] if seg["mode"] == "ride"
+        )
         options += _enumerate_one_transfer(network, req, origin_stops, dest_stops, statuses,
-                                           passenger_category, on)
+                                           passenger_category, on, index=index,
+                                           direct_patterns=direct_patterns)
 
     options = _deduplicate(options)
 
