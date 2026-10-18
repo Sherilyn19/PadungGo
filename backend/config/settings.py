@@ -62,6 +62,11 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = _csv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
+# Render provides the public hostname (e.g. padunggo-api.onrender.com).
+_RENDER_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if _RENDER_HOST and _RENDER_HOST not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_RENDER_HOST)
+
 # --- Database & spatial mode ----------------------------------------------
 
 # PADUNGGO_DB_ENGINE: "postgis" (default) or "sqlite" (lite/dev-without-GDAL).
@@ -86,6 +91,7 @@ if GIS_ENABLED:
     INSTALLED_APPS.insert(0, "django.contrib.gis")
 
 MIDDLEWARE = [
+    "config.health_middleware.HealthCheckMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Serves collected static files (Django Admin CSS/JS) under gunicorn.
@@ -198,15 +204,17 @@ CORS_ALLOW_CREDENTIALS = False
 # --- Security headers (effective when DEBUG is off) ------------------------
 
 if not DEBUG and not _RUNNING_TESTS:
-    # On Fly.io, HTTPS is enforced at the edge (force_https in fly.toml), and
-    # internal health checks use plain HTTP, so keep this False there.
+    # On Render, HTTPS is enforced at the edge and internal health checks use
+    # plain HTTP, so render.yaml sets this to False.
     SECURE_SSL_REDIRECT = _bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
     SECURE_REDIRECT_EXEMPT = [r"^health$", r"^api/v1/health$"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    # Needed for Django Admin login over HTTPS, e.g. https://padunggo-api.fly.dev
+    # Needed for Django Admin login over HTTPS.
     CSRF_TRUSTED_ORIGINS = _csv("DJANGO_CSRF_TRUSTED_ORIGINS")
+    if _RENDER_HOST:
+        CSRF_TRUSTED_ORIGINS.append(f"https://{_RENDER_HOST}")
 
 # --- Planner configuration -------------------------------------------------
 # Honest-data gating. By default only `verified` records feed trusted journeys.
