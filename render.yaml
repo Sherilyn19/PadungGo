@@ -19,8 +19,13 @@ services:
         value: "False"
       - key: DJANGO_TIME_ZONE
         value: Asia/Manila
+      # Owner decision (Oct 2026): show historic/documented GTFS routes, each
+      # result labelled "not field-verified". Set "False" to show only verified.
       - key: PLANNER_ALLOW_DOCUMENTED
-        value: "False"
+        value: "True"
+      # Large GTFS uploads in Django Admin can take minutes on the free plan.
+      - key: GUNICORN_TIMEOUT
+        value: "300"
       - key: DJANGO_SECRET_KEY
         generateValue: true          # Render creates a random secret for you
       - key: DATABASE_URL
