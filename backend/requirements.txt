@@ -1,0 +1,21 @@
+# PadungGo backend — runtime dependencies
+# Python 3.11+ (3.12 recommended for deployment, per docs/backend README)
+
+Django>=5.2,<5.3
+djangorestframework>=3.15,<3.16
+django-cors-headers>=4.4,<5.0
+psycopg[binary]>=3.2,<4.0
+python-dotenv>=1.0,<2.0
+dj-database-url>=2.2,<3.0
+gunicorn>=23.0,<24.0
+whitenoise>=6.7,<7.0
+
+# NOTE on GeoDjango:
+# django.contrib.gis requires GDAL and GEOS system libraries at import time.
+# Those are provided by the OS / Docker image (see Dockerfile), NOT pip.
+# The journey-planning engine (transit/planner/) is pure-Python and does NOT
+# import django.contrib.gis, so its tests run without GDAL/GEOS/PostGIS.
+
+# --- test-only ---
+pytest>=8.0
+pytest-django>=4.9
