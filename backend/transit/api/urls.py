@@ -7,9 +7,8 @@ app_name = "api"
 
 urlpatterns = [
     path("health", views.health, name="health"),
-    # Phase C endpoints registered here:
-    # path("locations", views.locations, name="locations"),
-    # path("routes", views.routes, name="routes"),
-    # path("routes/<str:route_id>", views.route_detail, name="route-detail"),
-    # path("journeys/plan", views.plan_journey, name="journeys-plan"),
+    path("locations", views.locations, name="locations"),
+    path("routes", views.routes, name="routes"),
+    path("routes/<str:route_id>", views.route_detail, name="route-detail"),
+    path("journeys/plan", views.plan_journey, name="journeys-plan"),
 ]
