@@ -42,6 +42,7 @@ class LocationKind(models.TextChoices):
 
 class StopStatus(models.TextChoices):
     CANDIDATE = "candidate", "Candidate"
+    DOCUMENTED = "documented", "Documented"
     VERIFIED = "verified", "Verified"
     NEEDS_REVIEW = "needs_review", "Needs review"
     RETIRED = "retired", "Retired"
@@ -59,6 +60,9 @@ class PatternDirection(models.TextChoices):
     OUTBOUND = "outbound", "Outbound"
     INBOUND = "inbound", "Inbound"
     LOOP = "loop", "Loop"
+    # Source does not state a direction; the pattern's stop order is still
+    # directed and enforced. Shown honestly rather than guessed.
+    UNSPECIFIED = "unspecified", "Unspecified"
 
 
 class EstimateBasis(models.TextChoices):
