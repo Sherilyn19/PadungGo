@@ -153,7 +153,9 @@ def _ride_segment(network: Network, pattern: PatternData, route: RouteData,
         "vehicle_class": route.vehicle_class,
         "operator": route.operator,
         "route_code": route.code,
+        "route_name": route.name,
         "signboard": pattern.signboard,
+        "verification_status": pattern.status,
         "board_occurrence_id": board.id,
         "alight_occurrence_id": alight.id,
         "board_stop_name": board_stop.name,
@@ -242,16 +244,23 @@ def _assemble_option(network: Network, segments: list[dict], transfers: int) -> 
 
     # Public evidence (dedup source ids across ride legs).
     ev_source_ids = sorted({sid for s in ride_segs for sid in s["source_ids"]})
+    # The journey is only as trusted as its weakest ride leg.
+    leg_statuses = {s["verification_status"] for s in ride_segs}
     evidence = {
         "source_ids": ev_source_ids,
         "references": [network.sources.get(sid, {}) for sid in ev_source_ids],
-        "verification_status": "verified",
+        "verification_status": "verified" if leg_statuses == {"verified"} else "documented",
     }
 
     # Known walking distance for ranking fallback (sum straight-line of walks).
     walk_known = sum(s.get("straight_line_m", 0) for s in segments if s["mode"] == "walk")
 
     warnings = []
+    if evidence["verification_status"] != "verified":
+        warnings.append(
+            "Built from documented (published/historic) data that is not field-verified; "
+            "confirm the route is still operating before travelling."
+        )
     if not fare["total_is_complete"]:
         warnings.append("Total fare incomplete: at least one leg has no verified fare.")
 
@@ -491,10 +500,11 @@ def plan_journeys(network: Network, req: PlanRequest, *, config: Optional[dict] 
             warnings=["Origin and destination are effectively the same location."],
         )
 
+    # Stops follow the same gate as patterns (documented only when enabled).
     origin_stops = _eligible_stops(network, req.origin, radius_m=radius_m, boarding=True,
-                                   allowed_statuses=frozenset({"verified"}))
+                                   allowed_statuses=statuses)
     dest_stops = _eligible_stops(network, req.destination, radius_m=radius_m, boarding=False,
-                                 allowed_statuses=frozenset({"verified"}))
+                                 allowed_statuses=statuses)
 
     has_any_verified_pattern = any(p.status in statuses for p in network.patterns)
 

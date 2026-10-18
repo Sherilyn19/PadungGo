@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Import a GTFS feed</h1>
+<p>Everything imported is stored as <strong>documented</strong> (published/historic data),
+never <strong>verified</strong>. It only appears in journey results when
+<code>PLANNER_ALLOW_DOCUMENTED=True</code>, and then with a "not field-verified" warning.
+Fares are not imported.</p>
+{% if report %}
+  <p style="padding:8px;background:#e6f4ea;border:1px solid #9ad1a8;">{{ report }}</p>
+{% endif %}
+{% if error %}
+  <p style="padding:8px;background:#fdecea;border:1px solid #f5b7b1;">{{ error }}</p>
+{% endif %}
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <table>{{ form.as_table }}</table>
+  <p><input type="submit" value="Import" class="default"></p>
+</form>
+{% endblock %}

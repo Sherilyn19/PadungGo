@@ -36,9 +36,33 @@ def _statuses(allow_documented: bool) -> set[str]:
     return {"verified", "documented"} if allow_documented else {"verified"}
 
 
-def load_network(*, allow_documented: bool = False) -> Network:
-    """Load the routable network. For the MVP dataset size this loads all
-    verified (optionally documented) records; bound by status to stay small."""
+_CACHE: dict[bool, tuple[float, Network]] = {}
+_CACHE_TTL_S = 300.0
+
+
+def clear_network_cache() -> None:
+    """Drop the cached network (call after imports or admin edits)."""
+    _CACHE.clear()
+
+
+def load_network(*, allow_documented: bool = False, use_cache: bool = True) -> Network:
+    """Load the routable network, cached in-process for a few minutes.
+
+    Only public, non-personal route data is cached. Admin saves and imports
+    clear the cache.
+    """
+    import time
+
+    now = time.monotonic()
+    hit = _CACHE.get(allow_documented)
+    if use_cache and hit and now - hit[0] < _CACHE_TTL_S:
+        return hit[1]
+    net = _load_network(allow_documented)
+    _CACHE[allow_documented] = (now, net)
+    return net
+
+
+def _load_network(allow_documented: bool) -> Network:
     net = Network()
     statuses = _statuses(allow_documented)
 
