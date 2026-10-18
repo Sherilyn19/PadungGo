@@ -1,0 +1,43 @@
+# Fly.io config for the PadungGo backend. Run `fly` commands from backend/.
+# If the app name is taken, change it here AND in the Host header + env below.
+app = "padunggo-api"
+primary_region = "bom"  # Mumbai — same region as the Supabase project (ap-south-1)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Applies migrations to Supabase on every deploy (non-destructive by design).
+  release_command = "python manage.py migrate --noinput"
+
+[env]
+  PADUNGGO_DB_ENGINE = "postgis"
+  DJANGO_DEBUG = "False"
+  DJANGO_ALLOWED_HOSTS = "padunggo-api.fly.dev"
+  DJANGO_CSRF_TRUSTED_ORIGINS = "https://padunggo-api.fly.dev"
+  # Fly's edge enforces HTTPS (force_https below); avoid redirecting internal checks.
+  DJANGO_SECURE_SSL_REDIRECT = "False"
+  DJANGO_TIME_ZONE = "Asia/Manila"
+  PLANNER_ALLOW_DOCUMENTED = "False"
+  # Secrets (DJANGO_SECRET_KEY, DATABASE_URL, FRONTEND_ORIGIN, AI_*) are set
+  # with `fly secrets set`, never in this file.
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/health"
+    [http_service.checks.headers]
+      Host = "padunggo-api.fly.dev"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
