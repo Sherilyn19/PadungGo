@@ -17,6 +17,7 @@ venv/
 .coverage
 htmlcov/
 db.sqlite3
+*.sqlite3
 *.log
 staticfiles/
 media/
