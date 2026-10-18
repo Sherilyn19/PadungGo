@@ -160,6 +160,11 @@ def _ride_segment(network: Network, pattern: PatternData, route: RouteData,
         "alight_occurrence_id": alight.id,
         "board_stop_name": board_stop.name,
         "alight_stop_name": alight_stop.name,
+        "board_sequence": board.sequence,
+        "alight_sequence": alight.sequence,
+        "start": {"latitude": board_stop.latitude, "longitude": board_stop.longitude},
+        "end": {"latitude": alight_stop.latitude, "longitude": alight_stop.longitude},
+        "geometry": None,  # filled from sourced route shapes at the API layer
         "instruction": (
             f"Board {route.code} ({pattern.direction}) at {board_stop.name}; "
             f"alight at {alight_stop.name}."
@@ -422,10 +427,14 @@ def _build_transfer_segments(network, p1, r1, board1, alight1, t, p2, r2, board2
     d_name = network.stops[alight2.stop_id].name
     from_name = network.stops[t.from_stop_id].name
     to_name = network.stops[t.to_stop_id].name
+    from_stop = network.stops[t.from_stop_id]
+    to_stop = network.stops[t.to_stop_id]
     transfer_seg = {
         "mode": "transfer_walk",
         "from_stop_id": t.from_stop_id,
         "to_stop_id": t.to_stop_id,
+        "start": {"latitude": from_stop.latitude, "longitude": from_stop.longitude},
+        "end": {"latitude": to_stop.latitude, "longitude": to_stop.longitude},
         "instruction": f"Transfer: walk from {from_name} to {to_name}.",
         "distance_m": t.distance_m,
         "duration_seconds": t.duration_seconds,
@@ -526,6 +535,19 @@ def _strip_internal(options: list[dict], response_prefix: str) -> list[dict]:
     return out
 
 
+def _attach_walk_points(options: list[dict], req: PlanRequest) -> None:
+    """Give access/egress walks start/end points from the request and rides."""
+    origin = {"latitude": req.origin.latitude, "longitude": req.origin.longitude}
+    dest = {"latitude": req.destination.latitude, "longitude": req.destination.longitude}
+    for o in options:
+        segs = o["segments"]
+        for i, seg in enumerate(segs):
+            if seg["mode"] != "walk":
+                continue
+            seg["start"] = segs[i - 1]["end"] if i > 0 else origin
+            seg["end"] = segs[i + 1]["start"] if i + 1 < len(segs) else dest
+
+
 # --- Public entry point ----------------------------------------------------
 
 
@@ -592,6 +614,7 @@ def plan_journeys(network: Network, req: PlanRequest, *, config: Optional[dict] 
     options = options[: req.limit]
     _apply_labels(options)
     public = _strip_internal(options, response_prefix)
+    _attach_walk_points(public, req)
 
     warnings = []
     if allow_documented:

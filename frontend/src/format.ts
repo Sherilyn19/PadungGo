@@ -1,0 +1,41 @@
+// Display helpers. Unknown values are shown as unknown, never as zero.
+
+export function formatFare(centavos: number | null | undefined): string {
+  if (centavos === null || centavos === undefined) return 'Unknown'
+  return `₱${(centavos / 100).toFixed(2)}`
+}
+
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return 'Unknown'
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m ? `${h} h ${m} min` : `${h} h`
+}
+
+export function formatDistance(meters: number | null | undefined): string {
+  if (meters === null || meters === undefined) return 'Unknown'
+  if (meters < 1000) return `${Math.round(meters)} m`
+  return `${(meters / 1000).toFixed(1)} km`
+}
+
+const REASONS: Record<string, string> = {
+  same_location: 'Your start and destination are the same place.',
+  insufficient_verified_data:
+    'There is no known stop close to your start or destination in the current data. Try a point nearer a main road.',
+  no_journey_within_mvp_limits:
+    'No route connects these places with at most one transfer in the current data. The return trip may differ — routes are one-directional.',
+  outside_intended_area: 'This place is outside Cebu City, Mandaue City and Lapu-Lapu City.',
+}
+
+export function explainReason(reason: string | null): string {
+  if (!reason) return ''
+  return REASONS[reason] ?? 'No journey was found for this request.'
+}
+
+export function titleCase(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/(^|[\s(\-/])([a-zñ])/g, (_m, sep: string, ch: string) => sep + ch.toUpperCase())
+}
