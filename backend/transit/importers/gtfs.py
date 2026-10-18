@@ -202,6 +202,39 @@ def _slice(shape, a: _Projection, b: _Projection) -> list[tuple[float, float]]:
 # --- Import ----------------------------------------------------------------
 
 
+_PLACEHOLDERS = {"", "(nodata)", "nodata", "name missing", "(name missing)"}
+
+
+def clean_stop_name(raw: str) -> str:
+    """Tidy feed stop names like 'M. Velez Street&(nodata)'.
+
+    Drops '(nodata)' parts and repeated halves; returns '' if nothing is left.
+    """
+    parts = []
+    for part in (raw or "").split("&"):
+        p = " ".join(part.split())
+        if p.lower() in _PLACEHOLDERS or p in parts:
+            continue
+        parts.append(p)
+    return " & ".join(parts)
+
+
+def route_code_and_name(row: dict) -> tuple[str, str]:
+    """Pick the passenger-facing code and the descriptive name.
+
+    Some feeds (e.g. the Cebu DOTC archive) put the code in route_id and the
+    place list in route_short_name. A short_name with spaces or longer than a
+    typical code is treated as the name.
+    """
+    rid = (row.get("route_id") or "").strip()
+    short = " ".join((row.get("route_short_name") or "").split())
+    long_ = " ".join((row.get("route_long_name") or "").split())
+    if short and len(short) <= 8 and " " not in short:
+        return short, long_
+    name = long_ or short
+    return (rid or short)[:20], name
+
+
 def _vehicle_class(route_row: dict, default: str) -> str:
     text = " ".join(route_row.get(k, "") for k in
                     ("route_short_name", "route_long_name", "route_desc")).lower()
@@ -338,8 +371,9 @@ def import_gtfs(fileobj: IO[bytes] | str, options: ImportOptions) -> ImportRepor
                     continue
                 raw = stops_raw[gid]
                 lat, lon = float(raw["stop_lat"]), float(raw["stop_lon"])
+                name = clean_stop_name(raw.get("stop_name", "")) or f"Unnamed stop (feed id {gid})"
                 stop_objs[gid] = Stop(
-                    name=(raw.get("stop_name") or gid)[:200], latitude=lat, longitude=lon,
+                    name=name[:200], latitude=lat, longitude=lon,
                     point=make_point(lat, lon), status=RecordStatus.DOCUMENTED, source=source,
                 )
         Stop.objects.bulk_create(stop_objs.values(), batch_size=1000)
@@ -350,9 +384,10 @@ def import_gtfs(fileobj: IO[bytes] | str, options: ImportOptions) -> ImportRepor
             if route_id in route_objs:
                 continue
             rrow = routes[route_id]
+            code, rname = route_code_and_name(rrow)
             route_objs[route_id] = Route(
-                code=(rrow.get("route_short_name") or rrow.get("route_long_name") or route_id)[:20],
-                name=(rrow.get("route_long_name") or "")[:200],
+                code=code,
+                name=rname[:200],
                 vehicle_class=_vehicle_class(rrow, options.default_vehicle_class),
                 operator=(agencies.get(rrow.get("agency_id", ""), "") or single_agency)[:200],
             )
@@ -437,7 +472,8 @@ def import_gtfs(fileobj: IO[bytes] | str, options: ImportOptions) -> ImportRepor
             seen = set(Location.objects.values_list("name", flat=True))
             locs = []
             for stop in stop_objs.values():
-                if stop.name in seen:
+                # Unnamed stops are not useful as searchable places.
+                if stop.name.startswith("Unnamed stop") or stop.name in seen:
                     continue
                 seen.add(stop.name)
                 locs.append(Location(
