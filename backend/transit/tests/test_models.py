@@ -67,8 +67,9 @@ def test_route_variant_unique():
             RoutePattern.objects.create(route=route, variant_key="out", direction=PatternDirection.INBOUND)
 
 
-def test_transfer_distinct_stops_constraint():
+def test_same_stop_reboarding_transfer_allowed_once():
     s1 = _stop("X")
+    TransferConnection.objects.create(from_stop=s1, to_stop=s1, distance_m=0)
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             TransferConnection.objects.create(from_stop=s1, to_stop=s1, distance_m=0)
