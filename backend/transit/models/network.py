@@ -143,7 +143,10 @@ class TransferConnection(models.Model):
         "transit.Stop", on_delete=models.PROTECT, related_name="transfers_to"
     )
     pedestrian_geometry = linestring_field()
-    distance_m = models.PositiveIntegerField(help_text="Walking distance (metres).")
+    distance_m = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Walking distance (metres); 0 for same-stop reboarding; NULL if unknown.",
+    )
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     restrictions = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=RecordStatus.choices, default=RecordStatus.CANDIDATE)
@@ -154,12 +157,10 @@ class TransferConnection(models.Model):
 
     class Meta:
         ordering = ["from_stop", "to_stop"]
+        # from_stop == to_stop is allowed: explicit same-stop reboarding
+        # (docs/DATABASE_DESIGN.md "including same-stop reboarding").
         constraints = [
             models.UniqueConstraint(fields=["from_stop", "to_stop"], name="transfer_unique_from_to"),
-            models.CheckConstraint(
-                name="transfer_distinct_stops",
-                condition=~models.Q(from_stop=models.F("to_stop")),
-            ),
         ]
         indexes = [models.Index(fields=["from_stop", "status"]), models.Index(fields=["status"])]
 
