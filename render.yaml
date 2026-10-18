@@ -1,0 +1,29 @@
+# Render Blueprint for the PadungGo backend (Docker, free plan).
+# Render Dashboard -> New -> Blueprint -> select this repo.
+# Values marked `sync: false` are secrets: Render asks for them in the dashboard.
+services:
+  - type: web
+    name: padunggo-api
+    runtime: docker
+    plan: free
+    region: singapore  # closest Render region to Cebu and to Supabase ap-south-1
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PADUNGGO_DB_ENGINE
+        value: postgis
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECURE_SSL_REDIRECT
+        value: "False"
+      - key: DJANGO_TIME_ZONE
+        value: Asia/Manila
+      - key: PLANNER_ALLOW_DOCUMENTED
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true          # Render creates a random secret for you
+      - key: DATABASE_URL
+        sync: false                  # paste the Supabase Session pooler URI
+      - key: FRONTEND_ORIGIN
+        sync: false                  # your Vercel URL, once the frontend exists

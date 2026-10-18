@@ -26,8 +26,10 @@ RUN PADUNGGO_DB_ENGINE=postgis \
     DJANGO_DEBUG=False \
     python manage.py collectstatic --noinput
 
-RUN useradd --create-home appuser
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh \
+ && useradd --create-home appuser
 USER appuser
 
+# Render injects PORT (default 10000); falls back to 8000 locally.
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "60", "--access-logfile", "-"]
+CMD ["./docker-entrypoint.sh"]
