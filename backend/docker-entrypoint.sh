@@ -5,12 +5,10 @@ set -e
 # Apply migrations (non-destructive) before serving.
 python manage.py migrate --noinput
 
-# Optional one-time admin creation without shell access. Set
+# Optional admin create/reset without shell access. Set
 # DJANGO_SUPERUSER_USERNAME / _EMAIL / _PASSWORD in the Render dashboard, deploy
-# once, then remove them. An existing user is left untouched.
-if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
-  python manage.py createsuperuser --noinput || echo "Superuser not created (it may already exist)."
-fi
+# once, log in, then remove them. An existing user's password is reset.
+python manage.py ensure_superuser || echo "ensure_superuser failed; continuing."
 
 exec gunicorn config.wsgi:application \
   --bind "0.0.0.0:${PORT:-8000}" \
