@@ -162,3 +162,25 @@ def test_route_code_taken_from_route_id_when_short_name_is_descriptive():
                                 "route_long_name": ""}) == ("06F", "GUADALUPE - CARBON - CAPITOL")
     assert route_code_and_name({"route_id": "X", "route_short_name": "TX",
                                 "route_long_name": "Test X"}) == ("TX", "Test X")
+
+
+def test_api_plan_returns_street_geometry_for_imported_rides(client, settings):
+    import json
+
+    from transit.planner.loader import clear_network_cache
+
+    import_gtfs(_feed(), _opts())
+    settings.PLANNER = {**settings.PLANNER, "ALLOW_DOCUMENTED": True}
+    clear_network_cache()
+    resp = client.post("/api/v1/journeys/plan", content_type="application/json", data=json.dumps({
+        "origin": {"latitude": 10.3000, "longitude": 123.9000},
+        "destination": {"latitude": 10.3000, "longitude": 123.9180},
+    }))
+    assert resp.status_code == 200
+    ride = next(s for s in resp.json()["journey_options"][0]["segments"] if s["mode"] == "ride")
+    assert ride["geometry"]["type"] == "LineString"
+    lon0, lat0 = ride["geometry"]["coordinates"][0]
+    assert abs(lat0 - 10.30) < 0.001 and abs(lon0 - 123.90) < 0.001  # GeoJSON order
+    walk = resp.json()["journey_options"][0]["segments"][0]
+    assert walk["start"] == {"latitude": 10.3, "longitude": 123.9}
+    assert walk["end"] == ride["start"]
