@@ -15,6 +15,7 @@ from transit.models import (
     Location,
     PatternStop,
     Route,
+    RouteEvidence,
     RoutePattern,
     RouteSegment,
     Stop,
@@ -77,55 +78,70 @@ def _load_network(allow_documented: bool) -> Network:
             "license": src.license,
         }
 
-    for stop in Stop.objects.all():
-        net.stops[str(stop.id)] = StopData(
-            id=str(stop.id), name=stop.name,
-            latitude=stop.latitude, longitude=stop.longitude,
-            can_board=stop.can_board, can_alight=stop.can_alight,
-            status=stop.status,
+    # values() queries: no model instances and no geometry columns, so a
+    # city-sized network fits in the free plan's memory.
+    for row in Stop.objects.values_list(
+        "id", "name", "latitude", "longitude", "can_board", "can_alight", "status"
+    ).iterator(chunk_size=2000):
+        sid = str(row[0])
+        net.stops[sid] = StopData(
+            id=sid, name=row[1], latitude=row[2], longitude=row[3],
+            can_board=row[4], can_alight=row[5], status=row[6],
         )
 
-    for route in Route.objects.filter(active=True):
-        net.routes[str(route.id)] = RouteData(
-            id=str(route.id), code=route.code, name=route.name,
-            vehicle_class=route.vehicle_class, operator=route.operator or None,
+    for row in Route.objects.filter(active=True).values_list(
+        "id", "code", "name", "vehicle_class", "operator"
+    ):
+        rid = str(row[0])
+        net.routes[rid] = RouteData(
+            id=rid, code=row[1], name=row[2], vehicle_class=row[3], operator=row[4] or None,
         )
 
-    patterns = (
-        RoutePattern.objects
-        .filter(status__in=statuses, route__active=True)
-        .prefetch_related("pattern_stops", "segments", "evidence__source")
+    pattern_rows = list(
+        RoutePattern.objects.filter(status__in=statuses, route__active=True).values_list(
+            "id", "route_id", "direction", "variant_key", "signboard", "status", "verified_at"
+        )
     )
-    for pat in patterns:
-        if str(pat.route_id) not in net.routes:
+    pattern_ids = [r[0] for r in pattern_rows]
+
+    occ_by_pattern: dict = {}
+    for row in PatternStop.objects.filter(pattern_id__in=pattern_ids).values_list(
+        "pattern_id", "id", "stop_id", "sequence", "distance_along_m", "can_board", "can_alight"
+    ).order_by("pattern_id", "sequence").iterator(chunk_size=5000):
+        occ_by_pattern.setdefault(row[0], []).append(PatternStopData(
+            id=str(row[1]), stop_id=str(row[2]), sequence=row[3],
+            distance_along_m=row[4], can_board=row[5], can_alight=row[6],
+        ))
+
+    seg_by_pattern: dict = {}
+    for row in RouteSegment.objects.filter(pattern_id__in=pattern_ids).values_list(
+        "pattern_id", "from_occurrence_id", "to_occurrence_id", "distance_m",
+        "riding_seconds", "estimate_basis", "source_id",
+    ).iterator(chunk_size=5000):
+        seg_by_pattern.setdefault(row[0], []).append(SegmentData(
+            from_occurrence_id=str(row[1]), to_occurrence_id=str(row[2]),
+            distance_m=row[3], riding_seconds=row[4], estimate_basis=row[5] or None,
+            source_ids=((str(row[6]),) if row[6] else ()),
+        ))
+
+    # Evidence whose status is within the active gate (documented evidence
+    # counts when documented data is enabled; rejected never counts).
+    ev_by_pattern: dict = {}
+    for pid, src_id in RouteEvidence.objects.filter(
+        pattern_id__in=pattern_ids, status__in=statuses
+    ).values_list("pattern_id", "source_id"):
+        ev_by_pattern.setdefault(pid, set()).add(str(src_id))
+
+    for pid, route_id, direction, variant_key, signboard, status, verified_at in pattern_rows:
+        if str(route_id) not in net.routes or pid not in occ_by_pattern:
             continue
-        occ = tuple(
-            PatternStopData(
-                id=str(ps.id), stop_id=str(ps.stop_id), sequence=ps.sequence,
-                distance_along_m=ps.distance_along_m,
-                can_board=ps.can_board, can_alight=ps.can_alight,
-            )
-            for ps in sorted(pat.pattern_stops.all(), key=lambda x: x.sequence)
-        )
-        segs = tuple(
-            SegmentData(
-                from_occurrence_id=str(sg.from_occurrence_id),
-                to_occurrence_id=str(sg.to_occurrence_id),
-                distance_m=sg.distance_m, riding_seconds=sg.riding_seconds,
-                estimate_basis=sg.estimate_basis or None,
-                source_ids=((str(sg.source_id),) if sg.source_id else ()),
-            )
-            for sg in pat.segments.all()
-        )
-        ev_sources = tuple(
-            str(e.source_id) for e in pat.evidence.all()
-            if e.status == "verified" and e.source_id
-        )
         net.patterns.append(PatternData(
-            id=str(pat.id), route_id=str(pat.route_id), direction=pat.direction,
-            variant_key=pat.variant_key, signboard=pat.signboard or None,
-            status=pat.status, verified_at=pat.verified_at.isoformat() if pat.verified_at else None,
-            stops=occ, segments=segs, evidence_source_ids=ev_sources,
+            id=str(pid), route_id=str(route_id), direction=direction,
+            variant_key=variant_key, signboard=signboard or None, status=status,
+            verified_at=verified_at.isoformat() if verified_at else None,
+            stops=tuple(occ_by_pattern[pid]),
+            segments=tuple(seg_by_pattern.get(pid, ())),
+            evidence_source_ids=tuple(sorted(ev_by_pattern.get(pid, ()))),
         ))
 
     for t in TransferConnection.objects.filter(status__in=statuses):
