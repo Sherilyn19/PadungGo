@@ -1,0 +1,179 @@
+"""API endpoint tests (DRF, SQLite lite mode)."""
+from __future__ import annotations
+
+import json
+
+import pytest
+from django.test import Client
+
+from transit.models import Location
+from transit.tests.db_fixtures import build_verified_network
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def net():
+    return build_verified_network()
+
+
+@pytest.fixture
+def client():
+    return Client()
+
+
+def _post_plan(client, body):
+    return client.post("/api/v1/journeys/plan", data=json.dumps(body),
+                       content_type="application/json")
+
+
+# --- Read endpoints --------------------------------------------------------
+
+
+def test_locations_search(client, net):
+    Location.objects.create(name="Ayala Center Cebu", kind="mall",
+                            latitude=10.3177, longitude=123.9057, status="verified")
+    Location.objects.create(name="SM City Cebu", kind="mall",
+                            latitude=10.3114, longitude=123.9183, status="verified")
+    resp = client.get("/api/v1/locations", {"q": "ayala"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["results"]) == 1
+    assert body["results"][0]["name"] == "Ayala Center Cebu"
+    assert "latitude" in body["results"][0] and "longitude" in body["results"][0]
+
+
+def test_routes_list(client, net):
+    resp = client.get("/api/v1/routes")
+    assert resp.status_code == 200
+    codes = {r["code"] for r in resp.json()["results"]}
+    assert codes == {"A1", "B2"}
+    a1 = next(r for r in resp.json()["results"] if r["code"] == "A1")
+    assert a1["patterns"][0]["direction"] == "outbound"
+
+
+def test_route_detail_ok(client, net):
+    route_id = str(net["routes"]["A"].id)
+    resp = client.get(f"/api/v1/routes/{route_id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["code"] == "A1"
+    stops = body["patterns"][0]["stops"]
+    assert [s["sequence"] for s in stops] == [0, 1, 2, 3]
+    assert stops[0]["stop_name"] == "Stop One"
+    # private reviewer notes not exposed
+    assert "reviewer" not in json.dumps(body)
+
+
+def test_route_detail_unknown_404(client, net):
+    resp = client.get("/api/v1/routes/00000000-0000-0000-0000-000000000000")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "not_found"
+
+
+def test_route_detail_malformed_id_404(client, net):
+    resp = client.get("/api/v1/routes/not-a-uuid")
+    assert resp.status_code == 404
+
+
+# --- Journey plan ----------------------------------------------------------
+
+
+def test_plan_direct(client, net):
+    body = {"origin": {"latitude": 10.300, "longitude": 123.900},
+            "destination": {"latitude": 10.300, "longitude": 123.909}}
+    resp = _post_plan(client, body)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["reason"] is None
+    assert len(data["journey_options"]) >= 1
+    opt = data["journey_options"][0]
+    assert opt["transfers"] == 0
+    assert opt["fare"]["total_centavos"] == 1300
+    assert opt["id"].startswith("opt-")
+
+
+def test_plan_one_transfer(client, net):
+    body = {"origin": {"latitude": 10.300, "longitude": 123.900},
+            "destination": {"latitude": 10.3005, "longitude": 123.936}}
+    data = _post_plan(client, body).json()
+    assert any(o["transfers"] == 1 for o in data["journey_options"])
+
+
+def test_plan_by_location_id(client, net):
+    loc = Location.objects.create(name="Near One", kind="place",
+                                  latitude=10.300, longitude=123.900, status="verified")
+    body = {"origin": {"location_id": str(loc.id)},
+            "destination": {"latitude": 10.300, "longitude": 123.909}}
+    resp = _post_plan(client, body)
+    assert resp.status_code == 200
+    assert resp.json()["journey_options"]
+
+
+def test_plan_unknown_location_id_400(client, net):
+    body = {"origin": {"location_id": "00000000-0000-0000-0000-000000000000"},
+            "destination": {"latitude": 10.300, "longitude": 123.909}}
+    resp = _post_plan(client, body)
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "invalid_request"
+
+
+def test_plan_ambiguous_endpoint_400(client, net):
+    body = {"origin": {"location_id": "x", "latitude": 10.3, "longitude": 123.9},
+            "destination": {"latitude": 10.300, "longitude": 123.909}}
+    resp = _post_plan(client, body)
+    assert resp.status_code == 400
+
+
+def test_plan_invalid_coordinates_400(client, net):
+    body = {"origin": {"latitude": 999, "longitude": 123.9},
+            "destination": {"latitude": 10.300, "longitude": 123.909}}
+    resp = _post_plan(client, body)
+    assert resp.status_code == 400
+
+
+def test_plan_unknown_field_400(client, net):
+    body = {"origin": {"latitude": 10.3, "longitude": 123.9},
+            "destination": {"latitude": 10.300, "longitude": 123.909},
+            "bogus": 1}
+    resp = _post_plan(client, body)
+    assert resp.status_code == 400
+
+
+def test_plan_empty_result_outside_coverage(client, net):
+    body = {"origin": {"latitude": 10.300, "longitude": 123.900},
+            "destination": {"latitude": 11.000, "longitude": 124.500}}
+    data = _post_plan(client, body).json()
+    assert data["journey_options"] == []
+    assert data["reason"] in ("insufficient_verified_data", "no_journey_within_mvp_limits")
+
+
+def test_plan_same_location(client, net):
+    body = {"origin": {"latitude": 10.300, "longitude": 123.900},
+            "destination": {"latitude": 10.300, "longitude": 123.900}}
+    data = _post_plan(client, body).json()
+    assert data["reason"] == "same_location"
+    assert data["journey_options"] == []
+
+
+def test_independent_return_differs(client, net):
+    # Outbound S1 -> S4 works; return S4 -> S1 has no inbound pattern -> empty.
+    out = _post_plan(client, {"origin": {"latitude": 10.300, "longitude": 123.900},
+                              "destination": {"latitude": 10.300, "longitude": 123.927}}).json()
+    assert out["journey_options"]
+    ret = _post_plan(client, {"origin": {"latitude": 10.300, "longitude": 123.927},
+                              "destination": {"latitude": 10.300, "longitude": 123.900}}).json()
+    assert ret["journey_options"] == []
+
+
+def test_plan_fare_unknown_total_incomplete(client, net):
+    # No fare for bus; make route B a bus so the transfer leg fare is unknown.
+    net["routes"]["B"].vehicle_class = "bus"
+    net["routes"]["B"].save()
+    body = {"origin": {"latitude": 10.300, "longitude": 123.900},
+            "destination": {"latitude": 10.3005, "longitude": 123.936}}
+    data = _post_plan(client, body).json()
+    transfer_opts = [o for o in data["journey_options"] if o["transfers"] == 1]
+    assert transfer_opts
+    assert transfer_opts[0]["fare"]["total_is_complete"] is False
+    assert transfer_opts[0]["fare"]["total_centavos"] is None
