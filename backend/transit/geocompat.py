@@ -51,3 +51,33 @@ else:
         return models.JSONField(**kwargs)
 
     SPATIAL_INDEX_SUPPORTED = False
+
+
+def make_point(lat: float, lon: float):
+    """Value for a point_field() column in the active mode."""
+    if GIS_ENABLED:  # pragma: no cover - requires GDAL/GEOS
+        from django.contrib.gis.geos import Point
+
+        return Point(lon, lat, srid=4326)
+    return {"lat": lat, "lon": lon}
+
+
+def make_linestring(latlons):
+    """Value for a linestring_field() column. latlons: [(lat, lon), ...]."""
+    pts = [(lon, lat) for lat, lon in latlons]
+    if len(pts) < 2:
+        return None
+    if GIS_ENABLED:  # pragma: no cover - requires GDAL/GEOS
+        from django.contrib.gis.geos import LineString
+
+        return LineString(pts, srid=4326)
+    return {"type": "LineString", "coordinates": [list(p) for p in pts]}
+
+
+def linestring_coords(value):
+    """GeoJSON-order [[lon, lat], ...] from a stored linestring, or None."""
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value.get("coordinates")
+    return [list(c) for c in value.coords]  # GEOS LineString
