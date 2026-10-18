@@ -143,3 +143,22 @@ def _upload():
     from django.core.files.uploadedfile import SimpleUploadedFile
 
     return SimpleUploadedFile("feed.zip", _feed().getvalue(), content_type="application/zip")
+
+
+def test_clean_stop_name():
+    from transit.importers.gtfs import clean_stop_name
+
+    assert clean_stop_name("M. Velez Street&(nodata)") == "M. Velez Street"
+    assert clean_stop_name("(nodata)&(nodata)") == ""
+    assert clean_stop_name("Osmena Boulevard&Osmena Boulevard") == "Osmena Boulevard"
+    assert clean_stop_name("N. Escario Street&Gorordo Avenue") == "N. Escario Street & Gorordo Avenue"
+
+
+def test_route_code_taken_from_route_id_when_short_name_is_descriptive():
+    from transit.importers.gtfs import route_code_and_name
+
+    # Shape of the Cebu DOTC archive: code in route_id, places in short_name.
+    assert route_code_and_name({"route_id": "06F", "route_short_name": "GUADALUPE - CARBON - CAPITOL",
+                                "route_long_name": ""}) == ("06F", "GUADALUPE - CARBON - CAPITOL")
+    assert route_code_and_name({"route_id": "X", "route_short_name": "TX",
+                                "route_long_name": "Test X"}) == ("TX", "Test X")
