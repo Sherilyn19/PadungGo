@@ -19,12 +19,18 @@ GIS_ENABLED: bool = getattr(settings, "GIS_ENABLED", False)
 if GIS_ENABLED:  # pragma: no cover - requires GDAL/GEOS at import time
     from django.contrib.gis.db import models as gis_models
 
+    # Geometry is optional: lat/lon float columns are the canonical coordinates;
+    # the spatial column is populated when available (e.g. by importers).
     def point_field(**kwargs):
         kwargs.setdefault("srid", 4326)
+        kwargs.setdefault("null", True)
+        kwargs.setdefault("blank", True)
         return gis_models.PointField(**kwargs)
 
     def linestring_field(**kwargs):
         kwargs.setdefault("srid", 4326)
+        kwargs.setdefault("null", True)
+        kwargs.setdefault("blank", True)
         return gis_models.LineStringField(**kwargs)
 
     SPATIAL_INDEX_SUPPORTED = True

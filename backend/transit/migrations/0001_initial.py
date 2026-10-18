@@ -4,6 +4,10 @@ import django.db.models.deletion
 import uuid
 from django.db import migrations, models
 
+# Spatial columns adapt to the DB mode (PostGIS geometry vs. lite JSON), matching
+# transit/geocompat.py so models and migrations never drift.
+from transit import geocompat
+
 
 class Migration(migrations.Migration):
 
@@ -49,7 +53,7 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=200)),
                 ('kind', models.CharField(choices=[('landmark', 'Landmark'), ('terminal', 'Terminal'), ('mall', 'Mall'), ('transport_hub', 'Transport hub'), ('place', 'Place')], default='place', max_length=20)),
-                ('point', models.JSONField(blank=True, null=True)),
+                ('point', geocompat.point_field()),
                 ('latitude', models.FloatField(help_text='WGS84 latitude [-90, 90].')),
                 ('longitude', models.FloatField(help_text='WGS84 longitude [-180, 180].')),
                 ('status', models.CharField(choices=[('candidate', 'Candidate'), ('documented', 'Documented'), ('verified', 'Verified'), ('needs_review', 'Needs review')], default='candidate', max_length=20)),
@@ -83,7 +87,7 @@ class Migration(migrations.Migration):
                 ('variant_key', models.CharField(help_text='Distinguishes variants of the same route+direction.', max_length=100)),
                 ('direction', models.CharField(choices=[('outbound', 'Outbound'), ('inbound', 'Inbound'), ('loop', 'Loop')], max_length=20)),
                 ('signboard', models.CharField(blank=True, max_length=200)),
-                ('geometry', models.JSONField(blank=True, null=True)),
+                ('geometry', geocompat.linestring_field()),
                 ('status', models.CharField(choices=[('candidate', 'Candidate'), ('documented', 'Documented'), ('verified', 'Verified'), ('needs_review', 'Needs review')], default='candidate', max_length=20)),
                 ('verified_at', models.DateTimeField(blank=True, null=True)),
                 ('review_due_at', models.DateTimeField(blank=True, null=True)),
@@ -148,7 +152,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('distance_m', models.PositiveIntegerField(help_text='Travelled route distance along the pattern (metres).')),
-                ('geometry', models.JSONField(blank=True, null=True)),
+                ('geometry', geocompat.linestring_field()),
                 ('riding_seconds', models.PositiveIntegerField(blank=True, null=True)),
                 ('estimate_basis', models.CharField(blank=True, choices=[('sourced_observation', 'Sourced observation'), ('schedule', 'Published schedule'), ('distance_speed_assumption', 'Distance + documented speed'), ('straight_line_approx', 'Straight-line approximation')], max_length=30)),
                 ('from_occurrence', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='segments_from', to='transit.patternstop')),
@@ -165,7 +169,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=200)),
-                ('point', models.JSONField(blank=True, null=True)),
+                ('point', geocompat.point_field()),
                 ('latitude', models.FloatField(help_text='WGS84 latitude [-90, 90].')),
                 ('longitude', models.FloatField(help_text='WGS84 longitude [-180, 180].')),
                 ('can_board', models.BooleanField(default=True, help_text='Boarding allowed here by default.')),
@@ -188,7 +192,7 @@ class Migration(migrations.Migration):
             name='TransferConnection',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('pedestrian_geometry', models.JSONField(blank=True, null=True)),
+                ('pedestrian_geometry', geocompat.linestring_field()),
                 ('distance_m', models.PositiveIntegerField(help_text='Walking distance (metres).')),
                 ('duration_seconds', models.PositiveIntegerField(blank=True, null=True)),
                 ('restrictions', models.TextField(blank=True)),
