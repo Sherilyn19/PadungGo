@@ -237,6 +237,19 @@ if not DEBUG:
     if _RENDER_HOST:
         CSRF_TRUSTED_ORIGINS.append(f"https://{_RENDER_HOST}")
 
+    # HSTS (HTTP Strict Transport Security) tells browsers to use only HTTPS
+    # for this host, for the given number of seconds. Browsers remember it, so
+    # it starts short (300 s = 5 minutes). Once HTTPS has stayed healthy, raise
+    # it step by step with DJANGO_SECURE_HSTS_SECONDS (e.g. 1 day, 1 week,
+    # 1 year). Set it to 0 to send no HSTS header at all. Django only sends
+    # the header on HTTPS responses.
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "300"))
+    # Kept off on purpose until their requirements are confirmed:
+    # includeSubDomains would also cover every subdomain of this host, and
+    # preload asks browsers to hard-code HTTPS-only, which is slow to undo.
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+
 # --- Planner configuration -------------------------------------------------
 # Honest-data gating. By default only `verified` records feed trusted journeys.
 # Operators may widen the gate for demos with real-but-historic GTFS data; the
