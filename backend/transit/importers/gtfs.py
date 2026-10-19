@@ -67,6 +67,15 @@ def clean_stop_name(raw: str) -> str:
     return " & ".join(parts)
 
 
+def _real_text(raw: str | None) -> str:
+    """Collapse whitespace; feed placeholders such as 'Name missing' become ''.
+
+    Storing a placeholder would show it to commuters as if it were the route name.
+    """
+    text = " ".join((raw or "").split())
+    return "" if text.lower() in _PLACEHOLDERS else text
+
+
 def route_code_and_name(row: dict) -> tuple[str, str]:
     """Pick the passenger-facing code and the descriptive name.
 
@@ -75,8 +84,8 @@ def route_code_and_name(row: dict) -> tuple[str, str]:
     typical code is treated as the name.
     """
     rid = (row.get("route_id") or "").strip()
-    short = " ".join((row.get("route_short_name") or "").split())
-    long_ = " ".join((row.get("route_long_name") or "").split())
+    short = _real_text(row.get("route_short_name"))
+    long_ = _real_text(row.get("route_long_name"))
     if short and len(short) <= 8 and " " not in short:
         return short, long_
     name = long_ or short
