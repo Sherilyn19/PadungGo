@@ -26,6 +26,7 @@ export default function PlaceInput({ label, value, onChange, picking, onPickOnMa
     const q = text.trim()
     if (!open || q.length < 2 || q === value?.name) {
       setResults([])
+      setStatus((s) => (s === 'Searching…' ? '' : s))
       return
     }
     const controller = new AbortController()
