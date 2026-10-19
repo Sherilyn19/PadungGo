@@ -167,11 +167,11 @@ def test_route_code_taken_from_route_id_when_short_name_is_descriptive():
 def test_api_plan_returns_street_geometry_for_imported_rides(client, settings):
     import json
 
-    from transit.planner.loader import clear_network_cache
+    from transit.planner.loader import invalidate_network_cache
 
     import_gtfs(_feed(), _opts())
     settings.PLANNER = {**settings.PLANNER, "ALLOW_DOCUMENTED": True}
-    clear_network_cache()
+    invalidate_network_cache()
     resp = client.post("/api/v1/journeys/plan", content_type="application/json", data=json.dumps({
         "origin": {"latitude": 10.3000, "longitude": 123.9000},
         "destination": {"latitude": 10.3000, "longitude": 123.9180},

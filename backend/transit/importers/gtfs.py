@@ -506,6 +506,6 @@ def import_gtfs(fileobj: IO[bytes] | str, options: ImportOptions) -> ImportRepor
             Location.objects.bulk_create(locs, batch_size=1000)
             report.locations = len(locs)
 
-    from transit.planner.loader import clear_network_cache
-    clear_network_cache()
+    from transit.planner.loader import invalidate_network_cache
+    invalidate_network_cache()
     return report
