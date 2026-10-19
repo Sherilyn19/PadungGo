@@ -164,6 +164,16 @@ def test_route_code_taken_from_route_id_when_short_name_is_descriptive():
                                 "route_long_name": "Test X"}) == ("TX", "Test X")
 
 
+def test_route_name_placeholder_is_not_stored_as_a_name():
+    from transit.importers.gtfs import route_code_and_name
+
+    # Seen on 42D in the Cebu DOTC archive; it must not reach commuters as a name.
+    assert route_code_and_name({"route_id": "42D", "route_short_name": "Name missing",
+                                "route_long_name": ""}) == ("42D", "")
+    assert route_code_and_name({"route_id": "X", "route_short_name": "TX",
+                                "route_long_name": "(nodata)"}) == ("TX", "")
+
+
 def test_api_plan_returns_street_geometry_for_imported_rides(client, settings):
     import json
 
