@@ -18,7 +18,9 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# PadungGo backend image (Render). Includes GDAL/GEOS/PROJ for GeoDjango.# used just so settings can import. Real values come from Render environment variables.
+# collectstatic does not connect to the DB; build-only placeholder values are
+# used just so settings can import. Real values come from Render environment variables.
+
 RUN PADUNGGO_DB_ENGINE=postgis \
     DATABASE_URL=postgresql://build:build@localhost:5432/build \
     DJANGO_SECRET_KEY=build-only-not-secret \
