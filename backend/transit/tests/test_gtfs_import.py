@@ -11,7 +11,7 @@ from transit.importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from transit.models import PatternStop, Route, RoutePattern, Stop, TransferConnection
 from transit.planner import PlanRequest, plan_journeys
 from transit.planner.loader import load_network
-from transit.planner.models import Endpoint
+from transit.planner.journey_types import Endpoint
 
 pytestmark = pytest.mark.django_db
 

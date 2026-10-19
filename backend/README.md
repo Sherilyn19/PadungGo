@@ -5,7 +5,7 @@ Python 3.11+ (3.12 in production) · Django 5.2 · DRF · Supabase PostgreSQL/Po
 Two database modes:
 
 - **lite** (`PADUNGGO_DB_ENGINE=sqlite`): local development and tests. No GDAL/PostGIS needed.
-- **postgis**: production on Fly.io. The Docker image installs GDAL/GEOS/PROJ.
+- **postgis**: production on Render. The Docker image installs GDAL/GEOS/PROJ.
 
 ## Local setup (Windows PowerShell)
 
@@ -23,8 +23,9 @@ python manage.py runserver        # http://127.0.0.1:8000/health
 
 Generate a secret key: `python -c "import secrets; print(secrets.token_urlsafe(50))"`
 
-Local PostGIS mode on Windows requires a GDAL install (OSGeo4W). It is not
-needed: Supabase migrations run from the Fly.io image (see below).
+Local PostGIS mode on Windows requires a GDAL install (OSGeo4W). Lite mode
+does not require GDAL. Production migrations run from the Docker container
+on Render (see below).
 
 ## Endpoints
 

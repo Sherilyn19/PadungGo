@@ -6,7 +6,7 @@ each, many shared stops with same-stop transfers. The plan must stay fast.
 import time
 
 from transit.planner import plan_journeys
-from transit.planner.models import (
+from transit.planner.journey_types import (
     Endpoint, Network, PatternData, PatternStopData, PlanRequest, RouteData,
     SegmentData, StopData, TransferData,
 )
