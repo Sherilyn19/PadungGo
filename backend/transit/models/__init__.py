@@ -19,6 +19,7 @@ from .enums import (
     StopStatus,
     VehicleClass,
 )
+from .cache import NetworkDataVersion
 from .evidence import DataSource, RecordEvidence, RouteEvidence
 from .fares import FareRule
 from .geography import Area, Location, Stop
@@ -48,6 +49,8 @@ __all__ = [
     "TransferConnection",
     # fares
     "FareRule",
+    # cache coordination
+    "NetworkDataVersion",
     # evidence
     "DataSource",
     "RouteEvidence",

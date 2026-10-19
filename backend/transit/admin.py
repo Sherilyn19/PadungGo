@@ -1,8 +1,12 @@
 """Django Admin for development, review and demonstration data management."""
 from __future__ import annotations
 
+import zipfile
+
 from django import forms
+from django.conf import settings
 from django.contrib import admin
+from django.core.validators import FileExtensionValidator
 from django.core.exceptions import PermissionDenied
 from django.template.response import TemplateResponse
 from django.urls import path
@@ -27,7 +31,23 @@ from .models import (
 
 
 class GTFSImportForm(forms.Form):
-    feed = forms.FileField(help_text="GTFS .zip file (max 50 MB).")
+    feed = forms.FileField(
+        help_text="GTFS .zip file (max 50 MB).",
+        validators=[FileExtensionValidator(allowed_extensions=["zip"])],
+    )
+
+    def clean_feed(self):
+        feed = self.cleaned_data["feed"]
+        limit = settings.GTFS_UPLOAD_MAX_BYTES
+        if feed.size > limit:
+            raise forms.ValidationError(f"File is larger than {limit // (1024 * 1024)} MB.")
+        # The extension can be renamed, so also check the file's contents
+        # really are a zip archive before handing it to the importer.
+        if not zipfile.is_zipfile(feed):
+            raise forms.ValidationError("The file is not a valid zip archive.")
+        feed.seek(0)
+        return feed
+
     title = forms.CharField(max_length=300, initial="Cebu DOTC GTFS (Transitland archive)")
     reference = forms.CharField(max_length=1000, required=False,
                                 initial="https://www.transit.land/feeds/f-wcb4-cebu~dotc")
@@ -62,21 +82,17 @@ class DataSourceAdmin(admin.ModelAdmin):
         report = error = None
         form = GTFSImportForm(request.POST or None, request.FILES or None)
         if request.method == "POST" and form.is_valid():
-            feed = form.cleaned_data["feed"]
-            if feed.size > 50 * 1024 * 1024:
-                error = "File is larger than 50 MB."
-            else:
-                d = form.cleaned_data
-                try:
-                    report = import_gtfs(feed, ImportOptions(
-                        source_title=d["title"], source_reference=d["reference"],
-                        source_publisher=d["publisher"], source_license=d["license"],
-                        source_published_at=d["published_at"], source_limitations=d["limitations"],
-                        default_vehicle_class=d["vehicle_class"],
-                        same_stop_transfers=d["same_stop_transfers"],
-                    )).summary()
-                except GTFSImportError as exc:
-                    error = str(exc)
+            d = form.cleaned_data
+            try:
+                report = import_gtfs(d["feed"], ImportOptions(
+                    source_title=d["title"], source_reference=d["reference"],
+                    source_publisher=d["publisher"], source_license=d["license"],
+                    source_published_at=d["published_at"], source_limitations=d["limitations"],
+                    default_vehicle_class=d["vehicle_class"],
+                    same_stop_transfers=d["same_stop_transfers"],
+                )).summary()
+            except GTFSImportError as exc:
+                error = str(exc)
         context = {**self.admin_site.each_context(request), "form": form,
                    "report": report, "error": error, "title": "Import GTFS feed"}
         return TemplateResponse(request, "admin/transit/gtfs_import.html", context)
