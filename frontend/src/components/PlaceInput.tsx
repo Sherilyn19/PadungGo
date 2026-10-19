@@ -17,10 +17,17 @@ export default function PlaceInput({ label, value, onChange, picking, onPickOnMa
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<string>('')
   const debounce = useRef<number | undefined>(undefined)
+  // Set when typing clears the selection, so that clear doesn't also wipe the typed text.
+  const clearedByTyping = useRef(false)
 
   useEffect(() => {
+    if (clearedByTyping.current) {
+      clearedByTyping.current = false
+      return
+    }
     setText(value?.name ?? '')
   }, [value])
+
 
   useEffect(() => {
     const q = text.trim()
@@ -35,14 +42,20 @@ export default function PlaceInput({ label, value, onChange, picking, onPickOnMa
       setStatus('Searching…')
       try {
         const data = await searchLocations(q, controller.signal)
+        if (controller.signal.aborted) return
         setResults(data.results)
+
         setStatus(data.results.length ? '' : 'No matching place. Try a street name, or pick on the map.')
       } catch (e) {
         if (!controller.signal.aborted) setStatus((e as Error).message)
       }
     }, 300)
-    return () => controller.abort()
+    return () => {
+      window.clearTimeout(debounce.current)
+      controller.abort()
+    }
   }, [text, open, value?.name])
+
 
   const choose = (r: LocationResult) => {
     onChange({ id: r.id, name: r.name, latitude: r.latitude, longitude: r.longitude, source: 'search' })
@@ -89,7 +102,11 @@ export default function PlaceInput({ label, value, onChange, picking, onPickOnMa
           onChange={(e) => {
             setText(e.target.value)
             setOpen(true)
-            if (value) onChange(null)
+            if (value) {
+              clearedByTyping.current = true
+              onChange(null)
+            }
+
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => window.setTimeout(() => setOpen(false), 150)}
