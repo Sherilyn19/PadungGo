@@ -243,12 +243,34 @@ def _vehicle_class(route_row: dict, default: str) -> str:
     return default
 
 
+MAX_ARCHIVE_MEMBERS = 200  # a real GTFS feed has a few dozen files at most
+
+
+def _check_archive_limits(zf: zipfile.ZipFile) -> None:
+    """Refuse archives that would expand to an unreasonable size (zip bombs).
+
+    The sizes come from the zip directory. Python's zipfile stops reading a
+    member at its declared size (and checks its CRC), so an archive cannot
+    unpack to more than it declares here.
+    """
+    from django.conf import settings
+
+    max_total = getattr(settings, "GTFS_MAX_UNCOMPRESSED_BYTES", 500 * 1024 * 1024)
+    members = zf.infolist()
+    if len(members) > MAX_ARCHIVE_MEMBERS:
+        raise GTFSImportError("The zip contains too many files to be a GTFS feed.")
+    if sum(m.file_size for m in members) > max_total:
+        limit_mb = max_total // (1024 * 1024)
+        raise GTFSImportError(f"The feed is larger than {limit_mb} MB once unzipped.")
+
+
 def import_gtfs(fileobj: IO[bytes] | str, options: ImportOptions) -> ImportReport:
     """Import a GTFS zip (path or binary file object). Atomic: all or nothing."""
     try:
         zf = zipfile.ZipFile(fileobj)
     except zipfile.BadZipFile as exc:
         raise GTFSImportError("The uploaded file is not a valid GTFS zip.") from exc
+    _check_archive_limits(zf)
 
     if options.source_reference and DataSource.objects.filter(
         reference=options.source_reference, title=options.source_title
