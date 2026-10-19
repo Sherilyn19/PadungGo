@@ -46,6 +46,17 @@ The Blueprint is `render.yaml` at the repo root (Singapore region, free plan).
 6. Admin user (the free plan has no shell): add `DJANGO_SUPERUSER_USERNAME`,
    `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_PASSWORD` under Environment,
    redeploy once, then delete those three variables.
+   - If an account with that username already exists, it is **left unchanged**: a restart never overwrites its password.
+   - **Forgotten password:** also set `DJANGO_SUPERUSER_RESET_PASSWORD=True`, redeploy once, log in, then delete all four variables.
+
+GTFS upload limits (optional overrides):
+- `GTFS_UPLOAD_MAX_MB`: compressed upload size, default 50.
+- `GTFS_MAX_UNCOMPRESSED_MB`: total size once unzipped, default 500.
+
+Oversized uploads are refused before the body is read.
+
+Tests use `config/test_settings.py`, selected in `pytest.ini`. Production
+security settings depend only on `DJANGO_DEBUG`.
 
 Free-plan limits: the service sleeps after 15 minutes idle and takes about a
 minute to wake up.

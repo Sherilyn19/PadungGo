@@ -7,10 +7,15 @@ the pure-Python engine can run. Keeps spatial access minimal and backend-agnosti
 """
 from __future__ import annotations
 
+import time
+from dataclasses import dataclass
 from typing import Iterable, Optional
+
+from django.db.models import F
 
 from transit.models import (
     DataSource,
+    NetworkDataVersion,
     FareRule,
     Location,
     PatternStop,
@@ -37,30 +42,68 @@ def _statuses(allow_documented: bool) -> set[str]:
     return {"verified", "documented"} if allow_documented else {"verified"}
 
 
-_CACHE: dict[bool, tuple[float, Network]] = {}
+@dataclass(frozen=True)
+class _CachedNetwork:
+    loaded_at: float  # time.monotonic() when loading started
+    data_version: int  # NetworkDataVersion.version the copy was built from
+    network: Network
+
+
+# One copy per server process, keyed by "include documented data?".
+_CACHE: dict[bool, _CachedNetwork] = {}
+# Safety net for changes made outside Django (e.g. raw SQL), which do not bump
+# the shared version.
 _CACHE_TTL_S = 300.0
 
 
-def clear_network_cache() -> None:
-    """Drop the cached network (call after imports or admin edits)."""
+def _current_data_version() -> int:
+    """Read the shared version (one primary-key lookup)."""
+    row = NetworkDataVersion.objects.filter(pk=NetworkDataVersion.SINGLETON_ID).values_list(
+        "version", flat=True
+    ).first()
+    return row or 0
+
+
+def invalidate_network_cache() -> None:
+    """Mark the planner network as changed for every server process.
+
+    Clears this process's copy and bumps the shared version, so other workers
+    and other processes reload on their next request. Called by the model
+    signals (admin edits) and at the end of a GTFS import. When called inside a
+    transaction, the bump becomes visible only when that transaction commits,
+    which is exactly when the new data does.
+    """
     _CACHE.clear()
+    updated = NetworkDataVersion.objects.filter(pk=NetworkDataVersion.SINGLETON_ID).update(
+        version=F("version") + 1
+    )
+    if not updated:
+        NetworkDataVersion.objects.get_or_create(pk=NetworkDataVersion.SINGLETON_ID)
 
 
 def load_network(*, allow_documented: bool = False, use_cache: bool = True) -> Network:
-    """Load the routable network, cached in-process for a few minutes.
+    """Load the routable network, cached in-process.
 
-    Only public, non-personal route data is cached. Admin saves and imports
-    clear the cache.
+    Only public, non-personal route data is cached. A cached copy is reused
+    only while the shared data version still matches and it is younger than the
+    TTL, so imports and admin edits made by any process show up on the next
+    request.
     """
-    import time
-
-    now = time.monotonic()
+    started = time.monotonic()
+    # Read the version BEFORE loading: if data changes while we load, the stored
+    # version is already out of date and the next request reloads.
+    data_version = _current_data_version()
     hit = _CACHE.get(allow_documented)
-    if use_cache and hit and now - hit[0] < _CACHE_TTL_S:
-        return hit[1]
-    net = _load_network(allow_documented)
-    _CACHE[allow_documented] = (now, net)
-    return net
+    if (
+        use_cache
+        and hit is not None
+        and hit.data_version == data_version
+        and started - hit.loaded_at < _CACHE_TTL_S
+    ):
+        return hit.network
+    network = _load_network(allow_documented)
+    _CACHE[allow_documented] = _CachedNetwork(started, data_version, network)
+    return network
 
 
 def _load_network(allow_documented: bool) -> Network:

@@ -19,13 +19,41 @@ def test_creates_superuser(monkeypatch):
     assert user.is_superuser and user.is_staff and user.check_password(GOOD)
 
 
-def test_resets_forgotten_password(monkeypatch):
+def test_restart_does_not_overwrite_existing_password(monkeypatch):
+    # Regression: every container start used to reset the admin password.
+    get_user_model().objects.create_superuser("padung-go", "a@example.com", "Changed-Later-Pass-1")
+    _env(monkeypatch)
+    monkeypatch.delenv("DJANGO_SUPERUSER_RESET_PASSWORD", raising=False)
+    call_command("ensure_superuser")
+    user = get_user_model().objects.get(username="padung-go")
+    assert user.check_password("Changed-Later-Pass-1")
+    assert not user.check_password(GOOD)
+
+
+def test_restart_does_not_promote_existing_non_admin(monkeypatch):
+    get_user_model().objects.create_user("padung-go", "a@example.com", "Some-User-Pass-1")
+    _env(monkeypatch)
+    monkeypatch.delenv("DJANGO_SUPERUSER_RESET_PASSWORD", raising=False)
+    call_command("ensure_superuser")
+    assert not get_user_model().objects.get(username="padung-go").is_superuser
+
+
+def test_resets_forgotten_password_when_explicitly_requested(monkeypatch):
     get_user_model().objects.create_superuser("padung-go", "a@example.com", "Old-Forgotten-Pass-1")
     _env(monkeypatch)
+    monkeypatch.setenv("DJANGO_SUPERUSER_RESET_PASSWORD", "True")
     call_command("ensure_superuser")
     user = get_user_model().objects.get(username="padung-go")
     assert user.check_password(GOOD)
     assert not user.check_password("Old-Forgotten-Pass-1")
+
+
+def test_reset_password_flag(monkeypatch):
+    get_user_model().objects.create_superuser("padung-go", "a@example.com", "Old-Forgotten-Pass-1")
+    _env(monkeypatch)
+    monkeypatch.delenv("DJANGO_SUPERUSER_RESET_PASSWORD", raising=False)
+    call_command("ensure_superuser", reset_password=True)
+    assert get_user_model().objects.get(username="padung-go").check_password(GOOD)
 
 
 def test_skips_when_unset(monkeypatch):
