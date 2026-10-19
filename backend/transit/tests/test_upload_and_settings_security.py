@@ -26,7 +26,8 @@ def _import_settings(env_overrides: dict, *argv: str) -> subprocess.CompletedPro
     env = {"PATH": os.environ.get("PATH", ""), "PADUNGGO_DB_ENGINE": "sqlite", **env_overrides}
     code = (
         "import sys; sys.path.insert(0, '.'); import config.settings as s; "
-        "print(s.SESSION_COOKIE_SECURE, s.CSRF_COOKIE_SECURE)"
+        "print(s.SESSION_COOKIE_SECURE, s.CSRF_COOKIE_SECURE, s.SECURE_HSTS_SECONDS, "
+        "s.SECURE_HSTS_INCLUDE_SUBDOMAINS, s.SECURE_HSTS_PRELOAD)"
     )
     return subprocess.run(
         [sys.executable, "-c", code, *argv], cwd=BACKEND_DIR, env=env,
@@ -48,10 +49,27 @@ def test_production_rejects_the_dev_only_key():
     assert result.returncode != 0
 
 
-def test_production_enables_secure_cookies():
+def test_production_enables_secure_cookies_and_short_hsts():
     result = _import_settings({"DJANGO_DEBUG": "False", "DJANGO_SECRET_KEY": "x" * 50})
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "True True"
+    # Short initial HSTS; includeSubDomains and preload stay off.
+    assert result.stdout.strip() == "True True 300 False False"
+
+
+def test_hsts_duration_is_configurable():
+    result = _import_settings({"DJANGO_DEBUG": "False", "DJANGO_SECRET_KEY": "x" * 50,
+                               "DJANGO_SECURE_HSTS_SECONDS": "86400"})
+    assert result.stdout.split()[2] == "86400"
+
+
+@pytest.mark.django_db
+def test_hsts_header_sent_only_over_https(client, settings):
+    settings.SECURE_HSTS_SECONDS = 300
+    settings.SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    settings.SECURE_HSTS_PRELOAD = False
+    https = client.get("/api/v1/health", secure=True)
+    assert https["Strict-Transport-Security"] == "max-age=300"
+    assert "Strict-Transport-Security" not in client.get("/api/v1/health")
 
 
 # --- GTFS upload -----------------------------------------------------------
