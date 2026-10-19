@@ -55,6 +55,13 @@ GTFS upload limits (optional overrides):
 
 Oversized uploads are refused before the body is read.
 
+HSTS (production only) is sent on HTTPS responses, starting at
+`max-age=300` (5 minutes). Raise `DJANGO_SECURE_HSTS_SECONDS` step by step,
+for example 86400 (1 day), then 604800 (1 week), then 31536000 (1 year),
+only while HTTPS stays healthy. `includeSubDomains` and `preload` are
+deliberately off. As a result, `check --deploy` still shows the two
+intentional warnings W005 and W021.
+
 Tests use `config/test_settings.py`, selected in `pytest.ini`. Production
 security settings depend only on `DJANGO_DEBUG`.
 
