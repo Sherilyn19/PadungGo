@@ -280,6 +280,7 @@ def _assemble_option(network: Network, segments: list[dict], transfers: int) -> 
         # internal fields (stripped before output):
         "_dedup_key": _dedup_key(segments),
         "_walk_known_m": walk_known,
+        "_ride_m": sum(s["distance_m"] or 0 for s in ride_segs),
     }
 
 
@@ -469,7 +470,9 @@ def _rank(options: list[dict], sort_by: str) -> tuple[list[dict], dict]:
     warning = None
 
     def fewest_key(o):
-        return (o["transfers"], o["_walk_known_m"], o["_dedup_key"])
+        # Fewer transfers first, then the shorter ride on the road (avoids
+        # long loops), then less approximate walking, then a stable id.
+        return (o["transfers"], o["_ride_m"], o["_walk_known_m"], o["_dedup_key"])
 
     if sort_by == "cheapest":
         comparable = [o for o in options if o["fare"]["total_is_complete"]]
@@ -530,6 +533,7 @@ def _strip_internal(options: list[dict], response_prefix: str) -> list[dict]:
         o = dict(o)
         o.pop("_dedup_key", None)
         o.pop("_walk_known_m", None)
+        o.pop("_ride_m", None)
         o["id"] = f"{response_prefix}-{i+1}"
         out.append(o)
     return out
