@@ -24,6 +24,11 @@ Significant changes will be recorded here as development occurs. Do not backdate
 **Tests**
 - Added 33 regression tests covering the changes above.
 
+**HSTS**
+- Verified the live setup before enabling it: valid certificates on both hosts, HTTP redirects to HTTPS on both, and the API serves over TLS 1.3.
+- The API now sends `Strict-Transport-Security: max-age=300`, a short starting duration that is configurable with `DJANGO_SECURE_HSTS_SECONDS`.
+- `includeSubDomains` and `preload` stay disabled.
+
 ### Added
 - Initial project concept, architecture, open-source contribution guidance and data-verification standards.
 
