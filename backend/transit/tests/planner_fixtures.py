@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from transit.planner.models import (
+from transit.planner.journey_types import (
     FarePolicy,
     Network,
     PatternData,

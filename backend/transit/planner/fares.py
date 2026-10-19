@@ -5,7 +5,7 @@ import math
 from datetime import date
 from typing import Optional
 
-from .models import FarePolicy, Network, RouteData
+from .journey_types import FarePolicy, Network, RouteData
 
 
 def _applicable(f: FarePolicy, *, vehicle_class: str, route_id: str, pattern_id: str,
