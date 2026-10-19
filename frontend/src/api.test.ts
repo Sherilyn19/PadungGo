@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, searchLocations } from './api'
 
@@ -93,6 +95,8 @@ describe('cancellation', () => {
     controller.abort()
     await expect(request).rejects.toEqual(new ApiError('Request cancelled.', 0, false))
     expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function))
+      })
+})
 describe('searchLocations cancellation', () => {
   it('does not send a request when the signal is already aborted', async () => {
     const fetchMock = vi.fn()
@@ -126,7 +130,10 @@ describe('searchLocations cancellation', () => {
   it('removes its abort listener from the caller signal once the request finishes', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ results: [] }), { status: 200 })),
+      vi.fn(async () => new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })),
     )
     const caller = new AbortController()
     const removeSpy = vi.spyOn(caller.signal, 'removeEventListener')
