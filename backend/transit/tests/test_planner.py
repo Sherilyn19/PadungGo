@@ -270,3 +270,20 @@ def test_distance_band_fare():
     assert compute_leg_fare_centavos(rule, 4000) == 1300          # exactly base
     assert compute_leg_fare_centavos(rule, 4001) == 1480          # 1 band over
     assert compute_leg_fare_centavos(rule, 6000) == 1300 + 2 * 180  # 2 bands
+
+
+def test_shorter_ride_ranks_before_long_loop():
+    from transit.planner.models import PatternData, PatternStopData, RouteData, SegmentData
+
+    net = base_network()
+    # A second direct route between the same stops that takes a 9 km loop.
+    net.routes["R-L"] = RouteData(id="R-L", code="LOOP", name="Loop", vehicle_class="jeepney", operator=None)
+    occ = (PatternStopData("L-o1", "S1", 0, 0, True, True), PatternStopData("L-o2", "S2", 1, 9000, True, True))
+    net.patterns.insert(0, PatternData(
+        id="P-L", route_id="R-L", direction="outbound", variant_key="loop", signboard=None,
+        status="verified", verified_at=None, stops=occ,
+        segments=(SegmentData("L-o1", "L-o2", 9000, 1800, "sourced_observation"),),
+    ))
+    res = plan_journeys(net, _req(10.300, 123.900, 10.300, 123.909), config=CFG)
+    codes = [next(s["route_code"] for s in o["segments"] if s["mode"] == "ride") for o in res.journey_options]
+    assert codes == ["A1", "LOOP"]
