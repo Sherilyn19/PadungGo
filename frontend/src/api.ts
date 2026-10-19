@@ -141,18 +141,25 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
     }
 
   let body: unknown = null
-  try {
-    body = await resp.json()
-  } catch {
-    /* non-JSON error page */
+  if (resp.headers.get('content-type')?.includes('application/json')) {
+    try {
+      body = await resp.json()
+    } catch {
+      /* Invalid JSON is handled below without exposing the response body. */
+    }
   }
   if (!resp.ok) {
     const err = (body as { error?: { message?: string; retryable?: boolean } } | null)?.error
     throw new ApiError(
-      err?.message ?? `The server returned an error (${resp.status}).`,
+      err?.message ?? ([502, 503, 504].includes(resp.status)
+        ? 'The PadungGo server is unavailable or starting up. Please try again in a minute.'
+        : `The server returned an error (${resp.status}).`),
       resp.status,
-      err?.retryable ?? resp.status >= 500,
+      err?.message != null ? (err.retryable ?? resp.status >= 500) : resp.status >= 500,
     )
+  }
+  if (body === null) {
+    throw new ApiError('The server sent an unexpected response. Please try again.', resp.status, true)
   }
   return body as T
 }
