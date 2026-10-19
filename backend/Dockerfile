@@ -1,4 +1,4 @@
-# PadungGo backend image (Fly.io). Includes GDAL/GEOS/PROJ for GeoDjango.
+# PadungGo backend image (Render). Includes GDAL/GEOS/PROJ for GeoDjango.
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -18,8 +18,7 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# collectstatic does not connect to the DB; build-only placeholder values are
-# used just so settings can import. Real values come from Fly secrets.
+# PadungGo backend image (Render). Includes GDAL/GEOS/PROJ for GeoDjango.# used just so settings can import. Real values come from Render environment variables.
 RUN PADUNGGO_DB_ENGINE=postgis \
     DATABASE_URL=postgresql://build:build@localhost:5432/build \
     DJANGO_SECRET_KEY=build-only-not-secret \
