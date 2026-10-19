@@ -118,8 +118,14 @@ const TIMEOUT_MS = 90_000
 async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-  signal?.addEventListener('abort', () => controller.abort())
+  if (signal?.aborted) {
+    clearTimeout(timer)
+    throw new ApiError('Request cancelled.', 0, false)
+  }
+  const forwardAbort = () => controller.abort()
+  signal?.addEventListener('abort', forwardAbort, { once: true })
   let resp: Response
+
   try {
     resp = await fetch(API_BASE + path, { ...init, signal: controller.signal })
   } catch {
@@ -129,9 +135,11 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
       0,
       true,
     )
-  } finally {
-    clearTimeout(timer)
-  }
+    } finally {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', forwardAbort)
+    }
+
   let body: unknown = null
   try {
     body = await resp.json()
