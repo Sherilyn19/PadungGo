@@ -1,15 +1,12 @@
 """API views implementing the canonical docs/API_DESIGN.md contract."""
 from __future__ import annotations
 
-import uuid
 from datetime import date
-from typing import Optional
 
 from django.conf import settings
-from django.db.models import Q
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -17,14 +14,12 @@ from transit.models import Location, Route, RoutePattern
 from transit.planner import PlanRequest, plan_journeys
 from transit.planner.engine import PlannerError
 from transit.planner.loader import load_network, resolve_location
-from transit.planner.models import Endpoint
+from transit.planner.journey_types import Endpoint
 
 from .errors import error_response
 from .geometry import attach_ride_geometry
+from .query_params import _paginate, _parse_uuid_param
 from .serializers import PlanRequestSerializer
-
-MAX_LIMIT = 50
-DEFAULT_LIMIT = 20
 
 
 def _planner_config() -> dict:
@@ -34,60 +29,39 @@ def _planner_config() -> dict:
         "ALLOW_DOCUMENTED": cfg.get("ALLOW_DOCUMENTED", False),
     }
 
-
-def _parse_limit(request) -> int:
-    """Page size: default 20, integer 1–50. Anything else is a 400 error.
-
-    Earlier versions silently replaced bad values, which hid client mistakes.
-    """
-    raw = request.query_params.get("limit")
-    if raw is None:
-        return DEFAULT_LIMIT
-    try:
-        value = int(raw)
-    except ValueError:
-        value = None
-    if value is None or not 1 <= value <= MAX_LIMIT:
-        raise ValidationError({"limit": [f"Must be an integer from 1 to {MAX_LIMIT}."]})
-    return value
+def _pattern_summary(pattern: RoutePattern) -> dict:
+    return {
+        "id": str(pattern.id),
+        "direction": pattern.direction,
+        "variant_key": pattern.variant_key,
+        "signboard": pattern.signboard or None,
+    }
 
 
-def _parse_uuid_param(request, name: str) -> Optional[uuid.UUID]:
-    """Optional UUID query parameter; a malformed value is a 400 (not a 503)."""
-    raw = request.query_params.get(name)
-    if not raw:
-        return None
-    try:
-        return uuid.UUID(raw)
-    except ValueError:
-        raise ValidationError({name: ["Must be a valid ID."]}) from None
-
-
-def _paginate(request, queryset, sort_field: str) -> tuple[list, Optional[str]]:
-    """Keyset pagination ordered by (sort_field, id).
-
-    `next_cursor` is the id of the last row returned. Passing it back as
-    `cursor` continues after that row, which stays stable even when rows are
-    added (unlike page numbers).
-    """
-    limit = _parse_limit(request)
-    cursor = _parse_uuid_param(request, "cursor")
-    queryset = queryset.order_by(sort_field, "id")
-    if cursor is not None:
-        anchor = queryset.model.objects.filter(pk=cursor).values_list(sort_field, flat=True)
-        if not anchor.exists():
-            raise ValidationError({"cursor": ["Unknown cursor."]})
-        anchor_value = anchor.first()
-        queryset = queryset.filter(
-            Q(**{f"{sort_field}__gt": anchor_value})
-            | Q(**{sort_field: anchor_value, "id__gt": cursor})
-        )
-    rows = list(queryset[: limit + 1])
-    if len(rows) <= limit:
-        return rows, None
-    rows = rows[:limit]
-    return rows, str(rows[-1].id)
-
+def _pattern_detail(pattern: RoutePattern) -> dict:
+    occurrences = [{
+        "occurrence_id": str(occurrence.id),
+        "stop_id": str(occurrence.stop_id),
+        "stop_name": occurrence.stop.name,
+        "sequence": occurrence.sequence,
+        "distance_along_m": occurrence.distance_along_m,
+        "can_board": occurrence.can_board,
+        "can_alight": occurrence.can_alight,
+        "latitude": occurrence.stop.latitude,
+        "longitude": occurrence.stop.longitude,
+    } for occurrence in sorted(pattern.pattern_stops.all(), key=lambda item: item.sequence)]
+    evidence = [{
+        "source_id": str(record.source_id),
+        "status": record.status,
+        "reviewed_at": record.reviewed_at.isoformat() if record.reviewed_at else None,
+        "observed_at": record.observed_at.isoformat() if record.observed_at else None,
+    } for record in pattern.evidence.all() if record.status == "verified"]
+    return {
+        **_pattern_summary(pattern),
+        "verified_at": pattern.verified_at.isoformat() if pattern.verified_at else None,
+        "stops": occurrences,
+        "evidence": evidence,
+    }
 
 # --- Health ----------------------------------------------------------------
 
@@ -158,10 +132,7 @@ def routes(request):
             "vehicle_class": route.vehicle_class,
             "operator": route.operator or None,
             "patterns": [{
-                "id": str(p.id),
-                "direction": p.direction,
-                "variant_key": p.variant_key,
-                "signboard": p.signboard or None,
+                **_pattern_summary(p),
                 "status": p.status,
             } for p in verified_patterns],
         })
@@ -174,47 +145,18 @@ def routes(request):
 @api_view(["GET"])
 def route_detail(request, route_id: str):
     """Full verified route detail. Unknown/unpublished -> 404."""
-    from django.core.exceptions import ValidationError
-
     try:
         route = Route.objects.prefetch_related(
             "patterns__pattern_stops__stop", "patterns__evidence__source"
         ).get(id=route_id, active=True)
-    except (Route.DoesNotExist, ValidationError, ValueError, TypeError):
+    except (Route.DoesNotExist, DjangoValidationError, ValueError, TypeError):
         return error_response("not_found", "Route not found.", http=http_status.HTTP_404_NOT_FOUND)
 
     verified_patterns = [p for p in route.patterns.all() if p.status == "verified"]
     if not verified_patterns:
         return error_response("not_found", "Route not found.", http=http_status.HTTP_404_NOT_FOUND)
 
-    patterns = []
-    for p in verified_patterns:
-        occurrences = [{
-            "occurrence_id": str(ps.id),
-            "stop_id": str(ps.stop_id),
-            "stop_name": ps.stop.name,
-            "sequence": ps.sequence,
-            "distance_along_m": ps.distance_along_m,
-            "can_board": ps.can_board,
-            "can_alight": ps.can_alight,
-            "latitude": ps.stop.latitude,
-            "longitude": ps.stop.longitude,
-        } for ps in sorted(p.pattern_stops.all(), key=lambda x: x.sequence)]
-        evidence = [{
-            "source_id": str(e.source_id),
-            "status": e.status,
-            "reviewed_at": e.reviewed_at.isoformat() if e.reviewed_at else None,
-            "observed_at": e.observed_at.isoformat() if e.observed_at else None,
-        } for e in p.evidence.all() if e.status == "verified"]
-        patterns.append({
-            "id": str(p.id),
-            "direction": p.direction,
-            "variant_key": p.variant_key,
-            "signboard": p.signboard or None,
-            "verified_at": p.verified_at.isoformat() if p.verified_at else None,
-            "stops": occurrences,
-            "evidence": evidence,
-        })
+    patterns = [_pattern_detail(pattern) for pattern in verified_patterns]
 
     return Response({
         "id": str(route.id),
