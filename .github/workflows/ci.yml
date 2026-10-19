@@ -1,0 +1,52 @@
+# Runs the existing test and build tools on every pull request and on pushes
+# to main. No secrets are needed: backend tests use SQLite "lite" mode.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Read-only token: CI only checks code, it never writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"  # same as the production Docker image
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Check that model changes have migrations
+        env:
+          PADUNGGO_DB_ENGINE: sqlite
+          DJANGO_DEBUG: "True"
+          PADUNGGO_SQLITE_PATH: ci.sqlite3
+        run: python manage.py makemigrations --check --dry-run
+      - run: python -m pytest
+
+  frontend:
+    name: Frontend tests and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
