@@ -11,7 +11,7 @@ Guiding rule: never fabricate routes, stops, transfers, fares, waits or ETAs.
 Unknown is represented as None and is never treated as zero.
 """
 from .engine import plan_journeys
-from .models import (
+from .journey_types import (
     FarePolicy,
     Network,
     PatternData,
