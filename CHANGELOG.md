@@ -4,6 +4,26 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+### Security and correctness fixes — October 19, 2026
+
+**Security**
+- **Production settings:** they no longer guess from the command line whether tests are running. Before, that guess could enable the dev secret key and skip the HTTPS/secure-cookie settings. Now the security settings depend only on `DJANGO_DEBUG`, and the server refuses to start in production without a real secret key. Tests use `config/test_settings.py`.
+- **GTFS upload:**
+  - Oversized uploads are refused from the `Content-Length` header (413) before Django reads the body.
+  - The file must have a `.zip` extension and its contents must really be a zip archive.
+  - Archives are rejected if they have too many files or would unzip to more than the size limit (zip-bomb guard).
+- **`ensure_superuser`:** it no longer resets an existing admin's password on every restart. A deliberate reset needs `DJANGO_SUPERUSER_RESET_PASSWORD=True` or `--reset-password`.
+
+**Correctness**
+- **Stale journey results:** before, an import or admin edit refreshed only the one process that made it. Other workers, or every worker after `manage.py import_gtfs`, kept serving old journeys for up to 5 minutes. A shared `NetworkDataVersion` counter (migration `0003`) now makes every worker reload on its next request.
+- **API behavior changes:**
+  - `/locations` and `/routes` return 400 for an invalid `limit` or a malformed `area_id` or `cursor`.
+  - `area_id` now filters `/routes`.
+  - `cursor` pagination now works. Details are in docs/API_DESIGN.md.
+
+**Tests**
+- Added 33 regression tests covering the changes above.
+
 ### Added
 - Initial project concept, architecture, open-source contribution guidance and data-verification standards.
 

@@ -28,6 +28,19 @@ commuter's timezone; retain effective dates of fare rules.
 | GET /api/v1/routes | Optional area_id, cursor, limit (default 20; maximum 50) | Verified active services and directional pattern summaries, next_cursor |
 | GET /api/v1/routes/{id} | Route ID | Identity, vehicle class, known operator, verified variants, signboards, ordered stop occurrences, geometry, evidence dates and limitations |
 
+List parameters for /locations and /routes:
+
+- **`limit`:** an integer from 1 to 50. Any other value returns 400 `invalid_request` with `fields.limit`.
+- **`area_id`:** must be an area UUID.
+  - On /routes it keeps only routes that stop in that exact area. Child areas are not included.
+- **`cursor`:** pass back the `next_cursor` value from the previous response to get the next page. Results are ordered by name for locations and by code for routes, then by id.
+- A malformed `area_id` or `cursor`, or an unknown `cursor`, returns 400 with the matching key in `fields`.
+
+> **Behavior change (October 19, 2026 bug fixes).** Earlier builds:
+> - silently replaced an invalid `limit` with the default or clamped it;
+> - ignored `area_id` on /routes and `cursor` on both endpoints, so "next page" returned the first page again;
+> - returned 503 for a malformed `area_id`.
+
 Location search is not a promise of transit availability. General address search
 may use a compliant geocoder through a controlled backend adapter; do not pretend
 a small curated catalog resolves every possible place name. All four selection

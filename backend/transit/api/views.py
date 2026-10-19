@@ -1,11 +1,15 @@
 """API views implementing the canonical docs/API_DESIGN.md contract."""
 from __future__ import annotations
 
+import uuid
 from datetime import date
+from typing import Optional
 
 from django.conf import settings
+from django.db.models import Q
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -32,14 +36,57 @@ def _planner_config() -> dict:
 
 
 def _parse_limit(request) -> int:
+    """Page size: default 20, integer 1–50. Anything else is a 400 error.
+
+    Earlier versions silently replaced bad values, which hid client mistakes.
+    """
     raw = request.query_params.get("limit")
     if raw is None:
         return DEFAULT_LIMIT
     try:
         value = int(raw)
-    except (TypeError, ValueError):
-        return DEFAULT_LIMIT
-    return max(1, min(value, MAX_LIMIT))
+    except ValueError:
+        value = None
+    if value is None or not 1 <= value <= MAX_LIMIT:
+        raise ValidationError({"limit": [f"Must be an integer from 1 to {MAX_LIMIT}."]})
+    return value
+
+
+def _parse_uuid_param(request, name: str) -> Optional[uuid.UUID]:
+    """Optional UUID query parameter; a malformed value is a 400 (not a 503)."""
+    raw = request.query_params.get(name)
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(raw)
+    except ValueError:
+        raise ValidationError({name: ["Must be a valid ID."]}) from None
+
+
+def _paginate(request, queryset, sort_field: str) -> tuple[list, Optional[str]]:
+    """Keyset pagination ordered by (sort_field, id).
+
+    `next_cursor` is the id of the last row returned. Passing it back as
+    `cursor` continues after that row, which stays stable even when rows are
+    added (unlike page numbers).
+    """
+    limit = _parse_limit(request)
+    cursor = _parse_uuid_param(request, "cursor")
+    queryset = queryset.order_by(sort_field, "id")
+    if cursor is not None:
+        anchor = queryset.model.objects.filter(pk=cursor).values_list(sort_field, flat=True)
+        if not anchor.exists():
+            raise ValidationError({"cursor": ["Unknown cursor."]})
+        anchor_value = anchor.first()
+        queryset = queryset.filter(
+            Q(**{f"{sort_field}__gt": anchor_value})
+            | Q(**{sort_field: anchor_value, "id__gt": cursor})
+        )
+    rows = list(queryset[: limit + 1])
+    if len(rows) <= limit:
+        return rows, None
+    rows = rows[:limit]
+    return rows, str(rows[-1].id)
 
 
 # --- Health ----------------------------------------------------------------
@@ -63,20 +110,14 @@ def health(request):
 def locations(request):
     """Curated location search. Not a promise of transit availability."""
     q = (request.query_params.get("q") or "").strip()
-    area_id = request.query_params.get("area_id")
-    limit = _parse_limit(request)
+    area_id = _parse_uuid_param(request, "area_id")
 
-    qs = Location.objects.all()
+    qs = Location.objects.select_related("area")
     if q:
         qs = qs.filter(name__icontains=q)
     if area_id:
         qs = qs.filter(area_id=area_id)
-    qs = qs.order_by("name", "id")[: limit + 1]
-    rows = list(qs)
-    next_cursor = None
-    if len(rows) > limit:
-        rows = rows[:limit]
-        next_cursor = str(rows[-1].id)
+    rows, next_cursor = _paginate(request, qs, "name")
 
     data = [{
         "id": str(loc.id),
@@ -95,23 +136,21 @@ def locations(request):
 
 @api_view(["GET"])
 def routes(request):
-    """Verified active services with directional pattern summaries."""
-    area_id = request.query_params.get("area_id")
-    limit = _parse_limit(request)
+    """Active services with their verified directional pattern summaries.
+
+    `area_id` keeps only routes that stop somewhere in that area (an exact area
+    match on the route's stops; child areas are not included).
+    """
+    area_id = _parse_uuid_param(request, "area_id")
 
     qs = Route.objects.filter(active=True).prefetch_related("patterns")
-    rows = list(qs.order_by("code", "id")[: limit + 1])
-    next_cursor = None
-    if len(rows) > limit:
-        rows = rows[:limit]
-        next_cursor = str(rows[-1].id)
+    if area_id:
+        qs = qs.filter(patterns__pattern_stops__stop__area_id=area_id).distinct()
+    rows, next_cursor = _paginate(request, qs, "code")
 
     data = []
     for route in rows:
         verified_patterns = [p for p in route.patterns.all() if p.status == "verified"]
-        if area_id:
-            # area filtering is derived from stops; omitted for list summary.
-            pass
         data.append({
             "id": str(route.id),
             "code": route.code,

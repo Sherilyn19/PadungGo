@@ -17,7 +17,6 @@ imports django.contrib.gis, so its unit tests run in either mode.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import dj_database_url
@@ -43,22 +42,26 @@ def _csv(name: str, default: str = "") -> list[str]:
 
 # --- Core security ---------------------------------------------------------
 
+_DEV_ONLY_SECRET_KEY = "dev-insecure-key-change-me"
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 DEBUG = _bool("DJANGO_DEBUG", default=False)
 
-# Detect test runs so the suite does not require production secrets.
-_RUNNING_TESTS = bool(os.environ.get("PYTEST_VERSION")) or "PYTEST_CURRENT_TEST" in os.environ \
-    or any("pytest" in a or a == "test" for a in sys.argv)
+# Explicit test flag, set only by config/test_settings.py. It selects test-friendly
+# infrastructure (SQLite, plain static storage) and never relaxes security:
+# the secret-key rule and HTTPS settings below depend on DEBUG alone. (An older
+# version guessed "is this a test?" from the command line, which could have
+# switched off production protections by accident.)
+TESTING = _bool("PADUNGGO_TESTING", default=False)
 
+if not DEBUG and SECRET_KEY in ("", _DEV_ONLY_SECRET_KEY):
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY must be set to a private random value when DJANGO_DEBUG "
+        "is off. Generate one and place it in the environment or backend/.env."
+    )
 if not SECRET_KEY:
-    if DEBUG or _RUNNING_TESTS:
-        # Development/test-only ephemeral key; never used when DEBUG is off.
-        SECRET_KEY = "dev-insecure-key-change-me"
-    else:
-        raise RuntimeError(
-            "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off. "
-            "Generate one and place it in the environment or backend/.env."
-        )
+    # Local development only (DEBUG is on); production refuses this key above.
+    SECRET_KEY = _DEV_ONLY_SECRET_KEY
 
 ALLOWED_HOSTS = _csv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
@@ -71,7 +74,7 @@ if _RENDER_HOST and _RENDER_HOST not in ALLOWED_HOSTS:
 
 # PADUNGGO_DB_ENGINE: "postgis" (default) or "sqlite" (lite/dev-without-GDAL).
 # Tests always use lite mode so the suite runs without GDAL/GEOS/PostGIS.
-_default_engine = "sqlite" if _RUNNING_TESTS else "postgis"
+_default_engine = "sqlite" if TESTING else "postgis"
 DB_ENGINE = os.environ.get("PADUNGGO_DB_ENGINE", _default_engine).strip().lower()
 GIS_ENABLED = DB_ENGINE == "postgis"
 
@@ -92,6 +95,8 @@ if GIS_ENABLED:
 
 MIDDLEWARE = [
     "config.health_middleware.HealthCheckMiddleware",
+    # Before CSRF, which would otherwise read a huge body first.
+    "config.upload_limit_middleware.UploadSizeLimitMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Serves collected static files (Django Admin CSS/JS) under gunicorn.
@@ -165,19 +170,28 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 # Only warn about a missing staticfiles/ dir in production builds.
-WHITENOISE_AUTOREFRESH = DEBUG or _RUNNING_TESTS
+WHITENOISE_AUTOREFRESH = DEBUG or TESTING
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
         "BACKEND": (
             "django.contrib.staticfiles.storage.StaticFilesStorage"
-            if _RUNNING_TESTS
+            if TESTING
             else "whitenoise.storage.CompressedManifestStaticFilesStorage"
         )
     },
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --- GTFS upload limits ----------------------------------------------------
+# Compressed size of an uploaded feed (checked from Content-Length up front).
+GTFS_UPLOAD_MAX_BYTES = int(os.environ.get("GTFS_UPLOAD_MAX_MB", "50")) * 1024 * 1024
+# Total size once unzipped. Guards against "zip bombs": tiny archives that
+# expand into gigabytes and would exhaust memory or time.
+GTFS_MAX_UNCOMPRESSED_BYTES = (
+    int(os.environ.get("GTFS_MAX_UNCOMPRESSED_MB", "500")) * 1024 * 1024
+)
 
 # --- DRF -------------------------------------------------------------------
 
@@ -210,7 +224,7 @@ CORS_ALLOW_CREDENTIALS = False
 
 # --- Security headers (effective when DEBUG is off) ------------------------
 
-if not DEBUG and not _RUNNING_TESTS:
+if not DEBUG:
     # On Render, HTTPS is enforced at the edge and internal health checks use
     # plain HTTP, so render.yaml sets this to False.
     SECURE_SSL_REDIRECT = _bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
