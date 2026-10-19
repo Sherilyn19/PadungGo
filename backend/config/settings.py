@@ -196,7 +196,14 @@ REST_FRAMEWORK = {
 
 # --- CORS ------------------------------------------------------------------
 
-CORS_ALLOWED_ORIGINS = _csv(
+def _origins(name: str, default: str = "") -> list[str]:
+    """Origins are scheme://host[:port] only. Tolerate a pasted trailing slash
+    (e.g. 'https://app.vercel.app/'), which django-cors-headers rejects and
+    which would otherwise stop the server from starting."""
+    return [o.rstrip("/") for o in _csv(name, default)]
+
+
+CORS_ALLOWED_ORIGINS = _origins(
     "FRONTEND_ORIGIN", "http://localhost:5173,http://127.0.0.1:5173"
 )
 CORS_ALLOW_CREDENTIALS = False
@@ -212,7 +219,7 @@ if not DEBUG and not _RUNNING_TESTS:
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     # Needed for Django Admin login over HTTPS.
-    CSRF_TRUSTED_ORIGINS = _csv("DJANGO_CSRF_TRUSTED_ORIGINS")
+    CSRF_TRUSTED_ORIGINS = _origins("DJANGO_CSRF_TRUSTED_ORIGINS")
     if _RENDER_HOST:
         CSRF_TRUSTED_ORIGINS.append(f"https://{_RENDER_HOST}")
 
