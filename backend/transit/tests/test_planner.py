@@ -19,7 +19,7 @@ from transit.planner.engine import (
     REASON_SAME_LOCATION,
     WITHIN,
 )
-from transit.planner.models import Endpoint, PatternData, PlanRequest
+from transit.planner.journey_types import Endpoint, PatternData, PlanRequest
 from transit.tests.planner_fixtures import base_network
 
 ON = date(2026, 6, 1)
@@ -149,7 +149,7 @@ def test_deduplication():
     net = base_network()
     # Add a duplicate stop very close to S1 so two origin candidates map to the
     # same boarding occurrence/path.
-    from transit.planner.models import StopData
+    from transit.planner.journey_types import StopData
     net.stops["S1b"] = StopData(id="S1b", name="Near One", latitude=10.3001,
                                 longitude=123.9001, status="verified")
     req = _req(10.300, 123.900, 10.300, 123.909)
@@ -260,7 +260,7 @@ def test_direct_fare_amount():
 # Distance-band fare math.
 def test_distance_band_fare():
     from transit.planner.fares import compute_leg_fare_centavos
-    from transit.planner.models import FarePolicy
+    from transit.planner.journey_types import FarePolicy
     rule = FarePolicy(id="x", vehicle_class="jeepney", route_id=None, pattern_id=None,
                       passenger_category="regular", currency="PHP", kind="distance_band",
                       policy={"base_centavos": 1300, "base_distance_m": 4000,
@@ -273,7 +273,7 @@ def test_distance_band_fare():
 
 
 def test_shorter_ride_ranks_before_long_loop():
-    from transit.planner.models import PatternData, PatternStopData, RouteData, SegmentData
+    from transit.planner.journey_types import PatternData, PatternStopData, RouteData, SegmentData
 
     net = base_network()
     # A second direct route between the same stops that takes a 9 km loop.
