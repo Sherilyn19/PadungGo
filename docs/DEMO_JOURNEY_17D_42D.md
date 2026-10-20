@@ -29,22 +29,30 @@ The request below reproduces Option 1 (the origin is moved next to stop 2939, so
 | Source | DataSource | `929f1131-6577-4ced-95fa-0d3d55850b0b`, "Cebu DOTC GTFS (Transitland archive)", published date empty, **license empty** |
 | Fare rules | | None applied (`rule_id: null` on both legs) |
 
-The API doesn't return the database IDs of stop 2939 or the Cebu South Road stop. You can find them with the query in section 6.
+Stop IDs, from the read-only Supabase query the owner ran on 2026-10-20:
+
+| Stop | Stop ID | Other patterns using the same record |
+|---|---|---|
+| Unnamed stop (feed id 2939) | `7c12b541-1651-409f-bd0c-6da304b0ad50` | 11 patterns: 03D, 04C, 04D, 04E, 04I, 04L, 17B, 17C, 17D, 51E, 60 |
+| Sanciangko (transfer) | `b059f6e0-5b9a-4df7-a7e3-fcabe1b7121b` | 30 patterns, including 17C, 17D, 42D, 43, 51E, 64C and the 02/04/09/10/12/13 series |
+| Cebu South Road (42D exit) | `22d44f9b-5da3-4684-a28a-f7e0c4e6f80c` | 10C, 10E, 10J, 10K, 10M, 10O, 41D, 42D (twice: seq 8 and 72), 43 |
+
+Renaming any of these records changes the name for every pattern listed.
 
 ## 2. Why each "Unknown" or warning appears
 
 | What you see | Cause | What would change it |
 |---|---|---|
-| Fare: Unknown on both legs | The planner loads only `FareRule` rows with status `verified` (`planner/loader.py`), and the API reports no applicable rule. The production fare table may simply be empty; the section 6 query will confirm. | A verified rule for the right vehicle class, once the blockers in section 4 are resolved |
+| Fare: Unknown on both legs | The planner loads only `FareRule` rows with status `verified` (`planner/loader.py`), and the API reports no applicable rule for `jeepney`/`regular` today. A regression test (`test_plan_ignores_documented_fare_rules`) guarantees that documented rules are never priced. | A verified rule for a confirmed fleet, once the blockers in section 4 are resolved |
 | Total fare incomplete | Follows from the unknown leg fares | Same |
 | Riding 19 min (schedule) | Known: 644 + 524 s from the archived timetable. Historic, not observed | — |
 | Waiting: Unknown | The planner has no frequency data and always reports waiting as unknown (`planner/assembly.py`) | Needs new data **and** a code change, so it can wait until after the demo |
 | Walking: Unknown | Access and exit walks are straight lines by design | A walking-path feature (after the demo) |
 | "Unnamed stop (feed id 2939)" | The archived feed had no name for this stop, and the importer shows this honest fallback | A name checked in person (worksheet) |
-| "Name Missing" on 42D | The feed's route name is the placeholder text `Name missing`. The importer filtered placeholders out of stop names but not route names, and the frontend capitalises it. | Fixed for future imports on `fix/route-name-placeholder`; the existing record needs the Admin edit in section 3 |
-| "Transfer: walk from Sanciangko to Sanciangko" | Both patterns share one archived stop record, so the transfer is 0 m at the same point | An in-person check that the 17D drop-off and 42D pickup really are the same spot |
+| "Name Missing" on 42D | The feed's route name is the placeholder text `Name missing`. The importer filtered placeholders out of stop names but not route names, and the frontend capitalises it. | Fixed for future imports by PR #17 (merged). The existing record still needs the Admin edit in 3b; the fix doesn't rewrite stored data. |
+| "Transfer: walk from Sanciangko to Sanciangko" | The importer creates a 0 m "same-stop reboarding" transfer at every stop served by more than one route (`_derive_same_stop_transfers` in `importers/gtfs.py`, labelled "not a field-verified interchange"). See section 7. | An in-person check that the 17D drop-off and 42D pickup really are the same spot |
 | Historic data · not field-verified | Both patterns are `documented`, and production allows documented data (`PLANNER_ALLOW_DOCUMENTED=True`) | Keep it. The research supports labels, not verification |
-| Exit stop "Cebu South Road" | The stop is 452.5 m from the A. Gabuya junction, so it is **not** at the junction | — |
+| Exit stop "Cebu South Road" | The stop is 451 m from the A. Gabuya junction, so it is **not** at the junction. It is the last 42D stop in the archive's Talisay-bound direction (section 7). | An in-person check of where Talisay-bound 42D units stop near A. Gabuya |
 
 ## 3. Admin entry plan
 
@@ -54,26 +62,28 @@ Nothing here changes a pattern, stop, transfer or verification status. Every edi
 
 `collected_at` is required and holds the **online check** date (2026-10-20), not an in-person observation. `DataSource` has no reviewer field, so the reviewer goes on the evidence rows in 3c. Write "Unknown — not established" in `license` rather than leaving it blank, so it can't be mistaken for an oversight.
 
+*Revised 2026-10-20 after the second research pass.* Only sources that a record below actually cites are entered. The numbers in brackets refer to the source register in `docs/RESEARCH_17D_42D_2026-10-20.md`.
+
 | # | title | publisher | reference | published_at | limitations (scope of what it supports) |
 |---|---|---|---|---|---|
-| S1 | Palace: Gov't balances transport support, commuter welfare amid fare hike and rising fuel prices | Presidential Communications Office | pco.gov.ph URL from the research | 2026-09-28 | Confirms ₱14 (traditional) and ₱17 (modern) minimums and that concession discounts continue. No per-km matrix, rounding, Cebu route fleets or end date. |
-| S2 | LTFRB sets new PUV rates effective Sept. 28 | SunStar / Philippine News Agency | sunstar URL | 2026-09-29 | Reports the effective date, first-4-km coverage, and ₱2.00 / ₱2.40 per succeeding km. A news report, not the LTFRB matrix. |
-| S3 | DOTr approves LTFRB fare hike recommendation for PUVs | GMA News | gmanetwork URL | 2026-09-25 | Corroborates the same rates. Only search-index text was seen; the article itself failed to load on 2026-10-20. |
-| S4 | Labella issues EO allowing Talisay, Mandaue TPUJs in Cebu City | The Freeman (Philstar) | philstar URL | 2021-03-14 | Historical authorization (EO 122, 2021) of 42D Poblacion Talisay–Cebu City via V. Rama–Taboan, traditional jeepneys. Does not prove current operation, path or fleet. |
-| S5 | What Mandaue City or Talisay City jeepneys can enter Cebu City? | CDN Digital | cebudailynews URL | 2021-03-12 | Corroborates S4 (search-index text). Same limits. |
-| S6 | 17D route page | Cebu Jeepneys (independent directory) | weebly URL | *(leave blank: undated)* | Directory lead for 17D Apas–Carbon via Taboan and landmarks. Undated; the page carries an inconsistent 04L label. Not authoritative routing. |
-| S7 | Apas routes | CommuteTour | commutetour URL | *(leave blank)* | Page shows a 2026-01-19 update, but its fare section is from October 2023, so the update date does not cover every claim. Directory lead only. |
+| S1 | LTFRB releases new matrices for PUV fare hikes effective Sept. 28 [11] | PTV News | ptvnews.ph URL | *(blank: not shown on the page)* | Regular and discounted PUJ rates (traditional ₱14 / ₱2.00, discounted ₱11.25 / ₱1.60; modern ₱17 / ₱2.40, discounted ₱13.50 / ₱1.92), effective 2026-09-28. A news summary of the LTFRB guides. Gives no rule for part kilometres or rounding, and no modern sub-classes. |
+| S2 | Usbaw nga P1 ug P2 sa pletihan gipatuman na [12] | Banat (Philstar), Joy Torrejos | philstar.com/banat URL | 2026-09-29 | Cebu applicability: ₱14 / ₱17 minimums in effect from 2026-09-28. The LTFRB says a temporary fare guide is in use. No distance table. |
+| S3 | Palace: Gov't balances transport support, commuter welfare amid fare hike and rising fuel prices [1] | Presidential Communications Office | pco.gov.ph URL | 2026-09-28 | Government confirmation of the minimums and that discounts continue. No per-km rates. |
+| S4 | Cebu BRT Social Management Plan, Vol. 1, Tables 1 and 3 [13] | World Bank (hosted) | documents1.worldbank.org URL | 2021-06-10 (PDF creation date) | 42D "Talisay via N. Bacalso, V. Rama Taboan v.v."; 17D "Apas to Taboan via Osmeña Boulevard". From LTFRB franchise data that includes non-operating franchises, so subject to validation. Historical only. |
+| S5 | Labella issues EO allowing Talisay, Mandaue TPUJs in Cebu City [4] | The Freeman (Philstar) | philstar URL | 2021-03-14 | Historical authorization (EO 122, 2021) of 42D for traditional jeepneys. Doesn't prove current operation, path or fleet. |
 
 All rows: `collected_at` = 2026-10-20 (Asia/Manila; time not recorded), and `license` = "Unknown — not established".
 
-Leave out the Cebu Bus Spotters page and the Reddit posts. They mix active and inactive routes or are unattributed, and they add nothing the rows above don't.
+**Changes from the first plan:**
+- **Dropped:** SunStar and GMA (superseded by the government-owned PTV and the Cebu-specific Banat report), CDN Digital (duplicates S5), the Cebu Jeepneys and CommuteTour directories (the 17D name isn't changing, so no record cites them), and PNA (the article returned 404 and couldn't be checked). They all stay in the research register.
+- **Kept out, as before:** the community directories and Reddit posts.
 
 ### 3b. Route names (Admin → Routes)
 
 | Record | Field | Current | Proposed now | Why | Before using the research label |
 |---|---|---|---|---|---|
-| 42D `52710e90…` | `name` | `Name missing` | *(blank)* | Removes a placeholder that looks like a real name. When the name is empty the frontend shows just "Ride 42D". | Open the 42D pattern `f7592fc3…` in Admin and check that its stop list follows V. Rama and Taboan. Only then set **"Poblacion Talisay – Cebu City via V. Rama and Taboan"** (S4/S5). Otherwise the label would describe a path the map doesn't show. |
-| 17D `dfae67a9…` | `name` | `APAS - LAHUG - CARBON via Escario` | **No change** | This name comes from the same archived feed as the geometry on the map. The directory label "via Lahug, Capitol and Taboan" (S6/S7) describes the corridor differently and isn't more authoritative. | An official route description |
+| 42D `52710e90…` | `name` | `Name missing` | *(blank)*, so the app shows "Ride 42D" | Removes the placeholder. **Decided after the geometry check (section 7):** keep the name neutral. The archived pattern starts in Bulacao (Cebu City), never reaches Poblacion Talisay, and only touches V. Rama Avenue. "Poblacion Talisay – Cebu City via V. Rama and Taboan" (S4/S5) would describe a path the map doesn't show. | Current geometry that reaches Talisay, or an official description matching the archived path |
+| 17D `dfae67a9…` | `name` | `APAS - LAHUG - CARBON via Escario` | **No change** | The demo leg follows N. Escario Street and Osmeña Boulevard. That matches this feed name and also S4 ("via Osmeña Boulevard"), so the name doesn't conflict with the evidence. S4 ends 17D at Taboan, not Carbon, and the archived pattern beyond Sanciangko wasn't checked. | An official current route description |
 | Both | `vehicle_class` | `jeepney` | **No change** | This is the importer's default (`gtfs_types.py`), not evidence. The research doesn't establish either fleet. | Official fleet or operator confirmation |
 | Both | `operator` | DOTC (the feed agency) | **No change** | No operator or cooperative was established | Operator or LTFRB record |
 
@@ -83,8 +93,9 @@ There is no source field on `Route`, so a name change can only be justified with
 
 | Model | Target | source | status | reviewed_at / reviewer | observed_at | notes |
 |---|---|---|---|---|---|---|
-| RouteEvidence | pattern `f7592fc3…` (42D) | S4 | **candidate** | 2026-10-20 / *your name* | blank | "Supports the route display name only. Does not verify current operation, geometry, stops or fleet." |
-| RecordEvidence | each FareRule from 3d | S1, and S3 on a separate row | **documented** | 2026-10-20 / *your name* | blank | State what each source supports (S1: minimums only; S3: corroboration only) |
+| RouteEvidence | pattern `f7592fc3…` (42D) | S4 | **candidate** | 2026-10-20 / *your name* | blank | "Historical franchise listing: Talisay via N. Bacalso, V. Rama, Taboan. The archived pattern matches N. Bacalso and Tres de Abril (Taboan), only touches V. Rama, and starts in Bulacao, not Talisay. Not current operation; no stops or fleet verified." |
+| RouteEvidence | pattern `704fc96e…` (17D) | S4 | **candidate** | same | blank | "Historical franchise listing: Apas to Taboan via Osmeña Boulevard. The demo leg follows N. Escario St and Osmeña Blvd. Not current operation." |
+| RecordEvidence | each FareRule from 3d | S2 (Cebu applicability) and S3 (government confirmation), one row each | **documented** | same | blank | State what each source supports, as in the 3a limitations column |
 
 Why `candidate` for the route row: the loader includes `documented` RouteEvidence as a pattern source in production (`_load_pattern_evidence`). A documented news citation would then appear under "Source:" as if it supported the archived geometry. A `candidate` row keeps the provenance without that.
 
@@ -99,30 +110,38 @@ Why `candidate` for the route row: the loader includes `documented` RouteEvidenc
 | policy | `{"base_centavos":1400,"base_distance_m":4000,"increment_centavos":200,"increment_distance_m":1000}` | `{"base_centavos":1700,"base_distance_m":4000,"increment_centavos":240,"increment_distance_m":1000}` |
 | valid_from / valid_until | 2026-09-28 / blank | 2026-09-28 / blank |
 | status | **documented** (the planner ignores it) | **documented** |
-| source | S2 (the only source that states the full base-plus-increment policy) | S2 |
+| source | S1 (PTV, which states base plus increment) | S1 |
 
-`rounding_centavos` is left out on purpose because it is unconfirmed. Do not create a flat ₱14 or ₱17 rule, and do not create student, senior or PWD rules yet.
+- **`rounding_centavos`** is left out on purpose because the 2026 rule is unconfirmed.
+- **No flat rule:** don't create a flat ₱14 or ₱17 rule.
+- **No discount rules yet:** the discounted amounts are confirmed (S1), but each needs three rules (student, senior, PWD) per vehicle class, and the planner can't use them yet (section 4, item 3). They're recorded in the research doc.
+- **Older rules:** don't create new ₱13 or ₱15 rules, because their per-km amounts weren't sourced. If the fare table already holds older rules, keep them (don't delete). Give any that lack an end date `valid_until` = 2026-09-27, so they can't overlap the new rates. The second query in section 6 shows whether any exist.
+- **Activation:** these two rules stay `documented`. When the temporary fare guide is in hand, follow the activation rule: create **route-scoped** verified rules only for routes whose fleet is confirmed. Never use a class-wide verified rule, which would price every route labelled `jeepney`.
 
 ## 4. Fare readiness
 
-**Confirmed:** the base fares, the 4 km base distance, the per-km increments and the 2026-09-28 effective date. The schema can store all of these.
+**Confirmed (S1, S2, S3):** the regular and discounted base fares, the 4 km base distance, the per-km increments and the 2026-09-28 effective date, including in Cebu. The schema can store all of these. The only official document still needed is the LTFRB **temporary fare guide** for September 2026 (S2 says it is in use). It should settle the open items below.
 
 **Unconfirmed, and each one changes the demo fare:**
 
 1. **Part kilometres.** The code charges a full increment for any part of a kilometre (`math.ceil`). On the demo legs:
 
-   | Leg | Distance | Charging any part of a km (current code) | Nearest whole km | Whole km, rounded down |
+   | Leg | Distance | Any part of a km charged (current code) | Same, with 25-centavo rounding | Whole km only (nearest or down) |
    |---|---|---|---|---|
-   | 17D | 4,055 m | ₱16.00 trad. / ₱19.40 modern | ₱14.00 / ₱17.00 | ₱14.00 / ₱17.00 |
-   | 42D | 4,443 m | ₱16.00 / ₱19.40 | ₱14.00 / ₱17.00 | ₱14.00 / ₱17.00 |
+   | 17D | 4,055 m | ₱16.00 trad. / ₱19.40 modern | ₱16.00 / **₱19.50** | ₱14.00 / ₱17.00 |
+   | 42D | 4,443 m | ₱16.00 / ₱19.40 | ₱16.00 / ₱19.50 | ₱14.00 / ₱17.00 |
+   | Journey total (two separate fares) | | ₱32.00 / ₱38.80 | ₱32.00 / ₱39.00 | ₱28.00 / ₱34.00 |
 
-   If the official matrix uses whole-km rounding instead of charging part kilometres, `compute_leg_fare_centavos` needs a new policy key, for example `distance_rounding: "ceil" | "nearest" | "floor"`, plus tests.
-2. **Rounding money.** The code can only round to the *nearest* step, using Python's `round()`. With these rates and a 25-centavo step a tie can't happen, so that's safe. If the matrix rounds **up or down** instead, a `rounding_mode` key is needed.
+   *Correction:* the first version of this table gave ₱19.40 for modern. With the historical 25-centavo rounding it would be ₱19.50.
+
+   If the guide charges whole kilometres only, `compute_leg_fare_centavos` needs a new policy key, for example `distance_rounding: "ceil" | "nearest" | "floor"`, plus boundary tests at 4,000 / 4,001 / 4,499 / 4,500 / 5,000 m.
+2. **Rounding money.** The code can only round to the *nearest* step, using Python's `round()`. With integer centavos and a 25-centavo step a tie can't occur, so that's safe. The published discounted minimums fit this rule (80% rounded to the nearest ₱0.25; see the research addendum). If the guide rounds **up or down** instead, a `rounding_mode` key is needed.
 3. **Discount amounts.** These would need separate per-category rules, and the planner always asks for `regular` (`planner/engine.py`); the API has no passenger-type input. This is a code change, so it can wait until after the demo.
 4. **Vehicle class.**
    - `VehicleClass` offers only `jeepney`, `modern_puv` and `bus`. If the 2026 matrix splits modern jeepneys into classes (for example air-conditioned versus not), the enum needs a migration.
    - `vehicle_class` is stored on `Route`, so one route code has exactly one class. A route that runs a mixed fleet can't be represented. Showing both fares on a mixed-fleet leg would also need a code change.
-5. **Scope of a class-wide rule.** A verified `jeepney` rule with route and pattern left blank would price **every** imported route, because the importer gave them all `jeepney` by default. That includes 17D, whose fleet is unconfirmed. Route-specific rules avoid this, but they need confirmed fleets. **This is your decision** before anything is set to verified.
+5. **Scope of a class-wide rule.** A verified `jeepney` rule with route and pattern left blank would price **every** imported route, because the importer gave them all `jeepney` by default. **Owner decision (2026-10-20):** verified fares apply only to routes with a confirmed fleet, so use route-scoped rules only. The code does not yet block a class-wide verified rule. A model check could enforce this (see "ready for approval").
+   - **42D fleet:** sources conflict. The 2021 EO (S5) names traditional jeepneys, while a community directory lists a modern 42D under Arrow Transport. The fleet may be mixed, and `Route` can hold only one class (item 4).
 6. **Distances.** Fares would use the archived shape distances, which are documented, not verified.
 
 **Verdict:** Admin entry alone is enough only if the official matrix charges part kilometres the way the current code does and rounds to the nearest step, and only once each route's fleet is confirmed. Otherwise the code changes above come first.
@@ -137,8 +156,10 @@ Prefilled values come from the archived feed through the API. The direction is *
 |---|---|---|---|---|
 | Archived name | Unnamed stop (feed id 2939) | Sanciangko | Sanciangko (same stop record) | Cebu South Road |
 | Archived coordinates | 10.322633, 123.898678 | 10.296654, 123.893616 | 10.296654, 123.893616 | 10.28237, 123.857947 |
+| Stop ID | 7c12b541… | b059f6e0… | b059f6e0… | 22d44f9b… |
 | Pattern / occurrence | 704fc96e… / 2d53ea54… (seq 10) | 704fc96e… / 1beace6b… (seq 23) | f7592fc3… / d7431581… (seq 43) | f7592fc3… / 327d5610… (seq 72) |
-| Inferred direction | toward Carbon | toward Carbon | toward Talisay | toward Talisay |
+| Street per OSM (not a stop name) | Gorordo Avenue | Sanciangko Street | Sanciangko Street | Natalio Bacalso Avenue, Poblacion Pardo |
+| Inferred direction and heading | toward downtown, via N. Escario | westbound (≈254°) | westbound (≈250°) | toward Talisay (south-west) |
 | Name locals use | | | | |
 | Nearest corner or landmark | | | | |
 | Street and street side | | | | |
@@ -152,13 +173,15 @@ Prefilled values come from the archived feed through the API. The direction is *
 | Photo taken (no faces or plates) | | | | |
 | Notes | | | | |
 
+The archive uses **one stop record for both directions** at many points: 42D passes stop 22d44f9b at seq 8 and seq 72, and 971c98da at seq 24 and 58. So "street side" can't be taken from the data. Record it for each direction you check.
+
 **Transfer walk (Point 2 → Point 3):** Are they the same spot? ____ If not: walking distance ____ m, time ____ min, street crossings ____, barriers or one-way issues ____, lighting or safety ____, notes ____
 
 **Point 4 → destination (Cebu South Road & A. Gabuya, 10.279336, 123.855191):** real walking distance ____ m, crossing ____, notes ____
 
-## 6. Read-only database check (Supabase → SQL Editor)
+## 6. Read-only database checks (Supabase → SQL Editor)
 
-Run this before renaming anything. It lists every route that uses the stops above, so a shared stop name isn't changed blindly. It only reads (`SELECT`).
+The owner ran the first query on 2026-10-20 (366 rows; results summarised in sections 1 and 7). The second query (the fare table) is still to run. Both only read (`SELECT`).
 
 ```sql
 SELECT s.id AS stop_id, s.name, s.latitude, s.longitude, s.status,
@@ -173,3 +196,60 @@ ORDER BY s.name, r.code, ps.sequence;
 
 SELECT id, vehicle_class, passenger_category, kind, status, valid_from FROM transit_farerule;
 ```
+
+Optional: run this only if you want 42D's full stop list. Section 7 doesn't need it.
+
+```sql
+SELECT ps.sequence, s.id, s.name, s.latitude, s.longitude
+FROM transit_patternstop ps JOIN transit_stop s ON s.id = ps.stop_id
+WHERE ps.pattern_id = 'f7592fc3-21e4-41dd-9977-405cfb4040cc'
+ORDER BY ps.sequence;
+```
+
+## 7. Pattern and geometry check (2026-10-20)
+
+**Method:** Kiro took the archived ride geometry the production API returns for the 17D demo leg and for 42D (seq 0 → 44 and seq 43 → 72). It then looked up the street names along it in OpenStreetMap (reverse geocoding through Nominatim; data © OpenStreetMap contributors, ODbL). The OSM names are used only to check alignment. They are **not** proposed as stop names.
+
+### 42D against the historical description ("Talisay via N. Bacalso, V. Rama, Taboan v.v.", S4)
+
+| Part of the description | Archived pattern `f7592fc3…` | Match? |
+|---|---|---|
+| N. Bacalso Avenue | Followed from Bulacao through Pardo, Basak and Mambaling (including the flyover and underpass), in both directions | Yes |
+| Taboan | The downtown loop runs Panganiban → Colon → J. Climaco → Sanciangko → Tres de Abril → B. Aranas Extension. Tres de Abril passes about 120 m from Tabo-an Public Market. | Consistent |
+| V. Rama Avenue | The geometry comes within 3–4 m of V. Rama only at its southern end, near N. Bacalso, for about 20 m in each direction. It does **not** run along the avenue. | Only touches it |
+| Talisay endpoint | Seq 0 is at 10.27253, 123.848253, in **Bulacao, Cebu City**. The pattern never reaches Poblacion Talisay. | **No** |
+| Return trip | The Talisay-bound part ends at seq 72 (stop 22d44f9b, Poblacion Pardo), about 1.2 km before seq 0. The loop isn't closed. | Incomplete |
+
+**Conclusion:** the pattern is *consistent with part of* the documented corridor, but it is truncated at both ends. Keep 42D's name neutral (3b) and keep the `documented` status. Don't move stops, extend the geometry or invent the Talisay section.
+
+### 17D demo leg (seq 10 → 23)
+
+Gorordo Avenue (stop 2939) → N. Escario Street → Osmeña Boulevard → Fuente Osmeña Circle → Osmeña Boulevard → Sanciangko Street. This fits the feed name ("via Escario") and S4 ("via Osmeña Boulevard"). Directory labels "via Lahug, Capitol" (research sources 6 and 7) also fit this corridor, since Escario runs past the Capitol. Nothing conflicts, so the name stays.
+
+### The Sanciangko transfer
+
+- **Where it comes from:** the importer created a 0 m "same-stop reboarding" transfer at stop b059f6e0, because 30 patterns use it. The record says "not a field-verified interchange".
+- **Direction:** 17D arrives heading about 254° and 42D leaves heading about 250°. Both are westbound on Sanciangko Street at the same point, which fits reboarding on the same side of the street.
+- **Not established:** whether jeepneys may load there, whether the street is one-way, and where they actually stop. These need the site visit.
+
+### The exit stop, 451 m from the destination
+
+- **Why that stop:** stop 22d44f9b is the last stop in the archive's Talisay-bound direction. The closer stop 083ce96a (163 m from the A. Gabuya junction) appears only in the city-bound direction (seq 7), so the planner correctly doesn't use it for this trip.
+- **What to check on site:** where Talisay-bound 42D units really stop near A. Gabuya.
+
+### "Cebu South Road" names (22 distinct stop records in the export)
+
+- **On N. Bacalso:** OSM puts 16 of these records on Natalio Bacalso Avenue, so for those the generic name is consistent.
+- **Probably on N. Bacalso:** 083ce96a (10.280419, 123.856207; used by 10C, 10E, 10M, 10O, 41D, 42D, 43) resolves to I. Tabura Street. It's probably at a side-street junction with N. Bacalso, but that needs checking.
+- **On other streets:** OSM places 5 records elsewhere, so their name is suspect:
+
+  | Stop | Coordinates | OSM street | Used by |
+  |---|---|---|---|
+  | e5f22074 | 10.30942, 123.876066 | Ramon Duterte St, Labangon | 07A–07D, 12K, 12L |
+  | 5c3603c7 | 10.294321, 123.870091 | E. Sabellano St, Punta Princesa | 09J, 09K, 10J, 12A–12N |
+  | db5b0c41 | 10.297364, 123.877595 | Tres de Abril St, Punta Princesa | 12A–12M |
+  | b06eac57 | 10.288147, 123.857934 | E. Sabellano St, Quiot Pardo | 10J |
+  | 1e5df3cc | 10.278662, 123.863157 | L. Gabuya St, Cogon Pardo | 11A, 11D |
+
+- **Not touched:** none of these five are on the demo journey. Renaming them would change the name for the routes listed, so they're left for review. Possible approaches are a status of `needs_review` or a site check; it is not urgent for the demo.
+- **One record for both directions:** many of these records serve both directions (section 5), so a single name can't describe the street side.
