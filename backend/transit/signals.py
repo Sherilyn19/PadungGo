@@ -11,6 +11,8 @@ from transit.planner.loader import invalidate_network_cache
 _MODELS = (
     "DataSource", "Stop", "Route", "RoutePattern", "PatternStop", "RouteSegment",
     "TransferConnection", "FareRule", "RouteEvidence",
+    # Fare rules apply only while they have verified evidence (planner/loader.py).
+    "RecordEvidence",
 )
 
 

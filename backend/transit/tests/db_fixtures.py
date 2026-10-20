@@ -12,6 +12,7 @@ from transit.models import (
     DataSource,
     FareRule,
     PatternStop,
+    RecordEvidence,
     Route,
     RoutePattern,
     RouteEvidence,
@@ -69,8 +70,12 @@ def build_verified_network():
     TransferConnection.objects.create(from_stop=s3, to_stop=s5, distance_m=60,
                                       duration_seconds=50, status="verified", source=src)
 
-    FareRule.objects.create(vehicle_class="jeepney", kind="flat",
-                            policy={"amount_centavos": 1300}, valid_from=date(2026, 1, 1),
-                            status="verified", source=src)
+    # One verified, evidence-backed fare per route; class-wide rules never apply.
+    for route in (ra, rb):
+        fare = FareRule.objects.create(vehicle_class="jeepney", route=route, kind="flat",
+                                       policy={"amount_centavos": 1300}, valid_from=date(2026, 1, 1),
+                                       status="verified", source=src)
+        RecordEvidence.objects.create(fare_rule=fare, source=src, reviewed_at=now,
+                                      reviewer="tester", status="verified")
 
     return {"src": src, "routes": {"A": ra, "B": rb}, "stops": {s.name: s for s in [s1, s2, s3, s4, s5, s6, s7]}}
