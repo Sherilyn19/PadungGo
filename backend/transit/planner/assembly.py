@@ -44,13 +44,19 @@ def _leg_fare(context: SearchContext, leg: RideLeg, distance_m: int) -> dict:
         passenger_category=context.passenger_category, on=context.on,
     )
     amount = compute_leg_fare_centavos(rule, distance_m) if rule else None
+    if rule:
+        assumptions = None
+    elif route.vehicle_class == "mixed":
+        assumptions = "This route runs both traditional and modern vehicles; the fare depends on the vehicle you board."
+    else:
+        assumptions = "No verified fare rule for this leg."
     return {
         "amount_centavos": amount,
         "rule_id": rule.id if rule else None,
         "passenger_category": context.passenger_category,
         "source_ids": list(rule.source_ids) if rule else [],
         "effective_date": rule.valid_from.isoformat() if rule else None,
-        "assumptions": None if rule else "No verified fare rule for this leg.",
+        "assumptions": assumptions,
     }
 
 

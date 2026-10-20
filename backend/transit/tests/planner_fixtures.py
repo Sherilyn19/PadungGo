@@ -103,11 +103,13 @@ def base_network() -> Network:
         duration_seconds=50, status="verified", source_ids=("src-1",),
     ))
 
-    # Verified flat fare for jeepney (synthetic amount, test-only).
-    net.fares.append(FarePolicy(
-        id="F-1", vehicle_class="jeepney", route_id=None, pattern_id=None,
-        passenger_category="regular", currency="PHP", kind="flat",
-        policy={"amount_centavos": 1300}, valid_from=date(2026, 1, 1),
-        valid_until=None, status="verified", source_ids=("src-1",),
-    ))
+    # Verified flat fares, one per route (synthetic amount, test-only). Rules
+    # must name a route: class-wide rules are never applied.
+    for fare_id, route_id in (("F-1", "R-A"), ("F-2", "R-B")):
+        net.fares.append(FarePolicy(
+            id=fare_id, vehicle_class="jeepney", route_id=route_id, pattern_id=None,
+            passenger_category="regular", currency="PHP", kind="flat",
+            policy={"amount_centavos": 1300}, valid_from=date(2026, 1, 1),
+            valid_until=None, status="verified", source_ids=("src-1",),
+        ))
     return net
