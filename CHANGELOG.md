@@ -4,6 +4,8 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Documented the LTFRB 2026-09-28 PUJ fare tables and added calculation regression tests; recorded unresolved fractional-distance, discount-wording and vehicle-scope questions without changing production fares.
+
 ### Security and correctness fixes — October 19, 2026
 
 **Security**
