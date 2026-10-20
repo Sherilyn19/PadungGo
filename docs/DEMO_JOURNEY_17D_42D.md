@@ -120,37 +120,127 @@ Why `candidate` for the route row: the loader includes `documented` RouteEvidenc
 
 ## 4. Fare readiness
 
-**Confirmed (S1, S2, S3):** the regular and discounted base fares, the 4 km base distance, the per-km increments and the 2026-09-28 effective date, including in Cebu. The schema can store all of these. The only official document still needed is the LTFRB **temporary fare guide** for September 2026 (S2 says it is in use). It should settle the open items below.
+**PDF review, 2026-10-21:** both supplied LTFRB guides have been read.
+Each is one page and states an effective date of 2026-09-28.
+See [the complete transcription and audit](FARE_GUIDE_2026-09-28.md)
+for source URLs, download date, old/new tables and limitations.
 
-**Unconfirmed, and each one changes the demo fare:**
+**What the guides settle:**
+- Traditional: P14.00 for the first 4 km, then P2.00/km.
+- Aircon modern and electric PUJ: P17.00 for the first 4 km, then P2.40/km.
+- Discounted computation uses P11.20 plus P1.60/km for traditional,
+  and P13.60 plus P1.92/km for aircon modern/electric.
+- Round the calculated amount to the nearest P0.25. The rounded discounted
+  minimums are P11.25 and P13.50; those are not the computation bases.
+- At exactly 5 km, the modern table prints P19.50 regular and P15.50
+  discounted, not P19.40 regular.
+- All 200 new-fare cells match the current calculator with the policy
+  inputs below. No calculator, validator or schema change is needed.
+  The PR must separately record the owner's test results.
 
-1. **Part kilometres.** The code charges a full increment for any part of a kilometre (`math.ceil`). On the demo legs:
+### Proposed policy JSON for later documented rules
 
-   | Leg | Distance | Any part of a km charged (current code) | Same, with 25-centavo rounding | Whole km only (nearest or down) |
-   |---|---|---|---|---|
-   | 17D | 4,055 m | ₱16.00 trad. / ₱19.40 modern | ₱16.00 / **₱19.50** | ₱14.00 / ₱17.00 |
-   | 42D | 4,443 m | ₱16.00 / ₱19.40 | ₱16.00 / ₱19.50 | ₱14.00 / ₱17.00 |
-   | Journey total (two separate fares) | | ₱32.00 / ₱38.80 | ₱32.00 / ₱39.00 | ₱28.00 / ₱34.00 |
+These are review inputs, not instructions to write production data.
+All four use kind `distance_band`, currency `PHP`, status `documented`,
+and valid_from `2026-09-28`. Neither supplied page prints an expiry date;
+any valid_until decision remains subject to source review.
 
-   *Correction:* the first version of this table gave ₱19.40 for modern. With the historical 25-centavo rounding it would be ₱19.50.
+Traditional regular:
 
-   If the guide charges whole kilometres only, `compute_leg_fare_centavos` needs a new policy key, for example `distance_rounding: "ceil" | "nearest" | "floor"`, plus boundary tests at 4,000 / 4,001 / 4,499 / 4,500 / 5,000 m.
-2. **Rounding money.** The code can only round to the *nearest* step, using Python's `round()`. With integer centavos and a 25-centavo step a tie can't occur, so that's safe. The published discounted minimums fit this rule (80% rounded to the nearest ₱0.25; see the research addendum). If the guide rounds **up or down** instead, a `rounding_mode` key is needed.
-3. **Discount amounts.** These would need separate per-category rules, and the planner always asks for `regular` (`planner/engine.py`); the API has no passenger-type input. This is a code change, so it can wait until after the demo.
-4. **Vehicle class.**
-   - `VehicleClass` offers only `jeepney`, `modern_puv` and `bus`. If the 2026 matrix splits modern jeepneys into classes (for example air-conditioned versus not), the enum needs a migration.
-   - `vehicle_class` is stored on `Route`, so one route code has exactly one class. A route that runs a mixed fleet can't be represented. Showing both fares on a mixed-fleet leg would also need a code change.
-5. **Scope of a class-wide rule.** A verified `jeepney` rule with route and pattern left blank would price **every** imported route, because the importer gave them all `jeepney` by default. **Owner decision (2026-10-20):** verified fares apply only to routes with a confirmed fleet. This is now enforced in code (section 8).
-   - **42D fleet:** sources conflict. The 2021 EO (S5) names traditional jeepneys, while a community directory lists a modern 42D under Arrow Transport. The fleet may be mixed, and `Route` can hold only one class (item 4).
-6. **Distances.** Fares would use the archived shape distances, which are documented, not verified.
+```json
+{
+  "base_centavos": 1400,
+  "base_distance_m": 4000,
+  "increment_centavos": 200,
+  "increment_distance_m": 1000,
+  "rounding_centavos": 25
+}
+```
 
-**Verdict:** Admin entry alone is enough only if the official guide charges part kilometres the way the current code does and rounds to the nearest step, and only once each route's fleet is confirmed. Otherwise the code changes above come first.
+Traditional student / elderly / PWD:
 
-**Status of the demo calculations: pending, not verified.** No calculation method is enabled for passenger fares until the guide is in hand:
-- 17D traditional, 4.055 km: ₱14 or ₱16
-- Modern, a 5 km bracket: ₱19.40 or ₱19.50
+```json
+{
+  "base_centavos": 1120,
+  "base_distance_m": 4000,
+  "increment_centavos": 160,
+  "increment_distance_m": 1000,
+  "rounding_centavos": 25
+}
+```
 
-The posted guide photographed in a 14D unit doesn't settle either question, because it contradicts itself (see research addendum 2).
+Aircon modern/electric regular:
+
+```json
+{
+  "base_centavos": 1700,
+  "base_distance_m": 4000,
+  "increment_centavos": 240,
+  "increment_distance_m": 1000,
+  "rounding_centavos": 25
+}
+```
+
+Aircon modern/electric student / elderly / PWD:
+
+```json
+{
+  "base_centavos": 1360,
+  "base_distance_m": 4000,
+  "increment_centavos": 192,
+  "increment_distance_m": 1000,
+  "rounding_centavos": 25
+}
+```
+
+A discounted JSON is shared across the three published discount categories;
+it is not a new combined passenger-category enum value. Any later category
+records require separate review. The planner currently requests regular
+fares, and this work does not change that behavior.
+
+The modern JSON documents only the named aircon modern/electric guide.
+Do not apply it to all `modern_puv` routes without subtype evidence.
+No vehicle classes are added by this work.
+
+### What remains unresolved
+
+1. **Fractional kilometres: not stated.** Neither PDF establishes ceil,
+   nearest or floor. Traditional 4.055 km therefore remains officially
+   unresolved. The existing calculator returns P16.00; that is preserved
+   behavior, not an official determination. The same uncertainty affects
+   the 4.443 km demo leg. Boundary tests at 4,001 m preserve this behavior.
+2. **Discount wording:** both PDFs say students receive a discount of
+   "not less than 20%" while some rounded table amounts exceed 80% of
+   the rounded regular fare. For example, traditional P14.00/P11.25 and
+   modern 6 km P21.75/P17.50. The tables match the printed add-on formulas
+   and rounding, but LTFRB-7 should clarify the wording before activation.
+   Do not silently change the published discounted values.
+3. **Fleet and subtype:** the modern guide explicitly names aircon modern
+   and electric PUJs; it supplies no separate non-aircon modern rate.
+   Confirm applicability for the actual fleet. Imported `jeepney` labels
+   alone are not fleet evidence. Conflicting 42D fleet sources remain open.
+4. **Mixed routes:** the existing `mixed` class keeps fares Unknown.
+   This work does not add subtype modelling or multiple fare options.
+5. **Distances and route verification:** archived distances and the
+   documented demo patterns are not made verified by a fare-table test.
+6. **Source and applicability review:** confirm the supplied Drive-link
+   mapping, applicable geographic coverage and evidence records before
+   production entry. Complete the section 8 read-only pre-check first.
+
+**Precedence for later review:** this section replaces section 3d's older
+proposal to omit rounding. Sections 3 and 8 are historical prepared plans,
+not authorization to execute writes in this task. Their proposed evidence
+and policies must be reconciled with the PDFs before any later Admin work.
+
+**Verdict:** integer-distance fare arithmetic is supported by the guides;
+demo fares remain Unknown until the outstanding applicability, distance
+and verification requirements are resolved. Route/pattern scoping,
+fleet matching, verified evidence and all existing safeguards stay intact.
+
+No Supabase/Admin writes, seeds, migrations, production verification
+changes or deployment are included. Synthetic verified policies exist
+only inside the pure-Python tests. The owner keeps the PR unmerged and
+decides when to merge and deploy.
 
 ## 5. Field-verification worksheet
 
