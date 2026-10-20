@@ -12,14 +12,20 @@ def _applicable(f: FarePolicy, *, vehicle_class: str, route_id: str, pattern_id:
                 passenger_category: str, on: date) -> bool:
     if f.status != "verified":
         return False
+    # A rule scoped only by vehicle class would price every route that shares
+    # the label (most imported routes are "jeepney" by default, not by evidence),
+    # so a rule must name the route or pattern whose fleet was confirmed.
+    if f.route_id is None and f.pattern_id is None:
+        return False
     if f.passenger_category != passenger_category:
         return False
     if f.valid_from > on:
         return False
     if f.valid_until is not None and f.valid_until < on:
         return False
-    # Scope: pattern rule must match this pattern; route rule must match route;
-    # class rule applies by vehicle class.
+    # Scope: a pattern rule must match this pattern and a route rule this route.
+    # The vehicle class must also match, so a route later marked "mixed" or
+    # reclassified stops receiving the old rule.
     if f.pattern_id is not None and f.pattern_id != pattern_id:
         return False
     if f.route_id is not None and f.route_id != route_id:
