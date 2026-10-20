@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-from django.db.models import F
+from django.db.models import Exists, F, OuterRef
 
 from transit.models import (
     DataSource,
@@ -18,6 +18,7 @@ from transit.models import (
     FareRule,
     Location,
     PatternStop,
+    RecordEvidence,
     Route,
     RouteEvidence,
     RoutePattern,
@@ -223,7 +224,11 @@ def _load_transfers(network: Network, statuses: frozenset[str]) -> None:
 
 def _load_fares(network: Network) -> None:
     # Fare rules remain verified-only even when documented routes are enabled.
-    for fare in FareRule.objects.filter(status="verified").select_related("source"):
+    # Rules also need verified evidence, so a status changed outside Django Admin
+    # (which runs FareRule.clean) still cannot produce a price.
+    has_evidence = RecordEvidence.objects.filter(fare_rule=OuterRef("pk"), status="verified")
+    verified_fares = FareRule.objects.filter(status="verified").filter(Exists(has_evidence))
+    for fare in verified_fares.select_related("source"):
         network.fares.append(FarePolicy(
             id=str(fare.id), vehicle_class=fare.vehicle_class,
             route_id=str(fare.route_id) if fare.route_id else None,
