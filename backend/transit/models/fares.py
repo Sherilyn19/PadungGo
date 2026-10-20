@@ -78,6 +78,49 @@ class FareRule(models.Model):
 
     def clean(self) -> None:
         validate_fare_policy(self.kind, self.policy)
+        if self.vehicle_class == VehicleClass.MIXED:
+            raise ValidationError(
+                "A fare rule must be for one vehicle type (traditional jeepney or modern PUV). "
+                "Mixed-fleet routes keep an unknown fare until the vehicle boarded can be identified."
+            )
+        if self.status == RecordStatus.VERIFIED:
+            self._check_verification_basis()
+
+    def _check_verification_basis(self) -> None:
+        """A verified fare needs a named service, a confirmed fleet and verified evidence."""
+        from .evidence import RecordEvidence
+        from .network import RoutePattern
+
+        target_route = self.pattern.route if self.pattern_id else self.route
+        if target_route is None:
+            raise ValidationError(
+                f"A verified fare rule must name the route or route pattern it applies to. "
+                f"A rule for every '{self.vehicle_class}' route would price routes whose "
+                f"vehicle type has not been confirmed."
+            )
+        if target_route.vehicle_class != self.vehicle_class:
+            raise ValidationError(
+                f"Route {target_route.code} is recorded as '{target_route.vehicle_class}', "
+                f"but this rule is for '{self.vehicle_class}'."
+            )
+        # A verified pattern means its identity, including vehicle type, passed
+        # check 1 of docs/DATA_VERIFICATION.md; this is the fleet confirmation.
+        verified_patterns = RoutePattern.objects.filter(status=RecordStatus.VERIFIED)
+        fleet_confirmed = (
+            verified_patterns.filter(pk=self.pattern_id).exists() if self.pattern_id
+            else verified_patterns.filter(route=target_route).exists()
+        )
+        if not fleet_confirmed:
+            raise ValidationError(
+                f"The vehicle type of route {target_route.code} is not confirmed: "
+                f"{'this pattern is' if self.pattern_id else 'none of its patterns is'} verified."
+            )
+        if not RecordEvidence.objects.filter(fare_rule_id=self.pk, status="verified").exists():
+            raise ValidationError(
+                "A verified fare rule needs verified supporting evidence. Save it as "
+                "'documented' first, add a verified Record evidence row for this rule "
+                "(the official fare guide), then change the status to verified."
+            )
 
     def __str__(self) -> str:
         return f"Fare[{self.vehicle_class}/{self.passenger_category}] from {self.valid_from}"

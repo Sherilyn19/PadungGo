@@ -54,6 +54,9 @@ class VehicleClass(models.TextChoices):
     JEEPNEY = "jeepney", "Jeepney"
     BUS = "bus", "Bus"
     MODERN_PUV = "modern_puv", "Modern PUV"
+    # A route served by both traditional and modern units. No fare rule can
+    # target it, so its fare stays Unknown instead of showing one vehicle's price.
+    MIXED = "mixed", "Mixed fleet (traditional and modern)"
 
 
 class PatternDirection(models.TextChoices):
