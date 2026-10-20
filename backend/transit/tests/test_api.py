@@ -177,3 +177,17 @@ def test_plan_fare_unknown_total_incomplete(client, net):
     assert transfer_opts
     assert transfer_opts[0]["fare"]["total_is_complete"] is False
     assert transfer_opts[0]["fare"]["total_centavos"] is None
+
+
+def test_plan_ignores_documented_fare_rules(client, net):
+    # Announced-but-unconfirmed fares are stored as "documented" for review;
+    # they must never be shown to commuters as a price.
+    from transit.models import FareRule
+
+    FareRule.objects.update(status="documented")
+    body = {"origin": {"latitude": 10.300, "longitude": 123.900},
+            "destination": {"latitude": 10.300, "longitude": 123.927}}
+    option = _post_plan(client, body).json()["journey_options"][0]
+    assert option["fare"]["total_centavos"] is None
+    assert option["fare"]["per_leg"][0]["rule_id"] is None
+    assert "Total fare incomplete: at least one leg has no verified fare." in option["warnings"]
