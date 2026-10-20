@@ -140,11 +140,17 @@ Why `candidate` for the route row: the loader includes `documented` RouteEvidenc
 4. **Vehicle class.**
    - `VehicleClass` offers only `jeepney`, `modern_puv` and `bus`. If the 2026 matrix splits modern jeepneys into classes (for example air-conditioned versus not), the enum needs a migration.
    - `vehicle_class` is stored on `Route`, so one route code has exactly one class. A route that runs a mixed fleet can't be represented. Showing both fares on a mixed-fleet leg would also need a code change.
-5. **Scope of a class-wide rule.** A verified `jeepney` rule with route and pattern left blank would price **every** imported route, because the importer gave them all `jeepney` by default. **Owner decision (2026-10-20):** verified fares apply only to routes with a confirmed fleet, so use route-scoped rules only. The code does not yet block a class-wide verified rule. A model check could enforce this (see "ready for approval").
+5. **Scope of a class-wide rule.** A verified `jeepney` rule with route and pattern left blank would price **every** imported route, because the importer gave them all `jeepney` by default. **Owner decision (2026-10-20):** verified fares apply only to routes with a confirmed fleet. This is now enforced in code (section 8).
    - **42D fleet:** sources conflict. The 2021 EO (S5) names traditional jeepneys, while a community directory lists a modern 42D under Arrow Transport. The fleet may be mixed, and `Route` can hold only one class (item 4).
 6. **Distances.** Fares would use the archived shape distances, which are documented, not verified.
 
-**Verdict:** Admin entry alone is enough only if the official matrix charges part kilometres the way the current code does and rounds to the nearest step, and only once each route's fleet is confirmed. Otherwise the code changes above come first.
+**Verdict:** Admin entry alone is enough only if the official guide charges part kilometres the way the current code does and rounds to the nearest step, and only once each route's fleet is confirmed. Otherwise the code changes above come first.
+
+**Status of the demo calculations: pending, not verified.** No calculation method is enabled for passenger fares until the guide is in hand:
+- 17D traditional, 4.055 km: ₱14 or ₱16
+- Modern, a 5 km bracket: ₱19.40 or ₱19.50
+
+The posted guide photographed in a 14D unit doesn't settle either question, because it contradicts itself (see research addendum 2).
 
 ## 5. Field-verification worksheet
 
@@ -181,7 +187,7 @@ The archive uses **one stop record for both directions** at many points: 42D pas
 
 ## 6. Read-only database checks (Supabase → SQL Editor)
 
-The owner ran the first query on 2026-10-20 (366 rows; results summarised in sections 1 and 7). The second query (the fare table) is still to run. Both only read (`SELECT`).
+The owner ran the first query on 2026-10-20 (366 rows; results summarised in sections 1 and 7). The fare-table check has been replaced by the combined pre-check in section 8. Every query here only reads (`SELECT`).
 
 ```sql
 SELECT s.id AS stop_id, s.name, s.latitude, s.longitude, s.status,
@@ -253,3 +259,78 @@ Gorordo Avenue (stop 2939) → N. Escario Street → Osmeña Boulevard → Fuent
 
 - **Not touched:** none of these five are on the demo journey. Renaming them would change the name for the routes listed, so they're left for review. Possible approaches are a status of `needs_review` or a site check; it is not urgent for the demo.
 - **One record for both directions:** many of these records serve both directions (section 5), so a single name can't describe the street side.
+
+## 8. Fare safeguard and prepared production changes (2026-10-20)
+
+### What the safeguard enforces
+
+| Layer | Rule | Where |
+|---|---|---|
+| Admin save | A rule can be set to **verified** only if: it names a route or pattern; its vehicle class equals that route's; the fleet is confirmed (the pattern, or at least one pattern of the route, is `verified`, because vehicle type is check 1 of `DATA_VERIFICATION.md`); and a **verified** `RecordEvidence` row points at the rule. Each failure shows its own message. | `FareRule.clean` in `models/fares.py` |
+| Admin save | A rule can never be for `mixed`. | same |
+| Planner | Class-wide rules (no route or pattern) never price a leg. The vehicle class must still match, so reclassifying a route stops the old rule from applying. | `planner/fares.py` |
+| Loader | A rule whose status is verified but which has no verified evidence is not loaded. This covers changes made outside Admin. | `planner/loader.py` |
+| Mixed fleet | A new vehicle class, `mixed` ("Mixed fleet (traditional and modern)"). A mixed route's fare stays Unknown, with the reason "This route runs both traditional and modern vehicles; the fare depends on the vehicle you board." | `models/enums.py`, migration `0004` (a choices change only; the database operation is a no-op), `planner/assembly.py` |
+
+**Consequence for the demo:** 17D and 42D have only `documented` patterns. Admin will refuse a verified fare for them until one of their patterns is verified. So "Fare: Unknown" stays on the demo until both the official guide and a verified pattern exist. That is intended.
+
+**Possible effect on production:** production has no verified rule that applies today (both demo legs return `rule_id: null`). If the check below finds a verified rule that is class-wide or lacks evidence, it will stop applying once this change is deployed. Its fare then shows Unknown; no incorrect price is shown.
+
+### Prepared change set (not executed)
+
+**Step 0: read-only pre-check.**
+- **Where to run it:** Supabase → project → SQL Editor → New query. Paste the query and Run, then copy the results.
+- **What it checks:** existing fare rules and their dates, possible duplicate sources, the current 17D/42D route and pattern rows, and existing evidence.
+
+```sql
+SELECT 'fare_rule' AS item, f.id::text AS id,
+       concat_ws(' | ', f.vehicle_class, f.passenger_category, f.kind, f.status,
+                 'route=' || coalesce(r.code, '-'), 'pattern=' || coalesce(f.pattern_id::text, '-'),
+                 'from=' || f.valid_from::text, 'until=' || coalesce(f.valid_until::text, 'open'),
+                 f.policy::text) AS detail
+FROM transit_farerule f LEFT JOIN transit_route r ON r.id = f.route_id
+UNION ALL
+SELECT 'fare_evidence', e.id::text, concat_ws(' | ', e.fare_rule_id::text, e.status, s.title)
+FROM transit_recordevidence e JOIN transit_datasource s ON s.id = e.source_id
+WHERE e.fare_rule_id IS NOT NULL
+UNION ALL
+SELECT 'possible_duplicate_source', s.id::text, concat_ws(' | ', s.title, s.reference)
+FROM transit_datasource s
+WHERE s.reference ILIKE ANY (ARRAY['%ptvnews.ph%', '%philstar.com/banat%', '%pco.gov.ph%',
+                                   '%worldbank.org%', '%philstar.com/the-freeman%'])
+UNION ALL
+SELECT 'route', r.id::text, concat_ws(' | ', r.code, coalesce(nullif(r.name, ''), '(blank)'),
+                                      r.vehicle_class, r.operator, 'active=' || r.active::text)
+FROM transit_route r
+WHERE r.id IN ('52710e90-0b14-4c19-8f59-bf872927d2d4', 'dfae67a9-42e5-4e52-9f48-e9e536c71f59')
+UNION ALL
+SELECT 'pattern', p.id::text, concat_ws(' | ', r.code, p.direction, p.status,
+                                        'signboard=' || coalesce(nullif(p.signboard, ''), '-'))
+FROM transit_routepattern p JOIN transit_route r ON r.id = p.route_id
+WHERE p.route_id IN ('52710e90-0b14-4c19-8f59-bf872927d2d4', 'dfae67a9-42e5-4e52-9f48-e9e536c71f59')
+UNION ALL
+SELECT 'route_evidence', e.id::text, concat_ws(' | ', e.pattern_id::text, e.status, e.reviewer,
+                                               e.reviewed_at::text, s.title)
+FROM transit_routeevidence e JOIN transit_datasource s ON s.id = e.source_id
+WHERE e.pattern_id IN ('f7592fc3-21e4-41dd-9977-405cfb4040cc', '704fc96e-2505-462c-9499-8b24ef20fbf8')
+ORDER BY 1, 3;
+```
+
+**Stop conditions, decided from the pre-check before any write:**
+- **Duplicate source:** a `possible_duplicate_source` row with the same URL → reuse that record instead of adding S1–S5.
+- **Overlapping fare rule:** any `fare_rule` row for jeepney or modern_puv, regular, with `until=open` → don't end-date it yet. Report it, and the overlap will be reviewed. The planner already treats two overlapping rules of equal scope as Unknown, so leaving it is safe.
+- **Route already changed:** the 42D `route` row no longer says `Name missing` → skip step 2.
+
+**Writes, in Django Admin, only after the owner approves:**
+
+| Step | Model | Record | Change |
+|---|---|---|---|
+| 1 | Data source | S1–S5 (section 3a) | Add five rows, `collected_at` 2026-10-20, license "Unknown — not established" |
+| 2 | Route | 42D `52710e90…` | `name`: `Name missing` → *(blank)*. No other field changes, and IDs are kept. |
+| 3 | Route evidence | 42D pattern `f7592fc3…` and 17D pattern `704fc96e…` | One `candidate` row each, source S4, with the notes from 3c |
+| 4 | Fare rule | Traditional and modern regular (section 3d) | `documented`, `valid_from` 2026-09-28, no end date. Leave route blank: a documented rule may be class-wide, and it never prices. |
+| 5 | Record evidence | each rule from step 4 | `documented` rows citing S2 and S3 |
+
+- **Why the rules have no end date:** the temporary *guide* expires on 2026-12-31 (research source 17), but the *rates* do not. So `valid_until` stays blank.
+- **What the writes don't touch:** stops, geometry, transfers and statuses.
+- **Expected result:** the demo shows "Ride 42D", everything else stays the same, and the fares stay Unknown.
