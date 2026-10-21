@@ -1,5 +1,6 @@
-import { ArrowDownWideNarrow, ArrowUpDown, ChevronDown, LoaderCircle, Search } from 'lucide-react'
+import { ArrowDownWideNarrow, ArrowUpDown, ChevronDown, Search } from 'lucide-react'
 import type { Place, SortBy } from '../../api'
+import LoadingButton from '../ui/LoadingButton'
 import PlaceInput from './PlaceInput'
 
 export type PickTarget = 'origin' | 'destination'
@@ -29,7 +30,7 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 
 export default function SearchForm(props: Props) {
   const { origin, destination, picking, onPick, loading } = props
-  const canPlan = Boolean(origin && destination) && !loading
+  const ready = Boolean(origin && destination)
 
   return (
     <form
@@ -37,7 +38,7 @@ export default function SearchForm(props: Props) {
       aria-label="Plan a trip"
       onSubmit={(e) => {
         e.preventDefault()
-        if (canPlan) props.onSubmit()
+        if (ready && !loading) props.onSubmit()
       }}
     >
       <div className="flex gap-2.5">
@@ -97,8 +98,9 @@ export default function SearchForm(props: Props) {
         </div>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        <label className="relative min-w-[12.5rem] flex-1">
+      {/* Fixed columns: the button keeps its place and size while searching. */}
+      <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_8.75rem] gap-2">
+        <label className="relative min-w-0">
           <span className="sr-only">Sort trips by</span>
           <ArrowDownWideNarrow size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-brand-600" aria-hidden="true" />
           <select
@@ -114,14 +116,9 @@ export default function SearchForm(props: Props) {
           </select>
           <ChevronDown size={16} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-brand-600" aria-hidden="true" />
         </label>
-        <button type="submit" disabled={!canPlan} className="btn btn-primary flex-1 sm:flex-none sm:px-4">
-          {loading ? (
-            <LoaderCircle size={17} className="animate-spin" aria-hidden="true" />
-          ) : (
-            <Search size={17} aria-hidden="true" />
-          )}
-          {loading ? 'Finding trips…' : 'Find trips'}
-        </button>
+        <LoadingButton type="submit" disabled={!ready} loading={loading} loadingLabel="Finding…" icon={<Search size={17} aria-hidden="true" />} className="btn-primary w-full px-2">
+          Find trips
+        </LoadingButton>
       </div>
     </form>
   )

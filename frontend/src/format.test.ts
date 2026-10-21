@@ -30,7 +30,7 @@ describe('format helpers', () => {
 
   it('explains ranking fallbacks in plain language', () => {
     expect(explainRanking({ requested: 'fastest', applied: 'fewest_transfers', warning: 'Cannot fairly rank' })).toBe(
-      'Sorted by fewest transfers, because not every trip has a known value for “fastest”.',
+      'Can’t sort by fastest yet, so trips are shown by fewest transfers.',
     )
     expect(explainRanking({ requested: 'cheapest', applied: 'cheapest', warning: null })).toBeNull()
   })

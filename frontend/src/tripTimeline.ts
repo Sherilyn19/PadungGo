@@ -1,32 +1,45 @@
 // Turns a journey option into a commuter-friendly trip: a short name for the
-// result card and an ordered timeline (start, walk, board, get off, transfer,
-// arrive). Only facts from the API are used; uncertain ones get a short note
-// in the main view and the longer explanation in an info tooltip.
+// result card and an ordered timeline (start, walk, board, ride, get off,
+// transfer, arrive). Only facts from the API are used, in plain words.
 import type { JourneyOption, RideSegment, Segment, TransferSegment } from './api'
 import { fareDisplay, type FareDisplay } from './fareDisplay'
 import { formatDistance, formatDuration, titleCase } from './format'
 
-// Shared with the map so each ride's timeline colour matches its line.
-export const RIDE_COLORS = ['#0078d7', '#062f57']
+// Ride colours: PadungGo blue first, then teal, rose, periwinkle and amber
+// taken from the owner's palette reference. All pass white-text contrast.
+// Shared with the map so each ride's line matches its timeline.
+export const RIDE_PALETTE = [
+  { main: '#0078d7', soft: '#e6f1fb' },
+  { main: '#1a7778', soft: '#e2f2f1' },
+  { main: '#c2456a', soft: '#fbe9ee' },
+  { main: '#5059a8', soft: '#eceef8' },
+  { main: '#a86b00', soft: '#fbf1dc' },
+] as const
+
+export const RIDE_COLORS = RIDE_PALETTE.map((c) => c.main)
+
+export function rideColor(index: number): string {
+  return RIDE_PALETTE[index % RIDE_PALETTE.length].main
+}
+
+export function rideSoftColor(index: number): string {
+  return RIDE_PALETTE[index % RIDE_PALETTE.length].soft
+}
 
 // Shorter walks are treated as "the stop is right here" and not listed as a step.
 const MIN_LISTED_WALK_M = 15
 
-export type TimelineKind = 'start' | 'walk' | 'board' | 'alight' | 'transfer' | 'arrive'
+export type TimelineKind = 'start' | 'walk' | 'board' | 'ride' | 'alight' | 'transfer' | 'arrive'
 
 export interface TimelineStep {
   kind: TimelineKind
   title: string
   detail?: string
-  note?: string
-  // Longer explanation, shown behind an (i) icon.
-  info?: string
+  // Set on board, ride and get-off steps; groups them into one coloured ride.
+  rideIndex?: number
   routeCode?: string
   routeName?: string
   fare?: FareDisplay
-  color?: string
-  // How the commuter travels from this step to the next one.
-  connector: 'ride' | 'walk' | 'none'
 }
 
 export interface TripEndpoints {
@@ -52,8 +65,8 @@ export function tripName(option: JourneyOption): { from: string; to: string } {
   const legs = rides(option)
   if (legs.length === 0) return { from: 'Start', to: 'Destination' }
   return {
-    from: stopName(legs[0].board_stop_name, 'Stop on map'),
-    to: stopName(legs[legs.length - 1].alight_stop_name, 'Stop on map'),
+    from: stopName(legs[0].board_stop_name, 'Nearby stop'),
+    to: stopName(legs[legs.length - 1].alight_stop_name, 'Nearby stop'),
   }
 }
 
@@ -62,22 +75,14 @@ export function transferLabel(transfers: number): string {
   return transfers === 1 ? '1 transfer' : `${transfers} transfers`
 }
 
-export function rideColor(index: number): string {
-  return RIDE_COLORS[index % RIDE_COLORS.length]
-}
-
-const STRAIGHT_LINE_INFO =
-  'Measured in a straight line, so the street route will be a little longer. Follow the dotted line on the map.'
-
 function walkStep(segment: Segment, toStopName: string | null): TimelineStep | null {
   const meters = 'straight_line_m' in segment ? segment.straight_line_m : null
   if (meters !== null && meters < MIN_LISTED_WALK_M) return null
   return {
     kind: 'walk',
     title: toStopName ? `Walk to ${stopName(toStopName)}` : 'Walk to your destination',
-    detail: meters !== null ? `About ${formatDistance(meters)}` : undefined,
-    info: STRAIGHT_LINE_INFO,
-    connector: 'walk',
+    // Straight-line distance, so "at least" keeps it honest without a footnote.
+    detail: meters !== null ? `At least ${formatDistance(meters)}` : undefined,
   }
 }
 
@@ -87,72 +92,58 @@ function transferStep(segment: TransferSegment, next: RideSegment | undefined): 
   if (sameStop || segment.distance_m === 0) {
     return {
       kind: 'transfer',
-      title: `Transfer to ${nextCode}`,
-      detail: next ? `Wait at ${stopName(next.board_stop_name)}` : undefined,
+      title: `Change to ${nextCode}`,
       // Equal stop IDs don't prove the same street side, so don't say "stay put".
-      note: `Check which side of the street ${nextCode} stops on.`,
-      connector: 'walk',
+      detail: `Check which side of the street ${nextCode} stops on.`,
     }
   }
+  const to = next ? ` to ${stopName(next.board_stop_name)}` : ''
   return {
     kind: 'transfer',
-    title: `Transfer to ${nextCode}`,
-    detail:
-      segment.distance_m !== null
-        ? `Walk about ${formatDistance(segment.distance_m)}${next ? ` to ${stopName(next.board_stop_name)}` : ''}`
-        : next
-          ? `Walk to ${stopName(next.board_stop_name)}`
-          : undefined,
-    info: 'The transfer path has not been checked on the ground.',
-    connector: 'walk',
+    title: `Change to ${nextCode}`,
+    detail: segment.distance_m !== null ? `Walk about ${formatDistance(segment.distance_m)}${to}` : `Walk${to}`,
   }
 }
 
-function rideSteps(segment: RideSegment, color: string): [TimelineStep, TimelineStep] {
-  const lookFor = segment.signboard
-    ? `Look for the “${segment.signboard}” signboard`
-    : `Look for ${segment.route_code} on the signboard`
-  const stats =
-    segment.distance_m !== null || segment.duration_seconds !== null
-      ? [
-          segment.distance_m !== null ? formatDistance(segment.distance_m) : null,
-          segment.duration_seconds !== null ? `about ${formatDuration(segment.duration_seconds)} ride` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')
-      : undefined
+function rideStats(segment: RideSegment): string | undefined {
+  const parts = [
+    segment.distance_m !== null ? formatDistance(segment.distance_m) : null,
+    segment.duration_seconds !== null ? `about ${formatDuration(segment.duration_seconds)}` : null,
+  ].filter(Boolean)
+  return parts.length ? parts.join(' · ') : undefined
+}
+
+function rideSteps(segment: RideSegment, rideIndex: number): TimelineStep[] {
+  const shared = { rideIndex, routeCode: segment.route_code }
   return [
     {
+      ...shared,
       kind: 'board',
       title: `Board at ${stopName(segment.board_stop_name)}`,
-      detail: lookFor,
-      note: stats,
-      info: stats ? 'Ride time comes from older published schedules; traffic can change it.' : undefined,
-      routeCode: segment.route_code,
+      detail: segment.signboard
+        ? `Look for the “${segment.signboard}” signboard`
+        : `Look for ${segment.route_code} on the signboard`,
       routeName: segment.route_name ? titleCase(segment.route_name) : undefined,
       fare: fareDisplay(segment.fare),
-      color,
-      connector: 'ride',
     },
+    // The ride block header already names the jeepney, so this row says how long.
+    { ...shared, kind: 'ride', title: rideStats(segment) ? `Stay on for ${rideStats(segment)}` : `Stay on ${segment.route_code}` },
     {
+      ...shared,
       kind: 'alight',
       title: `Get off at ${stopName(segment.alight_stop_name)}`,
       // "Lugar lang" is how Cebuano commuters ask the driver to stop.
-      note: 'Say “Lugar lang” to the driver as you near the stop.',
-      color,
-      connector: 'walk',
+      detail: 'Say “Lugar lang” to stop',
     },
   ]
 }
 
 export function buildTimeline(option: JourneyOption, endpoints: TripEndpoints): TimelineStep[] {
-  const steps: TimelineStep[] = [
-    { kind: 'start', title: endpoints.originName, detail: 'Your starting point', connector: 'walk' },
-  ]
+  const steps: TimelineStep[] = [{ kind: 'start', title: endpoints.originName }]
   let rideIndex = 0
   option.segments.forEach((segment, index) => {
     if (segment.mode === 'ride') {
-      steps.push(...rideSteps(segment, rideColor(rideIndex++)))
+      steps.push(...rideSteps(segment, rideIndex++))
     } else if (segment.mode === 'transfer_walk') {
       const next = option.segments.slice(index + 1).find((s): s is RideSegment => s.mode === 'ride')
       steps.push(transferStep(segment, next))
@@ -162,8 +153,32 @@ export function buildTimeline(option: JourneyOption, endpoints: TripEndpoints): 
       if (step) steps.push(step)
     }
   })
-  steps.push({ kind: 'arrive', title: endpoints.destinationName, detail: 'Your destination', connector: 'none' })
+  steps.push({ kind: 'arrive', title: endpoints.destinationName })
   return steps
+}
+
+// Groups consecutive steps of the same ride, so each ride can be drawn as one
+// coloured block with walks and transfers between them.
+export type TimelineBlock =
+  | { type: 'step'; step: TimelineStep }
+  | { type: 'ride'; rideIndex: number; routeCode: string; routeName?: string; steps: TimelineStep[] }
+
+export function groupTimeline(steps: TimelineStep[]): TimelineBlock[] {
+  const blocks: TimelineBlock[] = []
+  for (const step of steps) {
+    const last = blocks.at(-1)
+    if (step.rideIndex === undefined) blocks.push({ type: 'step', step })
+    else if (last?.type === 'ride' && last.rideIndex === step.rideIndex) last.steps.push(step)
+    else
+      blocks.push({
+        type: 'ride',
+        rideIndex: step.rideIndex,
+        routeCode: step.routeCode ?? '',
+        routeName: step.routeName,
+        steps: [step],
+      })
+  }
+  return blocks
 }
 
 // Total straight-line walking, as a lower bound. Null when any walk is unmeasured.
@@ -179,8 +194,7 @@ export function straightLineWalkingMeters(option: JourneyOption): number | null 
   return total
 }
 
-// True when any ride comes from documented (historic) data rather than
-// field-verified data. Drives the friendly "check locally" note.
+// True when any ride comes from older published data rather than field checks.
 export function needsLocalCheck(option: JourneyOption): boolean {
   return option.evidence.verification_status !== 'verified'
 }

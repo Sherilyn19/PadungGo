@@ -259,13 +259,16 @@ export default function MapView({ origin, destination, option, onMapClick, inset
     else m.once('idle', apply)
   }, [option, origin, destination, fit])
 
+  const overlayLimit = Math.round(window.innerHeight * 0.55)
   const control =
     'focus-ring flex h-9 w-9 items-center justify-center bg-white text-brand-600 transition-colors hover:bg-brand-50 active:bg-brand-100'
 
   return (
-    <div className="relative h-full w-full" style={{ ['--map-bottom-inset' as string]: `${insets.bottom}px` }}>
+    // A fully open phone sheet would push the corner overlays to the top of the
+    // screen; past ~half height they stay behind the sheet instead.
+    <div className="relative h-full w-full" style={{ ['--map-bottom-inset' as string]: `${Math.min(insets.bottom, overlayLimit)}px` }}>
       <div ref={container} className="h-full w-full" aria-label="Map of Metro Cebu" role="region" />
-      {option && (
+      {option && insets.bottom <= overlayLimit && (
         <div
           className="fade-up pointer-events-none absolute left-3 z-10 flex items-center gap-3 rounded-[4px] border border-line bg-white/95 px-2.5 py-1.5 text-[11px] text-ink-muted shadow-[0_2px_6px_rgb(6_47_87/0.12)] transition-[bottom] duration-300"
           // Above the bottom sheet and clear of the attribution line on phones.
