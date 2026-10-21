@@ -1,0 +1,49 @@
+# Hackathon submission: video plan and checklist
+
+Cebu Hacktoberfest 2026. Submission is due **October 23, 2026, 11:59 PM (Asia/Manila)**: the public GitHub repository plus a **1-minute video showing how PadungGo is used**, with no pitching. In-person attendance is on **October 25, 2026**.
+
+## 60-second usage video
+
+**Before recording:**
+- Open https://padunggo-api.onrender.com/health about two minutes beforehand. The free API host sleeps when idle and takes about a minute to wake.
+- Rehearse the journey once and record the same request. Use the 17D → 42D demo journey ([DEMO_JOURNEY_17D_42D.md](DEMO_JOURNEY_17D_42D.md)) or another request you have checked live.
+- Use a clean browser window at a phone-like width or full desktop, and keep the same one throughout.
+
+| Time | Show | On-screen action / caption |
+|---|---|---|
+| 0:00–0:05 | Home screen at https://padung-go.vercel.app | Caption: "PadungGo: jeepney journeys in Metro Cebu" |
+| 0:05–0:15 | Choose the start | Type a place name and pick a suggestion, or tap the map. You can show that typing "osmeña" finds "Fuente Osmena". |
+| 0:15–0:22 | Choose the destination and search | Pick the destination and press Search. The loading placeholders appear. |
+| 0:22–0:35 | Results list | Show the options (direct or one transfer), route codes, the "Historic data · not field-verified" label and the Unknown fare or wait |
+| 0:35–0:48 | Open one option | Scroll through the numbered steps (walk, board, transfer, get off) and point out the ride line on the map |
+| 0:48–0:56 | Return trip | Show the independent return result. If it returns no journey, show that honest empty state instead. |
+| 0:56–1:00 | End card | Repository URL, nothing else |
+
+**Do not show or say:**
+- that a route currently runs or is frequent;
+- that a fare is official;
+- AI features (none exist);
+- admin pages, `.env` files or dashboards containing settings.
+
+## Submission checklist
+
+Tick items only when they are done and checked.
+
+**Code and checks**
+- [x] PRs #15–#23 merged to `main` (47cd42a). CI passed on #23.
+- [ ] Production runs the latest `main`: the Render deploy shows commit 47cd42a or later, the Vercel deploy shows the latest frontend, and one live search works.
+
+**Credentials and privacy** (before making the repository public)
+- [ ] Credential review finished, covering history, merge-resolution content, PR comments and CI logs. No credentials have been found so far; see the review notes in the PR.
+- [ ] Right after making the repository public, turn on GitHub **Secret scanning** and **Push protection**, then check that the alerts list is empty.
+- [ ] Decide whether a personal author email may appear in public commit history. Future commits can use GitHub's private noreply email.
+
+**Data and licensing**
+- [ ] The route-data source and its terms are stated honestly: Cebu DOTC GTFS via Transitland, licence not yet established. The app footer and README already name the source. The repository does not contain the feed file.
+- [x] MIT licence is in place for original code and docs.
+
+**Repository and submission**
+- [ ] Repository made **public**; open it in a private window to confirm judges can see it.
+- [ ] Video recorded (≤ 60 s, usage only), uploaded, and its link tested while logged out.
+- [ ] Submission form sent with the repository URL and video link before **Oct 23, 11:59 PM**.
+- [ ] Attend in person on **Oct 25**.
