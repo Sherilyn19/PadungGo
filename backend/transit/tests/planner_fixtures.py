@@ -79,6 +79,7 @@ def base_network() -> Network:
         id="P-A-out", route_id="R-A", direction="outbound", variant_key="main",
         signboard="A1 Outbound", status="verified", verified_at="2026-01-01",
         stops=tuple(a_occ), segments=tuple(a_segs), evidence_source_ids=("src-1",),
+        has_verified_evidence=True,
     ))
 
     # Route B outbound: S5->S6->S7
@@ -95,6 +96,7 @@ def base_network() -> Network:
         id="P-B-out", route_id="R-B", direction="outbound", variant_key="main",
         signboard="B2 Outbound", status="verified", verified_at="2026-01-01",
         stops=tuple(b_occ), segments=tuple(b_segs), evidence_source_ids=("src-1",),
+        has_verified_evidence=True,
     ))
 
     # Directed transfer S3 -> S5 (walkable, verified). Reverse NOT added.

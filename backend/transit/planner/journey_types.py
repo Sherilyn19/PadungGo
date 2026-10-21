@@ -84,6 +84,7 @@ class PatternData:
     stops: tuple[PatternStopData, ...]
     segments: tuple[SegmentData, ...]
     evidence_source_ids: tuple[str, ...] = ()
+    has_verified_evidence: bool = False
 
     def occurrence_by_id(self, occ_id: str) -> Optional[PatternStopData]:
         for s in self.stops:

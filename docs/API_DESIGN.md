@@ -132,6 +132,11 @@ passenger-category and effective-date safeguards remain required. Mixed fleets
 do not receive a guessed vehicle-specific fare. Importer defaults do not prove
 that a fare guide applies to a vehicle.
 
+Pricing also requires verified RouteEvidence for the specific pattern, in
+both strict and historical modes. Documented evidence alone cannot support
+a fare, even if the pattern itself is marked verified. This check does not
+change historical-route visibility or the public source IDs.
+
 Distance-band quotes additionally require a positive integer max_distance_m
 in the rule's policy JSON, supported by the reviewed evidence. It must not be
 smaller than base_distance_m. Missing coverage or a distance beyond that limit
@@ -167,7 +172,11 @@ as live ETAs. Zero is allowed only for a confirmed absent/zero component.
 Deduplicate using ordered pattern IDs, stop occurrence IDs and transfer links.
 Aim for 3–5 valid alternatives; never pad a result to five. Rank cheapest only
 when every candidate has a complete exact fare; otherwise fall back and omit
-the cheapest label. Approximate amounts are not ranked as exact prices.
+the cheapest label. Eligibility for price comparison considers all candidates
+before the result limit is applied. When every candidate has an exact fare,
+the cheapest label identifies the lowest fare among the returned options.
+Truncating an uncertain candidate cannot restore the label. Approximate
+amounts are not ranked as exact prices.
 Rank fastest only with comparable supported
 complete durations. If the requested criterion cannot fairly order all candidates,
 apply fewest_transfers then known walking distance, and disclose the fallback.

@@ -55,7 +55,11 @@ def quote_leg_fare(
         # Do not claim a more specific cause than it actually reports.
         return _unavailable()
 
-    if pattern.status != "verified" or not pattern.evidence_source_ids:
+    if (
+        pattern.status != "verified"
+        or not pattern.has_verified_evidence
+        or not pattern.evidence_source_ids
+    ):
         return _unavailable("Route verification is incomplete.", rule)
 
     if not rule.source_ids:

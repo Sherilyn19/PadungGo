@@ -239,3 +239,81 @@ def test_exact_zero_fares_receive_cheapest_labels_for_all_ties():
 
     assert first["labels"] == ["fewest_transfers", "cheapest"]
     assert second["labels"] == ["fewest_transfers", "cheapest"]
+
+
+
+@pytest.mark.parametrize("sort_by", ["cheapest", "fewest_transfers", "fastest"])
+@pytest.mark.parametrize(
+    "fare, fare_status",
+    [(100, "approximate"), (None, "unavailable")],
+)
+def test_truncated_uncertain_candidate_still_prevents_cheapest_label(
+    sort_by, fare, fare_status,
+):
+    retained = _option(
+        "retained", fare=2000, ride_m=1000, seconds=100,
+    )
+    excluded = _option(
+        "excluded", transfers=1, fare=fare, fare_status=fare_status,
+        ride_m=9000, seconds=900,
+    )
+    request = PlanRequest(
+        origin=Endpoint(10.3, 123.9),
+        destination=Endpoint(10.31, 123.91),
+        limit=1,
+        sort_by=sort_by,
+    )
+
+    result = journey_result(
+        [excluded, retained], request,
+        allow_documented=False, response_prefix="journey",
+    )
+
+    assert [o["marker"] for o in result.journey_options] == ["retained"]
+    assert result.journey_options[0]["labels"] == [
+        "fewest_transfers", "fastest",
+    ]
+    assert excluded["labels"] == []
+    assert result.ranking["requested"] == sort_by
+    if sort_by == "cheapest":
+        assert result.ranking["applied"] == "fewest_transfers"
+        assert "approximate or unavailable" in result.ranking["warning"]
+    else:
+        assert result.ranking["applied"] == sort_by
+        assert result.ranking["warning"] is None
+
+
+@pytest.mark.parametrize("sort_by", ["cheapest", "fewest_transfers", "fastest"])
+def test_exact_candidates_keep_returned_cheapest_label_after_limit(sort_by):
+    first = _option(
+        "first", fare=1000, ride_m=1000, seconds=100,
+    )
+    second = _option(
+        "second", fare=2000, ride_m=2000, seconds=200,
+    )
+    excluded = _option(
+        "excluded", transfers=1, fare=3000, ride_m=3000, seconds=300,
+    )
+    request = PlanRequest(
+        origin=Endpoint(10.3, 123.9),
+        destination=Endpoint(10.31, 123.91),
+        limit=2,
+        sort_by=sort_by,
+    )
+
+    result = journey_result(
+        [excluded, second, first], request,
+        allow_documented=False, response_prefix="journey",
+    )
+
+    assert [o["marker"] for o in result.journey_options] == ["first", "second"]
+    assert result.journey_options[0]["labels"] == [
+        "fewest_transfers", "cheapest", "fastest",
+    ]
+    assert result.journey_options[1]["labels"] == ["fewest_transfers"]
+    assert excluded["labels"] == []
+    assert result.ranking == {
+        "requested": sort_by,
+        "applied": sort_by,
+        "warning": None,
+    }

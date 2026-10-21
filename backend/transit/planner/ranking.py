@@ -87,8 +87,10 @@ def rank_options(options: list[dict], sort_by: str) -> tuple[list[dict], dict]:
     return options, ranking
 
 
-def apply_labels(options: list[dict]) -> None:
-    """Label the returned options using only supported comparisons."""
+def apply_labels(
+    options: list[dict], *, fare_candidates: list[dict] | None = None,
+) -> None:
+    """Label returned options; fare eligibility considers all candidates."""
     if not options:
         return
     minimum_transfers = min(o["transfers"] for o in options)
@@ -96,7 +98,12 @@ def apply_labels(options: list[dict]) -> None:
         if option["transfers"] == minimum_transfers:
             option["labels"].append("fewest_transfers")
 
-    if all(_has_exact_fare(option) for option in options):
+    comparison_options = options if fare_candidates is None else fare_candidates
+    if (
+        comparison_options
+        and all(_has_exact_fare(option) for option in comparison_options)
+        and all(_has_exact_fare(option) for option in options)
+    ):
         cheapest = min(option["fare"]["total_centavos"] for option in options)
         for option in options:
             if option["fare"]["total_centavos"] == cheapest:
