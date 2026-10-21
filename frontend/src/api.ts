@@ -112,15 +112,20 @@ export interface PlanResponse {
   warnings: string[]
 }
 
+// Mirrors MAX_JOURNEY_OPTIONS in backend/transit/planner/validation.py.
+export const MAX_JOURNEY_OPTIONS = 50
+
 export type SortBy = 'fewest_transfers' | 'cheapest' | 'fastest' | 'least_walking'
 
 export class ApiError extends Error {
   readonly status: number
   readonly retryable: boolean
-  constructor(message: string, status: number, retryable: boolean) {
+  readonly fields: Record<string, string[]> | null
+  constructor(message: string, status: number, retryable: boolean, fields: Record<string, string[]> | null = null) {
     super(message)
     this.status = status
     this.retryable = retryable
+    this.fields = fields
   }
 }
 
@@ -161,13 +166,14 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
     }
   }
   if (!resp.ok) {
-    const err = (body as { error?: { message?: string; retryable?: boolean } } | null)?.error
+    const err = (body as { error?: { message?: string; retryable?: boolean; fields?: Record<string, string[]> } } | null)?.error
     throw new ApiError(
       err?.message ?? ([502, 503, 504].includes(resp.status)
         ? 'The PadungGo server is unavailable or starting up. Please try again in a minute.'
         : `The server returned an error (${resp.status}).`),
       resp.status,
       err?.message != null ? (err.retryable ?? resp.status >= 500) : resp.status >= 500,
+      err?.fields ?? null,
     )
   }
   if (body === null) {
@@ -180,7 +186,10 @@ export function searchLocations(q: string, signal?: AbortSignal): Promise<{ resu
   return request(`/locations?q=${encodeURIComponent(q)}&limit=8`, undefined, signal)
 }
 
-export function planJourney(
+// Older API deployments accept at most 5 options.
+const LEGACY_JOURNEY_LIMIT = 5
+
+export async function planJourney(
   origin: Place,
   destination: Place,
   sortBy: SortBy,
@@ -188,15 +197,24 @@ export function planJourney(
 ): Promise<PlanResponse> {
   const endpoint = (p: Place) =>
     p.id ? { location_id: p.id } : { latitude: p.latitude, longitude: p.longitude }
-  return request('/journeys/plan', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      origin: endpoint(origin),
-      destination: endpoint(destination),
-      sort_by: sortBy,
-      max_transfers: maxTransfers,
-      limit: 5,
-    }),
-  })
+  const send = (limit: number) =>
+    request<PlanResponse>('/journeys/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        origin: endpoint(origin),
+        destination: endpoint(destination),
+        sort_by: sortBy,
+        max_transfers: maxTransfers,
+        limit,
+      }),
+    })
+  try {
+    // Ask for every alternative the planner finds (backend maximum), not a top 5.
+    return await send(MAX_JOURNEY_OPTIONS)
+  } catch (e) {
+    // Keeps the app working if the frontend is deployed before the backend.
+    if (e instanceof ApiError && e.status === 400 && e.fields?.limit) return send(LEGACY_JOURNEY_LIMIT)
+    throw e
+  }
 }

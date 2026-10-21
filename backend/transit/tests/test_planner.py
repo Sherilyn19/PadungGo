@@ -217,6 +217,8 @@ def test_invalid_sort_and_limits_rejected():
     with pytest.raises(PlannerError):
         plan_journeys(net, _req(10.3, 123.9, 10.3, 123.91, limit=0), config=CFG)
     with pytest.raises(PlannerError):
+        plan_journeys(net, _req(10.3, 123.9, 10.3, 123.91, limit=51), config=CFG)
+    with pytest.raises(PlannerError):
         plan_journeys(net, _req(10.3, 123.9, 10.3, 123.91, max_transfers=2), config=CFG)
 
 

@@ -4,6 +4,29 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+### Commuter UI redesign — October 21, 2026
+
+- New blue design system based on the owner's reference: one blue accent,
+  1px borders, 4px corners, a faint grid background, a self-hosted pixel
+  display face (Pixelify Sans, OFL) and Lucide SVG icons. No emojis.
+- Desktop/tablet: resizable left panel (drag, arrow keys, double-click to
+  reset), collapsible, with width and state remembered. Phones: draggable
+  bottom sheet over the map.
+- Trips are named by boarding stop → final stop instead of "Option N", shown
+  as expandable cards with a visual timeline (start, walk, board, get off,
+  transfer, arrive) that uses the same colours as the map.
+- Commuter-friendly wording: feed IDs, "historic route data" and similar
+  technical text moved into (i) tooltips; waiting time omitted when unknown;
+  unsupported fares read "Ask the driver". Approximate backend fares read
+  "Estimated". No fare is calculated in the frontend.
+- Map: custom zoom/fit controls, distinct start, board, transfer, exit and
+  destination markers, route casing and fade-in, an "On map" trip chip, and
+  compact OpenStreetMap/OpenMapTiles/OpenFreeMap credit in the map corner.
+- API: journey `limit` maximum raised from 5 to 50. The app requests 50 and
+  shows 8 at a time with "Show more", falling back to 5 on older deployments.
+- Sort and transfer changes re-run the current search, and stale responses
+  are ignored.
+
 ### Fare classification and display — October 22, 2026
 
 - Review corrections: cheapest-label eligibility considers candidates before

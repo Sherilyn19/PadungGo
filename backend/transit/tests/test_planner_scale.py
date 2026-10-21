@@ -52,3 +52,24 @@ def test_city_sized_plan_is_fast():
     assert len(res.journey_options) <= 5
     keys = [tuple(s.get("route_pattern_id") for s in o["segments"]) for o in res.journey_options]
     assert len(keys) == len(set(keys))
+
+
+def test_more_than_five_alternatives_returned_when_requested():
+    """The web app asks for up to 50 options; every distinct valid one comes back."""
+    net = _city()
+    config = {"ALLOW_DOCUMENTED": True, "STOP_SEARCH_RADIUS_M": 500}
+    default = plan_journeys(
+        net, PlanRequest(origin=Endpoint(10.281, 123.861), destination=Endpoint(10.315, 123.895)),
+        config=config,
+    )
+    wide = plan_journeys(
+        net, PlanRequest(origin=Endpoint(10.281, 123.861), destination=Endpoint(10.315, 123.895), limit=50),
+        config=config,
+    )
+    assert len(default.journey_options) == 5
+    assert 5 < len(wide.journey_options) <= 50
+    # The default page is the top of the wider ranking, so order is preserved.
+    def keys(result):
+        return [tuple(s.get("route_pattern_id") for s in o["segments"]) for o in result.journey_options]
+    assert keys(wide)[:5] == keys(default)
+    assert len(set(keys(wide))) == len(keys(wide))

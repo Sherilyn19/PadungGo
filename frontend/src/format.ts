@@ -23,9 +23,9 @@ export function formatDistance(meters: number | null | undefined): string {
 const REASONS: Record<string, string> = {
   same_location: 'Your start and destination are the same place.',
   insufficient_verified_data:
-    'There is no known stop close to your start or destination in the current data. Try a point nearer a main road.',
+    'We don’t know a jeepney stop close to your start or destination yet. Try a point nearer a main road.',
   no_journey_within_mvp_limits:
-    'No route connects these places with at most one transfer in the current data. The return trip may differ — routes are one-directional.',
+    'We couldn’t find a jeepney trip between these places with at most one transfer. Try a nearby main road, or check the trip back — some routes only run one way.',
   outside_intended_area: 'This place is outside Cebu City, Mandaue City and Lapu-Lapu City.',
 }
 
@@ -38,4 +38,20 @@ export function titleCase(text: string): string {
   return text
     .toLowerCase()
     .replace(/(^|[\s(\-/])([a-zñ])/g, (_m, sep: string, ch: string) => sep + ch.toUpperCase())
+}
+
+const SORT_NAMES: Record<string, string> = {
+  fewest_transfers: 'fewest transfers',
+  cheapest: 'cheapest',
+  fastest: 'fastest',
+  least_walking: 'least walking',
+}
+
+// Plain-language note when the backend could not rank by the requested
+// order and fell back to another one.
+export function explainRanking(ranking: { requested: string; applied: string; warning: string | null }): string | null {
+  if (!ranking.warning || ranking.requested === ranking.applied) return null
+  const applied = SORT_NAMES[ranking.applied] ?? ranking.applied
+  const requested = SORT_NAMES[ranking.requested] ?? ranking.requested
+  return `Sorted by ${applied}, because not every trip has a known value for “${requested}”.`
 }

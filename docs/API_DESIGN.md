@@ -59,7 +59,7 @@ not live service availability.
 | origin | Exactly one of {location_id: string} or {latitude: number, longitude: number} |
 | destination | Same type as origin |
 | max_transfers | Integer 0 or 1, default 1; larger searches are future work |
-| limit | Integer 1–5, default 5; aim to display 3–5 when distinct valid options exist |
+| limit | Integer 1–50, default 5. The web app requests 50 so commuters see every valid alternative the search finds (direct options plus up to 40 transfer candidates), ranked most practical first |
 | sort_by | fewest_transfers (default), cheapest, fastest, or least_walking |
 
 Both endpoints support all appropriate GPS, resolved name-search, map and curated

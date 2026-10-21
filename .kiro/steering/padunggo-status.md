@@ -82,6 +82,16 @@ Update this file at the end of each work session, so the next session can contin
   - Not covered: Render, Vercel and Supabase dashboards.
 - Deleted branches: `feat/fare-guide-2026`, `feat/journey-steps-ui`, `fix/location-search-tokens`. Five other merged branches have been verified as fully integrated.
 
+**Oct 21 (UI redesign, PR #27, `feat/ui-redesign`)**
+- The design reference is the owner's blue "Retro-OS UI kit" image; JeePMe is a usability benchmark only.
+- New frontend layout:
+  - `components/{layout,search,results,map,ui}`, `hooks/`;
+  - `tripTimeline.ts` replaces `journeySteps.ts`.
+- Dependencies added: `lucide-react` (ISC) and `@fontsource/pixelify-sans` (OFL).
+- API change, approved by the owner's explicit "remove the five-option limit": `limit` max is 50. The frontend falls back to 5 until Render deploys it.
+- Fare gap: production has 0 verified patterns, so every fare is "Ask the driver". A frontend LTFRB-guide estimate was deliberately **not** added. It would bypass the #19 safeguards and is waiting on an owner decision.
+- QA: headless Chrome via `agent-browser`. HOME must be writable, and `/tmp` is wiped between calls. The live API's CORS blocks localhost, so use a Vite preview proxy.
+
 ## Work split (confirmed Oct 19)
 
 | Area | Owner | Files |

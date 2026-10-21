@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from ..planner.validation import MAX_JOURNEY_OPTIONS
+
 
 class EndpointSerializer(serializers.Serializer):
     """Exactly one of {location_id} or {latitude, longitude}."""
@@ -36,7 +38,9 @@ class PlanRequestSerializer(serializers.Serializer):
     origin = EndpointSerializer()
     destination = EndpointSerializer()
     max_transfers = serializers.IntegerField(required=False, default=1, min_value=0, max_value=1)
-    limit = serializers.IntegerField(required=False, default=5, min_value=1, max_value=5)
+    limit = serializers.IntegerField(
+        required=False, default=5, min_value=1, max_value=MAX_JOURNEY_OPTIONS,
+    )
     sort_by = serializers.ChoiceField(
         required=False, default="fewest_transfers",
         choices=["fewest_transfers", "cheapest", "fastest", "least_walking"],
