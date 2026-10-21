@@ -4,7 +4,30 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
-- Documented the LTFRB 2026-09-28 PUJ fare tables and added calculation regression tests; recorded unresolved fractional-distance, discount-wording and vehicle-scope questions without changing production fares.
+### Planner, search and journey display — October 20–21, 2026
+
+Merged to `main`. Production deployment of #22 and #23 has not been verified yet.
+
+**Planner**
+- **Transfer stops (#23):** a transfer is offered only when both of its stops exist and have an allowed status. The stop where the first ride ends must allow getting off, and the stop where the second ride starts must allow boarding. Missing stop records no longer cause an error, and a blocked transfer point no longer hides a valid one between the same routes. This does not change which services count as currently operating.
+
+**Fares**
+- **Verified fare rules (#19):** a verified rule must name a route or pattern, match the route's vehicle class, rest on a verified pattern and have verified evidence. Rules for a whole vehicle class never price a journey. Mixed-fleet routes show the fare as Unknown, with the reason.
+- **LTFRB fare guide (#20):** documented the LTFRB 2026-09-28 PUJ fare tables and added calculation regression tests. Recorded unresolved fractional-distance, discount-wording and vehicle-scope questions without changing production fares.
+
+**Search and display**
+- **Location search (#22):** case, accents, punctuation and extra spaces in a query are ignored, and every distinct word must match (at most six words). Only the query is normalised, not the stored names.
+- **Journey steps (#21):** numbered walking, boarding, transfer and arrival steps, clearer same-stop transfers, walking-distance summaries, loading placeholders and reduced-motion support.
+- **Server unavailable (#16):** when the API is starting up or unreachable (502/503/504), the app says so and asks you to try again, and marks the error as retryable.
+- **Place search input (#15):** typed text is kept when a selected place is cleared, and outdated search requests are cancelled and their responses ignored.
+
+**Data quality**
+- **Placeholder route names (#17):** the importer drops feed placeholders such as "Name Missing".
+- **17D/42D demo audit (#17, #18):** documented the demo journey, its geometry and its sources. Added a test that documented fare rules never produce a price. No production data was changed.
+
+**Checks**
+- 434 backend tests passed at the #23 head, which is identical to `main` at 47cd42a.
+- On every pull request, CI runs the backend tests, a migration check, the frontend tests and the production build.
 
 ### Security and correctness fixes — October 19, 2026
 

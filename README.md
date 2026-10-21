@@ -3,7 +3,7 @@
 ## Asa ka padung? PadungGo!
 
 ![Open Source](https://img.shields.io/badge/Open%20Source-MIT-green)
-![Status](https://img.shields.io/badge/Status-Planning-yellow)
+![Status](https://img.shields.io/badge/Status-MVP%20deployed-blue)
 ![Hackathon](https://img.shields.io/badge/Cebu%20Hacktoberfest-2026-blue)
 
 > A Cebuano-inspired public transportation assistant that helps
@@ -20,8 +20,70 @@ verified, interconnected subset of jeepney and bus services. **01K, 23D, 20A,
 and 03Q are the initial research batch**, not the permanent network boundary
 or proof of current operation. Coverage expands as evidence is verified.
 
-**Current status:** documentation and design only. This repository contains no
-runnable application or verified transport dataset. Features below are planned.
+**Current status (October 21, 2026):** a working MVP is deployed.
+
+- **Try it:** https://padung-go.vercel.app (API: https://padunggo-api.onrender.com/api/v1).
+  The free API host sleeps when idle, so the first search can take about a minute.
+- **Works today:** place search, device location or map tap; direct and
+  one-transfer journeys; numbered journey steps; ride lines on the map; an
+  independent return trip.
+- **Data:** routes come from the Cebu DOTC GTFS archive (2014–2017). They are
+  shown as *historic, not field-verified*. No route has been field-verified
+  yet. See [Known limitations](#known-limitations).
+- **Checks:** GitHub Actions runs the backend tests, a migration check, the
+  frontend tests and the production build on every pull request.
+
+Some features described below are still planned; [Known limitations](#known-limitations)
+lists what is missing.
+
+## Run locally (Windows PowerShell)
+
+These commands call the virtual environment's Python and `npm.cmd` directly,
+so they work even when PowerShell blocks `Activate.ps1` or `npm.ps1` scripts.
+
+```powershell
+# Backend (lite SQLite mode; no PostGIS needed)
+cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env        # then set DJANGO_SECRET_KEY in .env
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe manage.py runserver   # http://127.0.0.1:8000/health
+
+# Frontend (second terminal)
+cd frontend
+npm.cmd ci
+Copy-Item .env.example .env.local
+npm.cmd test
+npm.cmd run build
+npm.cmd run dev                     # http://localhost:5173
+```
+
+A fresh local database has no routes. Import a GTFS feed through Django Admin
+or `manage.py import_gtfs`; see [backend/README.md](backend/README.md).
+Imported routes are `documented`, so set `PLANNER_ALLOW_DOCUMENTED=True` in
+`backend/.env` to see them, as production does.
+
+## Known limitations
+
+- **Current service is not confirmed.** Results come from a historical archive.
+  A suggested route may have changed, may run rarely or may no longer run.
+  Each result is labelled "Historic data · not field-verified". A planner rule
+  based on current-service evidence is designed but not built yet.
+- **No frequency or waiting times.** The data has no reliable frequency, so
+  waiting time is shown as Unknown. PadungGo never claims a route is frequent.
+- **Fares are usually Unknown.** A fare is shown only when a verified fare
+  rule, with evidence, names that route. The LTFRB September 2026 PUJ fare
+  tables are documented and tested but not yet applied to production routes.
+- **Walking is approximate.** Walks are straight-line estimates, not verified
+  paths.
+- **Location search is curated.** It searches place names imported from the
+  feed (about 260 in production). It ignores case, accents, punctuation and
+  extra spaces in what you type. Stored names are not normalised: today's
+  names have no accents, but a stored name like "Osmeña" would not match a
+  typed "osmena".
+- **One transfer at most**, and only through transfer points in the data.
 
 ## Why PadungGo Exists
 
@@ -246,26 +308,26 @@ open-source submission. See the [mechanics review and documentation audit](docs/
 - [API contract](docs/API_DESIGN.md) and [routing algorithm](docs/ROUTING_ALGORITHM.md)
 - [Development roadmap](docs/DEVELOPMENT_ROADMAP.md), [data sources](docs/DATA_SOURCES.md),
   and [verification standard](docs/DATA_VERIFICATION.md)
-- [Contributing](CONTRIBUTING.md), [changelog](CHANGELOG.md), and [setup](docs/REPOSITORY_SETUP.md)
+- [Contributing](CONTRIBUTING.md), [changelog](CHANGELOG.md), [setup](docs/REPOSITORY_SETUP.md),
+  and [submission checklist](docs/SUBMISSION.md)
 
 ## 🚌 PadungGo
 
 **Padulong sa imong destinasyon, mas sayon.**
 
-### AI assistance
+### AI assistance (planned, not implemented)
 
-- Open-weight instruction model
-- Hosted open-weight inference API
-- Grounded explanation panel for planner results, evidence and uncertainty
+The deployed application contains **no AI model**. Journey planning is
+deterministic. An optional explanation panel was considered: it would use an
+open-weight model to explain planner results, and would never discover routes,
+calculate fares or fill in missing data. It has not been built.
 
-The AI explains deterministic results. It does not discover routes, calculate
-fares, validate directions or invent missing data. Personal hardware and local
-configuration are not part of this project documentation.
+### Deployment
 
-### Deployment requirement
+The competition deliverable runs as a deployed application:
 
-PadungGo's competition deliverable must run as a deployed application. Local
-development is only for building and testing. Production deployment must include
-the frontend, Django API, Supabase PostgreSQL/PostGIS database and hosted AI
-inference behind the backend. Ollama may be used privately during development but
-is not the production runtime.
+- Vercel serves the frontend.
+- Render runs the Django API from Docker.
+- Supabase provides PostgreSQL with PostGIS.
+
+Local development is only for building and testing.

@@ -9,17 +9,30 @@ Two database modes:
 
 ## Local setup (Windows PowerShell)
 
+These commands call the virtual environment's Python directly, so they work
+even when PowerShell's execution policy blocks `Activate.ps1`.
+
 ```powershell
 cd backend
 py -3.12 -m venv .venv            # or py -3.11
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env       # then set DJANGO_SECRET_KEY in .env
-python manage.py migrate
-python manage.py createsuperuser  # for /admin
-python -m pytest                  # run the test suite
-python manage.py runserver        # http://127.0.0.1:8000/health
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py createsuperuser  # for /admin
+.\.venv\Scripts\python.exe -m pytest                  # run the test suite
+.\.venv\Scripts\python.exe manage.py runserver        # http://127.0.0.1:8000/health
 ```
+
+Migration check, as CI runs it (PowerShell):
+
+```powershell
+$env:PADUNGGO_DB_ENGINE="sqlite"; $env:DJANGO_DEBUG="True"; $env:PADUNGGO_SQLITE_PATH="ci.sqlite3"
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+Remove-Item Env:PADUNGGO_DB_ENGINE, Env:DJANGO_DEBUG, Env:PADUNGGO_SQLITE_PATH
+```
+
+Imported GTFS routes are `documented`. Set `PLANNER_ALLOW_DOCUMENTED=True` in
+`.env` to include them in local results, as production does.
 
 Generate a secret key: `python -c "import secrets; print(secrets.token_urlsafe(50))"`
 
