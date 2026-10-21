@@ -1,12 +1,15 @@
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl'
 import { useEffect, useRef } from 'react'
 import type { JourneyOption, LatLng, Place } from '../api'
+import { RIDE_COLORS } from '../journeySteps'
 
 // OpenFreeMap: free OpenStreetMap-based tiles, no API key. Attribution is
 // rendered by MapLibre from the style.
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 const CEBU_CENTER: [number, number] = [123.9, 10.31]
-const RIDE_COLORS = ['#059669', '#2563eb']
+// Respect the OS "reduce motion" setting for camera moves.
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 interface Props {
   origin: Place | null
@@ -132,7 +135,7 @@ export default function MapView({ origin, destination, option, onMapClick }: Pro
           (b, c) => b.extend(c as [number, number]),
           new maplibregl.LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]),
         )
-        m.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 600 })
+        m.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: prefersReducedMotion() ? 0 : 600 })
       }
     }
     if (m.isStyleLoaded() && m.getSource('journey')) apply()
