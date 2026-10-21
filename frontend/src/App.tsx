@@ -132,7 +132,15 @@ export default function App() {
           ) : null}
         </form>
 
-        <section className="flex-1 space-y-3 px-4 pb-4" aria-live="polite">
+        <section className="flex-1 space-y-3 px-4 pb-4" aria-live="polite" aria-busy={loading}>
+          {loading && (
+            <div className="space-y-3" aria-hidden="true">
+              {[0, 1].map((k) => (
+                <div key={k} className="h-20 rounded-lg border border-slate-200 bg-slate-100 motion-safe:animate-pulse" />
+              ))}
+            </div>
+          )}
+          {loading && <p className="sr-only">Finding routes…</p>}
           {loading && slow && (
             <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
               The server is waking up (free hosting sleeps when idle). This can take up to a minute…
@@ -161,7 +169,9 @@ export default function App() {
                   {w}
                 </p>
               ))}
-              <Results plan={plan} selectedId={selectedId} onSelect={setSelectedId} />
+              <div className="journey-reveal">
+                <Results plan={plan} selectedId={selectedId} onSelect={setSelectedId} />
+              </div>
             </>
           )}
         </section>
