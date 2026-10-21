@@ -162,6 +162,16 @@ def _first_transfer_boardings(
             yield pattern, board
 
 
+def _transfer_stop_allowed(
+    context: SearchContext, stop_id: str, *, boarding: bool,
+) -> bool:
+    """Exclude missing or disallowed transfer stops."""
+    stop = context.network.stops.get(stop_id)
+    if stop is None or stop.status not in context.allowed_statuses:
+        return False
+    return stop.can_board if boarding else stop.can_alight
+
+
 def _transfer_candidates(
     context: SearchContext,
     first_boarding: tuple[PatternData, PatternStopData],
@@ -173,7 +183,11 @@ def _transfer_candidates(
     for first_alight in first_pattern.stops:
         if first_alight.sequence <= first_board.sequence or not first_alight.can_alight:
             continue
+        if not _transfer_stop_allowed(context, first_alight.stop_id, boarding=False):
+            continue
         for connection in transfers_by_from.get(first_alight.stop_id, ()):
+            if not _transfer_stop_allowed(context, connection.to_stop_id, boarding=True):
+                continue
             for second_pattern, second_board in context.occurrences_by_stop.get(connection.to_stop_id, ()):
                 if (
                     second_pattern.id == first_pattern.id
