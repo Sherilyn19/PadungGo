@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 
 export type SheetSnap = 'peek' | 'half' | 'full'
 
@@ -7,6 +7,8 @@ interface Props {
   onSnapChange: (snap: SheetSnap) => void
   onHeightChange: (height: number) => void
   header: ReactNode
+  // Identifies the current view; each view keeps its own scroll position.
+  contentKey: string
   children: ReactNode
 }
 
@@ -23,8 +25,20 @@ function snapHeights(containerHeight: number): Record<SheetSnap, number> {
 }
 
 // Phone layout: the planner lives in a draggable sheet over the map.
-export default function BottomSheet({ snap, onSnapChange, onHeightChange, header, children }: Props) {
+export default function BottomSheet({ snap, onSnapChange, onHeightChange, header, contentKey, children }: Props) {
   const sheet = useRef<HTMLElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  const scrollByView = useRef(new Map<string, number>())
+  const shownKey = useRef(contentKey)
+
+  // Remember where each view was scrolled, and restore it when coming back.
+  useLayoutEffect(() => {
+    const el = body.current
+    if (!el || shownKey.current === contentKey) return
+    scrollByView.current.set(shownKey.current, el.dataset.lastScroll ? Number(el.dataset.lastScroll) : 0)
+    el.scrollTop = scrollByView.current.get(contentKey) ?? 0
+    shownKey.current = contentKey
+  }, [contentKey])
   const [containerHeight, setContainerHeight] = useState(() => window.innerHeight)
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const drag = useRef<{ y: number; height: number; moved: boolean } | null>(null)
@@ -105,7 +119,13 @@ export default function BottomSheet({ snap, onSnapChange, onHeightChange, header
         </button>
         {header}
       </div>
-      <div className="bg-grid min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
+      <div
+        ref={body}
+        className="bg-grid min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        onScroll={(e) => (e.currentTarget.dataset.lastScroll = String(e.currentTarget.scrollTop))}
+      >
+        {children}
+      </div>
     </section>
   )
 }
