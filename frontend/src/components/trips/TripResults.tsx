@@ -54,7 +54,7 @@ function Loading({ slow }: { slow: boolean }) {
   return (
     <div className="space-y-2" aria-hidden="true">
       <div className="progress-retro" />
-      {slow && <p className="fade-up px-1 text-xs text-ink-muted">Still searching. The server can take up to a minute to wake up.</p>}
+      {slow && <p className="fade-up px-1 text-xs text-ink-muted">Still searching. This can take up to a minute.</p>}
       {[0, 1, 2].map((k) => (
         <div key={k} className="card space-y-2 p-3">
           <div className="skeleton h-5 w-24 rounded-[3px]" />

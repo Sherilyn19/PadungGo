@@ -29,7 +29,7 @@ describe('API responses', () => {
     const response = respond('<html>Gateway error</html>', status, 'text/html')
     const json = vi.spyOn(response, 'json')
     await expect(searchLocations('cebu')).rejects.toMatchObject({
-      message: 'The PadungGo server is unavailable or starting up. Please try again in a minute.',
+      message: 'PadungGo is busy right now. Please try again in a minute.',
       status,
       retryable: true,
     })
@@ -44,7 +44,7 @@ describe('API responses', () => {
   it.each([400, 500])('uses generic messages for other errors (%s)', async (status) => {
     respond('error', status, 'text/plain')
     await expect(searchLocations('cebu')).rejects.toMatchObject({
-      message: `The server returned an error (${status}).`, status, retryable: status >= 500,
+      message: 'Something went wrong. Please try again.', status, retryable: status >= 500,
     })
   })
 
@@ -55,7 +55,7 @@ describe('API responses', () => {
   ])('rejects unexpected successful responses (%s)', async (body, type) => {
     respond(body, 200, type)
     await expect(searchLocations('cebu')).rejects.toMatchObject({
-      message: 'The server sent an unexpected response. Please try again.', status: 200, retryable: true,
+      message: 'Something went wrong. Please try again.', status: 200, retryable: true,
     })
   })
 
@@ -67,7 +67,7 @@ describe('API responses', () => {
   it('uses status-based retryability when JSON has no error message', async () => {
     respond('{"error":{"retryable":false}}', 502, 'application/json')
     await expect(searchLocations('cebu')).rejects.toMatchObject({
-      message: 'The PadungGo server is unavailable or starting up. Please try again in a minute.',
+      message: 'PadungGo is busy right now. Please try again in a minute.',
       status: 502, retryable: true,
     })
   })

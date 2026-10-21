@@ -148,7 +148,7 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
   } catch {
     if (signal?.aborted) throw new ApiError('Request cancelled.', 0, false)
     throw new ApiError(
-      'Could not reach the PadungGo server. It may be waking up — please try again.',
+      'Can’t connect right now. Check your internet, then try again.',
       0,
       true,
     )
@@ -169,15 +169,15 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
     const err = (body as { error?: { message?: string; retryable?: boolean; fields?: Record<string, string[]> } } | null)?.error
     throw new ApiError(
       err?.message ?? ([502, 503, 504].includes(resp.status)
-        ? 'The PadungGo server is unavailable or starting up. Please try again in a minute.'
-        : `The server returned an error (${resp.status}).`),
+        ? 'PadungGo is busy right now. Please try again in a minute.'
+        : 'Something went wrong. Please try again.'),
       resp.status,
       err?.message != null ? (err.retryable ?? resp.status >= 500) : resp.status >= 500,
       err?.fields ?? null,
     )
   }
   if (body === null) {
-    throw new ApiError('The server sent an unexpected response. Please try again.', resp.status, true)
+    throw new ApiError('Something went wrong. Please try again.', resp.status, true)
   }
   return body as T
 }
