@@ -37,7 +37,9 @@ function transferStep(segment: Extract<Segment, { mode: 'transfer_walk' }>, next
   if (sameStop) {
     return {
       kind: 'transfer',
-      title: `Stay at ${stopName} and wait for ${nextRoute ?? 'your next jeepney'}`,
+      // Equal stop IDs don't prove the same street side or boarding spot, so
+      // don't tell the rider to stay put.
+      title: `Transfer to ${nextRoute ?? 'your next jeepney'} at ${stopName}`,
       details: [],
       caveats: ['Both routes use the same stop in the data. Check which side of the street the next jeepney stops on.'],
     }

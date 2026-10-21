@@ -132,6 +132,17 @@ export default function App() {
           ) : null}
         </form>
 
+        {/* Always mounted, and outside the aria-busy region, so screen readers
+            announce progress while the request is still pending. */}
+        <div role="status" aria-live="polite" className="px-4">
+          {loading && !slow && <p className="sr-only">Finding routes…</p>}
+          {loading && slow && (
+            <p className="mb-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
+              The server is waking up (free hosting sleeps when idle). This can take up to a minute…
+            </p>
+          )}
+        </div>
+
         <section className="flex-1 space-y-3 px-4 pb-4" aria-live="polite" aria-busy={loading}>
           {loading && (
             <div className="space-y-3" aria-hidden="true">
@@ -139,12 +150,6 @@ export default function App() {
                 <div key={k} className="h-20 rounded-lg border border-slate-200 bg-slate-100 motion-safe:animate-pulse" />
               ))}
             </div>
-          )}
-          {loading && <p className="sr-only">Finding routes…</p>}
-          {loading && slow && (
-            <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
-              The server is waking up (free hosting sleeps when idle). This can take up to a minute…
-            </p>
           )}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">

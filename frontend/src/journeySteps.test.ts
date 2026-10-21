@@ -60,7 +60,7 @@ describe('buildJourneySteps', () => {
     expect(steps.map((s) => s.title)).toEqual([
       'Walk to Unnamed stop (feed id 2939)',
       'Board 17D at Unnamed stop (feed id 2939)',
-      'Stay at Sanciangko and wait for 42D',
+      'Transfer to 42D at Sanciangko',
       'Board 42D at Sanciangko',
       'Walk to destination',
     ])
