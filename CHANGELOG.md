@@ -26,6 +26,16 @@ Significant changes will be recorded here as development occurs. Do not backdate
   shows 8 at a time with "Show more", falling back to 5 on older deployments.
 - Sort and transfer changes re-run the current search, and stale responses
   are ignored.
+- Owner review follow-up:
+  - Trip accordions replaced by a sliding, resizable "Trip details" panel
+    beside the list (side by side on wide screens, over the list on tablets,
+    full sheet view with "All trips" on phones).
+  - Each ride has its own colour from the owner's palette reference, used in
+    the timeline, route plates, journey strip and map line.
+  - Info tooltips, data-source notes and status text removed from commuter
+    views; one short "Routes can change" note remains.
+  - The Find trips button keeps its size and position while searching.
+  - Map pins read "Pinned on map", not coordinates.
 
 ### Fare classification and display — October 22, 2026
 

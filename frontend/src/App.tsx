@@ -1,15 +1,15 @@
-import { ArrowRight, MousePointerClick, PanelLeftOpen, X } from 'lucide-react'
+import { ArrowRight, MousePointerClick, PanelLeftOpen, PanelRightOpen, X } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 import { ApiError, planJourney, type LatLng, type Place, type PlanResponse, type SortBy } from './api'
 import BottomSheet, { type SheetSnap } from './components/layout/BottomSheet'
-import DesktopSidebar from './components/layout/DesktopSidebar'
 import PanelHeader from './components/layout/PanelHeader'
+import ResizablePanel from './components/layout/ResizablePanel'
 import MapView from './components/map/MapView'
-import ResultsPanel from './components/results/ResultsPanel'
 import SearchForm, { type PickTarget } from './components/search/SearchForm'
-import InfoTip from './components/ui/InfoTip'
-import { DESKTOP_QUERY, useMediaQuery } from './hooks/useMediaQuery'
-import { useResizableSidebar } from './hooks/useResizableSidebar'
+import TripDetails, { TripDetailsHeader } from './components/trips/TripDetails'
+import TripResults from './components/trips/TripResults'
+import { useMediaQuery } from './hooks/useMediaQuery'
+import { useResizablePanel } from './hooks/useResizablePanel'
 import { rides, tripName } from './tripTimeline'
 
 interface SearchState {
@@ -18,9 +18,23 @@ interface SearchState {
   isReturn: boolean
 }
 
+// Phones: bottom sheet. Tablets: trip details slide over the trip list, so the
+// map keeps its room. Wide screens: main panel, trip details and map side by side.
+const PANELS_QUERY = '(min-width: 768px)'
+const WIDE_QUERY = '(min-width: 1100px)'
+
 export default function App() {
-  const isDesktop = useMediaQuery(DESKTOP_QUERY)
-  const sidebar = useResizableSidebar()
+  const hasPanels = useMediaQuery(PANELS_QUERY)
+  const isWide = useMediaQuery(WIDE_QUERY)
+  const main = useResizablePanel({ storageKey: 'padunggo.sidebar', min: 320, max: 560, defaultWidth: 380, persistCollapsed: true })
+  const mainVisible = !main.collapsed
+  const details = useResizablePanel({
+    storageKey: 'padunggo.details',
+    min: 320,
+    max: 520,
+    defaultWidth: 380,
+    reservedWidth: mainVisible ? main.width : 0,
+  })
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>('half')
   const [sheetHeight, setSheetHeight] = useState(0)
 
@@ -31,10 +45,9 @@ export default function App() {
   const [maxTransfers, setMaxTransfers] = useState<0 | 1>(1)
   const [plan, setPlan] = useState<PlanResponse | null>(null)
   const [search, setSearch] = useState<SearchState | null>(null)
-  // "Selected" is the trip drawn on the map; "expanded" is the open card.
-  // Collapsing a card keeps its trip on the map.
+  // The selected trip is drawn on the map; the details panel may be open or hidden.
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [slow, setSlow] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +61,7 @@ export default function App() {
     setError(null)
     setPlan(null)
     setSelectedId(null)
-    setExpandedId(null)
+    setDetailsOpen(false)
     setSearch(next)
     setSheetSnap('half')
     const slowTimer = window.setTimeout(() => setSlow(true), 5000)
@@ -73,7 +86,7 @@ export default function App() {
   const onMapClick = useCallback(
     (p: LatLng) => {
       if (!picking) return
-      const place: Place = { ...p, name: `Pinned point (${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)})`, source: 'map' }
+      const place: Place = { ...p, name: 'Pinned on map', source: 'map' }
       if (picking === 'origin') setOrigin(place)
       else setDestination(place)
       setPicking(null)
@@ -97,18 +110,29 @@ export default function App() {
     }
   }
 
-  const onToggle = useCallback((id: string) => {
-    setSelectedId(id)
-    setExpandedId((current) => (current === id ? null : id))
-  }, [])
+  const openDetails = useCallback(
+    (id: string) => {
+      setSelectedId(id)
+      setDetailsOpen(true)
+      details.setCollapsed(false)
+      setSheetSnap('full')
+    },
+    [details],
+  )
+
+  const closeDetails = () => {
+    setDetailsOpen(false)
+    setSheetSnap('half')
+  }
 
   const selected = plan?.journey_options.find((o) => o.id === selectedId) ?? null
+  const detailsVisible = Boolean(selected) && detailsOpen && (!isWide || !details.collapsed)
   const endpoints = {
     originName: search?.from.name ?? origin?.name ?? 'Start',
     destinationName: search?.to.name ?? destination?.name ?? 'Destination',
   }
 
-  const panelBody = (
+  const searchAndResults = (
     <div className="space-y-3 p-3">
       <SearchForm
         origin={origin}
@@ -131,7 +155,7 @@ export default function App() {
         loading={loading}
         onSubmit={() => origin && destination && void run({ from: origin, to: destination, isReturn: false }, sortBy, maxTransfers)}
       />
-      <ResultsPanel
+      <TripResults
         plan={plan}
         loading={loading}
         slow={slow}
@@ -140,36 +164,47 @@ export default function App() {
         isReturn={search?.isReturn ?? false}
         onSwitchDirection={search ? swap : null}
         selectedId={selectedId}
-        expandedId={expandedId}
-        onToggle={onToggle}
-        endpoints={endpoints}
+        onSelect={openDetails}
         maxTransfers={maxTransfers}
         onAllowTransfer={() => {
           setMaxTransfers(1)
           rerun(sortBy, 1)
         }}
       />
-      <footer className="flex items-center gap-1.5 px-1 pb-2 text-[11px] text-ink-soft">
-        <span>About the route data</span>
-        <InfoTip label="About the route data">
-          Routes come from the Cebu DOTC GTFS archive (2014–2017) via Transitland and have not been checked on the ground.
-          Fares, waiting times and walking paths are shown only when the data supports them. Always confirm with drivers or
-          signboards.
-        </InfoTip>
-      </footer>
     </div>
   )
 
+  const detailsPanel = selected && (
+    <ResizablePanel
+      id="trip-details"
+      label="Trip details"
+      // Tablets: the details exactly cover the trip list, sharing its width and resize edge.
+      panel={isWide ? details : { ...main, collapsed: false }}
+      open={detailsOpen}
+      className={isWide ? 'border-r border-brand-900/20' : 'shadow-[4px_0_18px_rgb(6_47_87/0.18)]'}
+    >
+      <TripDetailsHeader closeMode={isWide ? 'hide' : 'back'} onClose={closeDetails} />
+      <div className="bg-grid min-h-0 flex-1 overflow-y-auto">
+        <TripDetails key={selected.id} option={selected} endpoints={endpoints} />
+      </div>
+    </ResizablePanel>
+  )
+
   const shownName = selected ? tripName(selected) : null
+  // On tablets the details cover the trip list; if the list is hidden they sit
+  // over the map, so the camera keeps the trip clear of them.
+  const mapLeftInset = hasPanels && !isWide && detailsOpen && selected && main.collapsed ? main.width : 0
 
   return (
-    <div className="flex h-full overflow-hidden bg-surface text-ink">
-      {isDesktop ? (
-        <DesktopSidebar sidebar={sidebar}>
-          <PanelHeader onCollapse={sidebar.toggleCollapsed} />
-          <div className="bg-grid min-h-0 flex-1 overflow-y-auto">{panelBody}</div>
-        </DesktopSidebar>
+    <div className="relative flex h-full overflow-hidden bg-surface text-ink">
+      {hasPanels ? (
+        <ResizablePanel id="trip-panel" label="Trip planner" panel={main} className={mainVisible ? 'border-r border-brand-900/20' : ''}>
+          <PanelHeader onCollapse={main.toggleCollapsed} />
+          <div className="bg-grid min-h-0 flex-1 overflow-y-auto">{searchAndResults}</div>
+        </ResizablePanel>
       ) : null}
+      {hasPanels && isWide ? detailsPanel : null}
+      {hasPanels && !isWide && selected ? <div className="absolute inset-y-0 left-0 z-30 flex">{detailsPanel}</div> : null}
 
       <main className="relative h-full min-w-0 flex-1">
         <MapView
@@ -177,21 +212,37 @@ export default function App() {
           destination={destination}
           option={selected}
           onMapClick={picking ? onMapClick : null}
-          insets={{ left: 0, bottom: isDesktop ? 0 : sheetHeight }}
+          insets={{ left: mapLeftInset, bottom: hasPanels ? 0 : sheetHeight }}
         />
 
-        {/* Which trip the map shows, and a way back to the panel when it is hidden. */}
-        <div className="pointer-events-none absolute top-3 right-16 left-3 z-10 flex items-start gap-2">
-          {isDesktop && sidebar.collapsed && (
+
+        {/* Which trip the map shows, plus ways back to hidden panels. */}
+        <div
+          className="pointer-events-none absolute top-3 right-16 z-10 flex flex-wrap items-start gap-2 transition-[left] duration-300"
+          style={{ left: 12 + mapLeftInset }}
+        >
+          {hasPanels && main.collapsed && (
             <button
               type="button"
-              onClick={sidebar.toggleCollapsed}
+              onClick={main.toggleCollapsed}
               aria-controls="trip-panel"
               aria-expanded={false}
               className="btn btn-primary fade-up pointer-events-auto shadow-[0_2px_6px_rgb(6_47_87/0.25)]"
             >
               <PanelLeftOpen size={17} aria-hidden="true" />
-              Show trips
+              Trips
+            </button>
+          )}
+          {hasPanels && selected && !detailsVisible && (
+            <button
+              type="button"
+              onClick={() => openDetails(selected.id)}
+              aria-controls="trip-details"
+              aria-expanded={false}
+              className="btn fade-up pointer-events-auto shadow-[0_2px_6px_rgb(6_47_87/0.18)]"
+            >
+              <PanelRightOpen size={17} aria-hidden="true" />
+              Trip details
             </button>
           )}
           {shownName && selected && (
@@ -211,7 +262,10 @@ export default function App() {
 
         {picking && (
           <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-3">
-            <div className="fade-up pointer-events-auto relative flex items-center gap-2 rounded-[4px] border border-brand-900 bg-brand-500 py-2 pr-1.5 pl-3 text-sm font-medium text-white shadow-[0_4px_12px_rgb(6_47_87/0.3)]" role="status">
+            <div
+              className="fade-up pointer-events-auto relative flex items-center gap-2 rounded-[4px] border border-brand-900 bg-brand-500 py-2 pr-1.5 pl-3 text-sm font-medium text-white shadow-[0_4px_12px_rgb(6_47_87/0.3)]"
+              role="status"
+            >
               <MousePointerClick size={16} aria-hidden="true" />
               Tap the map to set your {picking === 'origin' ? 'start' : 'destination'}
               <button
@@ -228,14 +282,17 @@ export default function App() {
           </div>
         )}
 
-        {!isDesktop && (
+        {!hasPanels && (
           <BottomSheet
             snap={sheetSnap}
             onSnapChange={setSheetSnap}
             onHeightChange={setSheetHeight}
-            header={<PanelHeader />}
+            header={selected && detailsOpen ? <TripDetailsHeader closeMode="back" onClose={closeDetails} /> : <PanelHeader />}
+            contentKey={selected && detailsOpen ? `trip-${selected.id}` : 'list'}
           >
-            {panelBody}
+            {selected && detailsOpen && <TripDetails key={selected.id} option={selected} endpoints={endpoints} />}
+            {/* Kept mounted so "All trips" returns to the same list and scroll position. */}
+            <div hidden={Boolean(selected && detailsOpen)}>{searchAndResults}</div>
           </BottomSheet>
         )}
       </main>

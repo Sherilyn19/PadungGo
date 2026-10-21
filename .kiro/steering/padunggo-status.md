@@ -92,6 +92,12 @@ Update this file at the end of each work session, so the next session can contin
 - Fare gap: production has 0 verified patterns, so every fare is "Ask the driver". A frontend LTFRB-guide estimate was deliberately **not** added. It would bypass the #19 safeguards and is waiting on an owner decision.
 - QA: headless Chrome via `agent-browser`. HOME must be writable, and `/tmp` is wiped between calls. The live API's CORS blocks localhost, so use a Vite preview proxy.
 
+- Owner follow-up (same PR): accordions replaced with a `TripDetails` child panel (`components/trips`).
+  - The panel uses the shared `useResizablePanel` + `ResizablePanel`/`PanelResizeHandle`.
+  - `InfoTip` was removed: the owner wants no technical text, not hidden text.
+  - Ride palette is in `tripTimeline.ts` (`RIDE_PALETTE`).
+  - Owner runs PowerShell, with execution policy blocking `npm.ps1`; use `npm.cmd`. Repo path: `C:\Sherilyn\Hacktob\PadungGo`.
+
 ## Work split (confirmed Oct 19)
 
 | Area | Owner | Files |

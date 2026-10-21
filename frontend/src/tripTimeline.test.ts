@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { JourneyOption, RideSegment, Segment } from './api'
 import {
   buildTimeline,
+  groupTimeline,
   RIDE_COLORS,
   straightLineWalkingMeters,
   stopName,
@@ -68,7 +69,7 @@ const demo = option(
 
 describe('tripName', () => {
   it('names the trip from first boarding stop to last exit, hiding feed IDs', () => {
-    expect(tripName(demo)).toEqual({ from: 'Stop on map', to: 'Cebu South Road' })
+    expect(tripName(demo)).toEqual({ from: 'Nearby stop', to: 'Cebu South Road' })
     expect(tripName(option([ride('04I', 'Jakosalem Street', 'Colon & A. Borromeo')]))).toEqual({
       from: 'Jakosalem Street',
       to: 'Colon & A. Borromeo',
@@ -86,15 +87,17 @@ describe('tripName', () => {
 })
 
 describe('buildTimeline', () => {
-  it('turns the demo journey into start, walk, board, get off, transfer and arrive steps', () => {
+  it('turns the demo journey into start, walk, board, ride, get off, transfer and arrive steps', () => {
     const steps = buildTimeline(demo, ends)
     expect(steps.map((s) => [s.kind, s.title])).toEqual([
       ['start', 'Ayala Center'],
       ['walk', 'Walk to the stop shown on the map'],
       ['board', 'Board at the stop shown on the map'],
+      ['ride', 'Stay on for 4.1 km · about 11 min'],
       ['alight', 'Get off at Sanciangko'],
-      ['transfer', 'Transfer to 42D'],
+      ['transfer', 'Change to 42D'],
       ['board', 'Board at Sanciangko'],
+      ['ride', 'Stay on for 4.1 km · about 11 min'],
       ['alight', 'Get off at Cebu South Road'],
       ['walk', 'Walk to your destination'],
       ['arrive', 'Colon'],
@@ -104,8 +107,7 @@ describe('buildTimeline', () => {
 
   it('keeps the same-stop street-side caveat for transfers', () => {
     const transferStep = buildTimeline(demo, ends).find((s) => s.kind === 'transfer')!
-    expect(transferStep.detail).toBe('Wait at Sanciangko')
-    expect(transferStep.note).toMatch(/which side of the street 42D/)
+    expect(transferStep.detail).toMatch(/which side of the street 42D/)
   })
 
   it('describes a transfer between different stops as a walk', () => {
@@ -118,14 +120,21 @@ describe('buildTimeline', () => {
 
   it('skips negligible walks instead of listing a 0 m step', () => {
     const steps = buildTimeline(option([walk('origin', 'A', 3), ride('04I', 'A', 'B'), walk('B', 'destination', 0)]), ends)
-    expect(steps.map((s) => s.kind)).toEqual(['start', 'board', 'alight', 'arrive'])
+    expect(steps.map((s) => s.kind)).toEqual(['start', 'board', 'ride', 'alight', 'arrive'])
   })
 
-  it('draws rides with the map colours and connects walks with dotted lines', () => {
-    const steps = buildTimeline(demo, ends)
-    expect(steps.filter((s) => s.kind === 'board').map((s) => s.color)).toEqual(RIDE_COLORS)
-    expect(steps.filter((s) => s.kind === 'board').every((s) => s.connector === 'ride')).toBe(true)
-    expect(steps.at(-1)!.connector).toBe('none')
+  it('groups each ride into one block, numbered for the colour palette', () => {
+    const blocks = groupTimeline(buildTimeline(demo, ends))
+    expect(blocks.map((b) => (b.type === 'ride' ? `ride${b.rideIndex}:${b.routeCode}:${b.steps.length}` : b.step.kind))).toEqual([
+      'start',
+      'walk',
+      'ride0:17D:3',
+      'transfer',
+      'ride1:42D:3',
+      'walk',
+      'arrive',
+    ])
+    expect(new Set(RIDE_COLORS).size).toBe(RIDE_COLORS.length)
   })
 
   it('shows the route code, a readable route name and ride stats', () => {
@@ -133,7 +142,8 @@ describe('buildTimeline', () => {
     expect(board.routeCode).toBe('17D')
     expect(board.routeName).toBe('Plaza Housing - Lahug - Carbon')
     expect(board.detail).toBe('Look for 17D on the signboard')
-    expect(board.note).toBe('4.1 km · about 11 min ride')
+    const ride = buildTimeline(demo, ends).find((s) => s.kind === 'ride')!
+    expect(ride.title).toBe('Stay on for 4.1 km · about 11 min')
   })
 })
 

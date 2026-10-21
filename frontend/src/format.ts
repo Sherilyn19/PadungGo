@@ -47,11 +47,10 @@ const SORT_NAMES: Record<string, string> = {
   least_walking: 'least walking',
 }
 
-// Plain-language note when the backend could not rank by the requested
-// order and fell back to another one.
+// One short line when the backend could not use the requested order.
 export function explainRanking(ranking: { requested: string; applied: string; warning: string | null }): string | null {
   if (!ranking.warning || ranking.requested === ranking.applied) return null
   const applied = SORT_NAMES[ranking.applied] ?? ranking.applied
   const requested = SORT_NAMES[ranking.requested] ?? ranking.requested
-  return `Sorted by ${applied}, because not every trip has a known value for “${requested}”.`
+  return `Can’t sort by ${requested} yet, so trips are shown by ${applied}.`
 }
