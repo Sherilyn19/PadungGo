@@ -45,6 +45,8 @@ export interface WalkSegment extends BaseSegment {
 
 export interface TransferSegment extends BaseSegment {
   mode: 'transfer_walk'
+  from_stop_id?: string
+  to_stop_id?: string
 }
 
 export interface RideSegment extends BaseSegment {
