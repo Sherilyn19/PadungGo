@@ -132,11 +132,24 @@ export default function App() {
           ) : null}
         </form>
 
-        <section className="flex-1 space-y-3 px-4 pb-4" aria-live="polite">
+        {/* Always mounted, and outside the aria-busy region, so screen readers
+            announce progress while the request is still pending. */}
+        <div role="status" aria-live="polite" className="px-4">
+          {loading && !slow && <p className="sr-only">Finding routes…</p>}
           {loading && slow && (
-            <p className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
+            <p className="mb-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
               The server is waking up (free hosting sleeps when idle). This can take up to a minute…
             </p>
+          )}
+        </div>
+
+        <section className="flex-1 space-y-3 px-4 pb-4" aria-live="polite" aria-busy={loading}>
+          {loading && (
+            <div className="space-y-3" aria-hidden="true">
+              {[0, 1].map((k) => (
+                <div key={k} className="h-20 rounded-lg border border-slate-200 bg-slate-100 motion-safe:animate-pulse" />
+              ))}
+            </div>
           )}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
@@ -161,7 +174,9 @@ export default function App() {
                   {w}
                 </p>
               ))}
-              <Results plan={plan} selectedId={selectedId} onSelect={setSelectedId} />
+              <div className="journey-reveal">
+                <Results plan={plan} selectedId={selectedId} onSelect={setSelectedId} />
+              </div>
             </>
           )}
         </section>

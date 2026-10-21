@@ -6,3 +6,22 @@ body,
 #root {
   height: 100%;
 }
+
+/* Short reveal for journey steps and results. Users who ask the OS for
+   reduced motion get no animation. */
+@keyframes journey-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .journey-reveal {
+    animation: journey-reveal 180ms ease-out;
+  }
+}
