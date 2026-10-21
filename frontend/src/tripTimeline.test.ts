@@ -1,0 +1,167 @@
+import { describe, expect, it } from 'vitest'
+import type { JourneyOption, RideSegment, Segment } from './api'
+import {
+  buildTimeline,
+  RIDE_COLORS,
+  straightLineWalkingMeters,
+  stopName,
+  transferLabel,
+  tripName,
+} from './tripTimeline'
+
+// Shaped like the production 17D → 42D demo response (values abridged).
+const walk = (from: string, to: string, m: number): Segment => ({
+  mode: 'walk',
+  instruction: `Walk from ${from} to ${to} (approximate; not a verified route).`,
+  distance_m: null,
+  duration_seconds: null,
+  estimate_basis: 'straight_line_approx',
+  straight_line_m: m,
+})
+
+const ride = (code: string, board: string, alight: string, status = 'documented'): RideSegment => ({
+  mode: 'ride',
+  instruction: '',
+  distance_m: 4055,
+  duration_seconds: 644,
+  estimate_basis: 'sourced_observation',
+  route_id: 'r',
+  route_code: code,
+  route_name: 'PLAZA HOUSING - LAHUG - CARBON',
+  signboard: null,
+  vehicle_class: 'jeepney',
+  operator: null,
+  direction: 'unspecified',
+  verification_status: status,
+  board_stop_name: board,
+  alight_stop_name: alight,
+  geometry: null,
+  fare: { amount_centavos: null, status: 'unavailable', reason: 'No supported fare calculation.' },
+})
+
+const transfer = (from: string, to: string, fromId: string, toId: string, m: number | null): Segment => ({
+  mode: 'transfer_walk',
+  instruction: `Transfer: walk from ${from} to ${to}.`,
+  distance_m: m,
+  duration_seconds: null,
+  estimate_basis: null,
+  from_stop_id: fromId,
+  to_stop_id: toId,
+})
+
+function option(segments: Segment[], transfers = 0): JourneyOption {
+  return { segments, transfers, evidence: { verification_status: 'documented', references: [] } } as unknown as JourneyOption
+}
+
+const ends = { originName: 'Ayala Center', destinationName: 'Colon' }
+
+const demo = option(
+  [
+    walk('origin', 'Unnamed stop (feed id 2939)', 229),
+    ride('17D', 'Unnamed stop (feed id 2939)', 'Sanciangko'),
+    transfer('Sanciangko', 'Sanciangko', 'b059', 'b059', 0),
+    ride('42D', 'Sanciangko', 'Cebu South Road'),
+    walk('Cebu South Road', 'destination', 452.5),
+  ],
+  1,
+)
+
+describe('tripName', () => {
+  it('names the trip from first boarding stop to last exit, hiding feed IDs', () => {
+    expect(tripName(demo)).toEqual({ from: 'Stop on map', to: 'Cebu South Road' })
+    expect(tripName(option([ride('04I', 'Jakosalem Street', 'Colon & A. Borromeo')]))).toEqual({
+      from: 'Jakosalem Street',
+      to: 'Colon & A. Borromeo',
+    })
+  })
+
+  it('labels transfer counts concisely', () => {
+    expect([0, 1, 2].map(transferLabel)).toEqual(['Direct', '1 transfer', '2 transfers'])
+  })
+
+  it('never exposes "Unnamed stop (feed id …)" text', () => {
+    expect(stopName('Unnamed stop (feed id 273)')).toBe('the stop shown on the map')
+    expect(stopName('Osmeña Boulevard')).toBe('Osmeña Boulevard')
+  })
+})
+
+describe('buildTimeline', () => {
+  it('turns the demo journey into start, walk, board, get off, transfer and arrive steps', () => {
+    const steps = buildTimeline(demo, ends)
+    expect(steps.map((s) => [s.kind, s.title])).toEqual([
+      ['start', 'Ayala Center'],
+      ['walk', 'Walk to the stop shown on the map'],
+      ['board', 'Board at the stop shown on the map'],
+      ['alight', 'Get off at Sanciangko'],
+      ['transfer', 'Transfer to 42D'],
+      ['board', 'Board at Sanciangko'],
+      ['alight', 'Get off at Cebu South Road'],
+      ['walk', 'Walk to your destination'],
+      ['arrive', 'Colon'],
+    ])
+    expect(steps.every((s) => !/feed id/i.test(JSON.stringify(s)))).toBe(true)
+  })
+
+  it('keeps the same-stop street-side caveat for transfers', () => {
+    const transferStep = buildTimeline(demo, ends).find((s) => s.kind === 'transfer')!
+    expect(transferStep.detail).toBe('Wait at Sanciangko')
+    expect(transferStep.note).toMatch(/which side of the street 42D/)
+  })
+
+  it('describes a transfer between different stops as a walk', () => {
+    const steps = buildTimeline(
+      option([ride('01K', 'A', 'Colon'), transfer('Colon', 'Junquera', 'a', 'b', 120), ride('02B', 'Junquera', 'C')]),
+      ends,
+    )
+    expect(steps.find((s) => s.kind === 'transfer')!.detail).toBe('Walk about 120 m to Junquera')
+  })
+
+  it('skips negligible walks instead of listing a 0 m step', () => {
+    const steps = buildTimeline(option([walk('origin', 'A', 3), ride('04I', 'A', 'B'), walk('B', 'destination', 0)]), ends)
+    expect(steps.map((s) => s.kind)).toEqual(['start', 'board', 'alight', 'arrive'])
+  })
+
+  it('draws rides with the map colours and connects walks with dotted lines', () => {
+    const steps = buildTimeline(demo, ends)
+    expect(steps.filter((s) => s.kind === 'board').map((s) => s.color)).toEqual(RIDE_COLORS)
+    expect(steps.filter((s) => s.kind === 'board').every((s) => s.connector === 'ride')).toBe(true)
+    expect(steps.at(-1)!.connector).toBe('none')
+  })
+
+  it('shows the route code, a readable route name and ride stats', () => {
+    const board = buildTimeline(demo, ends).find((s) => s.kind === 'board')!
+    expect(board.routeCode).toBe('17D')
+    expect(board.routeName).toBe('Plaza Housing - Lahug - Carbon')
+    expect(board.detail).toBe('Look for 17D on the signboard')
+    expect(board.note).toBe('4.1 km · about 11 min ride')
+  })
+})
+
+describe('ride fare presentation', () => {
+  it('asks commuters to check with the driver when no fare is supported', () => {
+    const board = buildTimeline(demo, ends).find((s) => s.kind === 'board')!
+    expect(board.fare?.text).toBe('Ask the driver')
+    expect(board.fare?.reason).toBe('No supported fare calculation.')
+  })
+
+  it('labels a backend approximate fare as Estimated and an exact one plainly', () => {
+    const approx = ride('T', 'A', 'B', 'verified')
+    approx.fare = { amount_centavos: 1950, status: 'approximate', reason: 'Based on ride distance.' }
+    const exact = ride('T', 'A', 'B', 'verified')
+    exact.fare = { amount_centavos: 1950, status: 'exact', reason: null }
+    const [a] = buildTimeline(option([approx]), ends).filter((s) => s.kind === 'board')
+    const [e] = buildTimeline(option([exact]), ends).filter((s) => s.kind === 'board')
+    expect(a.fare?.text).toBe('₱19.50 Estimated')
+    expect(e.fare?.text).toBe('₱19.50')
+  })
+})
+
+describe('straightLineWalkingMeters', () => {
+  it('adds access, transfer and exit walks', () => {
+    expect(straightLineWalkingMeters(demo)).toBe(681.5)
+  })
+
+  it('is unknown when a transfer distance is unknown', () => {
+    expect(straightLineWalkingMeters(option([transfer('A', 'B', 'a', 'b', null)]))).toBeNull()
+  })
+})

@@ -4,6 +4,9 @@ from __future__ import annotations
 from .journey_types import Endpoint, PlanRequest
 
 SORTS = ("fewest_transfers", "cheapest", "fastest", "least_walking")
+# Upper bound on returned journey options. High enough that commuters see every
+# practical alternative the search finds; still bounds response size.
+MAX_JOURNEY_OPTIONS = 50
 
 
 class PlannerError(ValueError):
@@ -29,7 +32,7 @@ def validate_request(req: PlanRequest) -> None:
     _validate_endpoint(req.destination, "destination")
     if req.max_transfers not in (0, 1):
         raise PlannerError("max_transfers must be 0 or 1.")
-    if not (1 <= req.limit <= 5):
-        raise PlannerError("limit must be between 1 and 5.")
+    if not (1 <= req.limit <= MAX_JOURNEY_OPTIONS):
+        raise PlannerError(f"limit must be between 1 and {MAX_JOURNEY_OPTIONS}.")
     if req.sort_by not in SORTS:
         raise PlannerError(f"sort_by must be one of {SORTS}.")

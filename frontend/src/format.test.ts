@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { explainReason, formatDistance, formatDuration, formatFare, titleCase } from './format'
+import { explainRanking, explainReason, formatDistance, formatDuration, formatFare, titleCase } from './format'
 
 describe('format helpers', () => {
   it('never shows unknown values as zero', () => {
@@ -26,5 +26,12 @@ describe('format helpers', () => {
   it('title-cases route names', () => {
     expect(titleCase('GUADALUPE - CARBON - CAPITOL')).toBe('Guadalupe - Carbon - Capitol')
     expect(titleCase('PARDO (BULACAO/ST. PAUL)')).toBe('Pardo (Bulacao/St. Paul)')
+  })
+
+  it('explains ranking fallbacks in plain language', () => {
+    expect(explainRanking({ requested: 'fastest', applied: 'fewest_transfers', warning: 'Cannot fairly rank' })).toBe(
+      'Sorted by fewest transfers, because not every trip has a known value for “fastest”.',
+    )
+    expect(explainRanking({ requested: 'cheapest', applied: 'cheapest', warning: null })).toBeNull()
   })
 })

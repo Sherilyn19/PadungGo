@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, searchLocations } from './api'
+import { ApiError, planJourney, searchLocations } from './api'
 
 // Simulates fetch honouring its AbortSignal, like the browser does.
 function pendingFetchUntilAborted() {
@@ -141,5 +141,30 @@ describe('searchLocations cancellation', () => {
     await expect(searchLocations('Colon', caller.signal)).resolves.toEqual({ results: [] })
 
     expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+  })
+})
+
+describe('planJourney result limit', () => {
+  const place = { id: 'a', name: 'A', latitude: 10.3, longitude: 123.9, source: 'search' as const }
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+  const sentLimit = (call: unknown[]) => JSON.parse((call[1] as RequestInit).body as string).limit
+
+  it('asks for all alternatives, and retries with 5 on an older backend', async () => {
+    const plan = { journey_options: [], warnings: [] }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ error: { message: 'invalid', fields: { limit: ['<= 5'] } } }, 400))
+      .mockResolvedValueOnce(json(plan))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(planJourney(place, { ...place, id: 'b' }, 'fewest_transfers', 1)).resolves.toEqual(plan)
+    expect(fetchMock.mock.calls.map(sentLimit)).toEqual([50, 5])
+  })
+
+  it('does not retry other validation errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ error: { message: 'bad origin', fields: { origin: ['x'] } } }, 400))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(planJourney(place, place, 'fewest_transfers', 1)).rejects.toBeInstanceOf(ApiError)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

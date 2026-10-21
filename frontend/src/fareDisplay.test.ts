@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fareDisplay } from './fareDisplay'
+import { fareDisplay, totalFareDisplay } from './fareDisplay'
 
 describe('fareDisplay', () => {
   it('shows an exact amount without an uncertainty label', () => {
@@ -11,11 +11,13 @@ describe('fareDisplay', () => {
       }),
     ).toEqual({
       text: '₱19.50',
+      amount: '₱19.50',
+      estimated: false,
       reason: null,
     })
   })
 
-  it('uses the single label Approximate and preserves the explanation', () => {
+  it('labels approximate fares Estimated and preserves the explanation', () => {
     expect(
       fareDisplay({
         amount_centavos: 1950,
@@ -23,7 +25,9 @@ describe('fareDisplay', () => {
         reason: 'Based on an estimated ride distance.',
       }),
     ).toEqual({
-      text: '₱19.50 · Approximate',
+      text: '₱19.50 Estimated',
+      amount: '₱19.50',
+      estimated: true,
       reason: 'Based on an estimated ride distance.',
     })
   })
@@ -36,7 +40,9 @@ describe('fareDisplay', () => {
         reason: 'Fare depends on the vehicle you board.',
       }),
     ).toEqual({
-      text: 'Fare unavailable',
+      text: 'Ask the driver',
+      amount: null,
+      estimated: false,
       reason: 'Fare depends on the vehicle you board.',
     })
   })
@@ -49,7 +55,9 @@ describe('fareDisplay', () => {
         reason: 'No applicable fare rule.',
       }),
     ).toEqual({
-      text: 'Fare unavailable',
+      text: 'Ask the driver',
+      amount: null,
+      estimated: false,
       reason: 'No applicable fare rule.',
     })
   })
@@ -62,7 +70,9 @@ describe('fareDisplay', () => {
         reason: '   ',
       }),
     ).toEqual({
-      text: 'Fare unavailable',
+      text: 'Ask the driver',
+      amount: null,
+      estimated: false,
       reason: 'No supported fare calculation.',
     })
   })
@@ -83,7 +93,9 @@ describe('fareDisplay', () => {
           reason: null,
         }),
       ).toEqual({
-        text: 'Fare unavailable',
+        text: 'Ask the driver',
+      amount: null,
+      estimated: false,
         reason: 'No supported fare calculation.',
       })
     }
@@ -98,7 +110,16 @@ describe('fareDisplay', () => {
       }),
     ).toEqual({
       text: '₱0.00',
+      amount: '₱0.00',
+      estimated: false,
       reason: null,
     })
+  })
+
+  it('shows a trip total only when every ride has a supported fare', () => {
+    const base = { total_centavos: 2800, status: 'approximate' as const, reason: null }
+    expect(totalFareDisplay({ ...base, total_is_complete: true }).text).toBe('₱28.00 Estimated')
+    const partial = totalFareDisplay({ ...base, total_is_complete: false, reason: 'One ride has no fare.' })
+    expect(partial).toEqual({ text: 'Ask the driver', amount: null, estimated: false, reason: 'One ride has no fare.' })
   })
 })
