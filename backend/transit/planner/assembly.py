@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .fares import compute_leg_fare_centavos, resolve_fare_rule
+from .fare_quotes import quote_leg_fare
+from .fare_totals import summarise_fares
 from .journey_types import Network, TransferData
 from .ranking import journey_key
 from .search_types import RideLeg, SearchContext, TransferCandidate
@@ -38,25 +39,23 @@ def _segment_metrics(leg: RideLeg) -> tuple[int, Optional[int]]:
 
 
 def _leg_fare(context: SearchContext, leg: RideLeg, distance_m: int) -> dict:
-    route = context.network.routes[leg.pattern.route_id]
-    rule = resolve_fare_rule(
-        context.network, route=route, pattern_id=leg.pattern.id,
-        passenger_category=context.passenger_category, on=context.on,
+    quote = quote_leg_fare(
+        context.network,
+        pattern=leg.pattern,
+        distance_m=distance_m,
+        passenger_category=context.passenger_category,
+        on=context.on,
     )
-    amount = compute_leg_fare_centavos(rule, distance_m) if rule else None
-    if rule:
-        assumptions = None
-    elif route.vehicle_class == "mixed":
-        assumptions = "This route runs both traditional and modern vehicles; the fare depends on the vehicle you board."
-    else:
-        assumptions = "No verified fare rule for this leg."
+    rule = quote.rule
     return {
-        "amount_centavos": amount,
+        "amount_centavos": quote.amount_centavos,
         "rule_id": rule.id if rule else None,
         "passenger_category": context.passenger_category,
         "source_ids": list(rule.source_ids) if rule else [],
         "effective_date": rule.valid_from.isoformat() if rule else None,
-        "assumptions": assumptions,
+        "assumptions": quote.reason,
+        "status": quote.status,
+        "reason": quote.reason,
     }
 
 
@@ -134,33 +133,8 @@ def _transfer_segment(network: Network, connection: TransferData) -> dict:
 
 
 def _fare_total(ride_segments: list[dict]) -> dict:
-    """A total is complete only when every ride has a known fare."""
-    per_leg = []
-    known_subtotal = 0
-    all_known = True
-    for segment in ride_segments:
-        fare = segment["fare"]
-        amount = fare["amount_centavos"]
-        per_leg.append({
-            "segment_route_pattern_id": segment["route_pattern_id"],
-            "amount_centavos": amount,
-            "rule_id": fare["rule_id"],
-            "passenger_category": fare["passenger_category"],
-            "source_ids": fare["source_ids"],
-            "effective_date": fare["effective_date"],
-            "assumptions": fare["assumptions"],
-        })
-        if amount is None:
-            all_known = False
-        else:
-            known_subtotal += amount
-    return {
-        "currency": "PHP",
-        "per_leg": per_leg,
-        "total_centavos": known_subtotal if all_known and ride_segments else None,
-        "known_subtotal_centavos": known_subtotal,
-        "total_is_complete": bool(all_known and ride_segments),
-    }
+    """Delegate fare aggregation to the shared certainty-aware calculation."""
+    return summarise_fares(ride_segments)
 
 
 def _time_total(ride_segments: list[dict]) -> dict:
@@ -211,7 +185,9 @@ def _option_warnings(evidence: dict, fare: dict) -> list[str]:
             "confirm the route is still operating before travelling."
         )
     if not fare["total_is_complete"]:
-        warnings.append("Total fare incomplete: at least one leg has no verified fare.")
+        warnings.append(
+            "Total fare unavailable: at least one ride has no supported fare calculation."
+        )
     return warnings
 
 

@@ -215,9 +215,32 @@ For example:
   Discounting the rounded regular fare of 3150 would instead produce 2520
   before rounding and would not reproduce the published discounted row.
 
-The existing compute_leg_fare_centavos implementation supports this
-calculation through rounding_centavos=25. No calculator or validator change,
-new policy key, model field, migration, dependency or API change is needed.
+The existing compute_leg_fare_centavos implementation supports reproduction
+of the printed whole-kilometre table through rounding_centavos=25. That
+arithmetic audit required no calculator or validator change.
+
+The subsequent fare-display change adds quotation safeguards separately from
+the calculator. Distance-band quotes require evidence-supported
+max_distance_m metadata in the existing policy JSON. The supplied tables cover
+through 50,000 metres; this does not establish coverage beyond that distance.
+Recording a coverage limit does not by itself establish vehicle applicability
+or authorize a rule to be verified or activated.
+
+The quotation layer withholds amounts for unsupported partial increments
+above the base distance and unresolved monetary rounding ties. Existing tests
+of the calculator's round-up behavior record implementation behavior, not an
+official fractional-kilometre policy.
+
+Supported distance-band quotes are labelled Approximate because recorded route
+distance does not establish exact billable distance. A supported applicable
+flat fare can be classified exact. Passenger categories retain their own
+printed policy inputs; discounts are not calculated from an already-rounded
+regular fare.
+
+The API adds fare classification and explanatory reasons. No model fields,
+migrations, dependencies or production data changes are required. The
+fractional-distance, discount-wording and vehicle-subtype questions below
+remain unresolved.
 
 The regression tests contain literal expected new-table values. They do
 not generate expectations from the formula being tested. Test execution

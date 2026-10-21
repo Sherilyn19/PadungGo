@@ -1,5 +1,6 @@
 import type { JourneyOption, PlanResponse, RideSegment } from '../api'
-import { explainReason, formatDistance, formatDuration, formatFare } from '../format'
+import { explainReason, formatDistance, formatDuration } from '../format'
+import { fareDisplay } from '../fareDisplay'
 import { buildJourneySteps, straightLineWalkingMeters, type JourneyStep } from '../journeySteps'
 
 interface Props {
@@ -23,26 +24,52 @@ function rides(o: JourneyOption): RideSegment[] {
 
 function Summary({ option }: { option: JourneyOption }) {
   const walking = straightLineWalkingMeters(option)
+  const fare = fareDisplay({
+    amount_centavos: option.fare.total_is_complete
+      ? option.fare.total_centavos
+      : null,
+    status: option.fare.total_is_complete
+      ? option.fare.status
+      : 'unavailable',
+    reason: option.fare.reason,
+  })
+
   return (
-    <span className="mt-2 grid grid-cols-3 gap-2 text-xs">
-      <span>
-        <span className="block text-slate-500">Fare</span>
-        <span className="block font-medium">{option.fare.total_is_complete ? formatFare(option.fare.total_centavos) : 'Unknown'}</span>
-      </span>
-      <span>
-        <span className="block text-slate-500">Riding</span>
-        <span className="block font-medium">
-          {formatDuration(option.time.riding_seconds)}
-          {option.time.riding_seconds !== null && <span className="text-slate-500"> (schedule)</span>}
+    <>
+      <span className="mt-2 grid grid-cols-3 gap-2 text-xs">
+        <span className="min-w-0">
+          <span className="block text-slate-500">Fare</span>
+          <span className="block font-medium">{fare.text}</span>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-slate-500">Riding</span>
+          <span className="block font-medium">
+            {formatDuration(option.time.riding_seconds)}
+            {option.time.riding_seconds !== null && (
+              <span className="text-slate-500"> (schedule)</span>
+            )}
+          </span>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-slate-500">Walking</span>
+          <span className="block font-medium">
+            {walking === null ? (
+              'Unknown'
+            ) : (
+              <>
+                ≥ {formatDistance(walking)}
+                <span className="text-slate-500"> (straight line)</span>
+              </>
+            )}
+          </span>
         </span>
       </span>
-      <span>
-        <span className="block text-slate-500">Walking</span>
-        <span className="block font-medium">
-          {walking === null ? 'Unknown' : <>≥ {formatDistance(walking)}<span className="text-slate-500"> (straight line)</span></>}
+      {fare.reason && (
+        <span className="mt-2 block text-xs text-slate-600">
+          {fare.reason}
         </span>
-      </span>
-    </span>
+      )}
+    </>
   )
 }
 

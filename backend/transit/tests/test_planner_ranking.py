@@ -17,6 +17,7 @@ from transit.planner.responses import journey_result
 
 def _option(
     name, *, transfers=0, ride_m=1000, walk_m=100, fare=1000, seconds=300,
+    fare_status="exact",
 ):
     return {
         "marker": name,
@@ -26,6 +27,7 @@ def _option(
         "fare": {
             "total_centavos": fare,
             "total_is_complete": fare is not None,
+            "status": fare_status if fare is not None else "unavailable",
         },
         "time": {
             "total_seconds": seconds,
@@ -147,7 +149,7 @@ def test_fastest_uses_complete_times_then_transfers_then_identity():
     [
         (
             "cheapest",
-            "Cannot fairly rank by cheapest: some fares are unknown. Fell back to fewest_transfers.",
+            "Cannot fairly rank by cheapest: some fares are approximate or unavailable. Fell back to fewest_transfers.",
         ),
         (
             "fastest",
@@ -183,8 +185,9 @@ def test_labels_include_complete_zero_totals_and_all_ties():
     apply_labels([unknown, first, second])
 
     assert unknown["labels"] == ["fewest_transfers"]
-    assert first["labels"] == ["fewest_transfers", "cheapest", "fastest"]
-    assert second["labels"] == ["fewest_transfers", "cheapest", "fastest"]
+    # An unpriced alternative prevents a fair cheapest comparison.
+    assert first["labels"] == ["fewest_transfers", "fastest"]
+    assert second["labels"] == ["fewest_transfers", "fastest"]
 
 
 def test_response_limits_before_labels_and_removes_internal_fields():
@@ -209,3 +212,30 @@ def test_response_limits_before_labels_and_removes_internal_fields():
     assert excluded["labels"] == []
     assert not {"_dedup_key", "_walk_known_m", "_ride_m"} & option.keys()
     assert "_dedup_key" in retained
+
+
+
+@pytest.mark.parametrize("fare_status", ["approximate", "unavailable", None])
+def test_non_exact_amounts_cannot_control_cheapest_ranking(fare_status):
+    uncertain = _option(
+        "uncertain", fare=100, fare_status=fare_status, ride_m=9000,
+    )
+    exact = _option("exact", fare=2000, ride_m=1000)
+
+    ranked, ranking = rank_options([uncertain, exact], "cheapest")
+    apply_labels(ranked)
+
+    assert [option["marker"] for option in ranked] == ["exact", "uncertain"]
+    assert ranking["applied"] == "fewest_transfers"
+    assert "approximate or unavailable" in ranking["warning"]
+    assert all("cheapest" not in option["labels"] for option in ranked)
+
+
+def test_exact_zero_fares_receive_cheapest_labels_for_all_ties():
+    first = _option("A", fare=0, seconds=None)
+    second = _option("B", fare=0, seconds=None)
+
+    apply_labels([first, second])
+
+    assert first["labels"] == ["fewest_transfers", "cheapest"]
+    assert second["labels"] == ["fewest_transfers", "cheapest"]

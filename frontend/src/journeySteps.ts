@@ -2,7 +2,8 @@
 // which facts are known and which are approximate, so commuters can judge how
 // far to trust it.
 import type { JourneyOption, Segment } from './api'
-import { formatDistance, formatDuration, formatFare } from './format'
+import { formatDistance, formatDuration } from './format'
+import { fareDisplay } from './fareDisplay'
 
 // Shared with MapView so a step's colour matches its line on the map.
 export const RIDE_COLORS = ['#059669', '#2563eb']
@@ -62,7 +63,9 @@ export function buildJourneySteps(option: JourneyOption): JourneyStep[] {
         `${formatDistance(segment.distance_m)} · about ${formatDuration(segment.duration_seconds)} riding (old schedule)`,
       ]
       if (segment.signboard) details.push(`Signboard: “${segment.signboard}”`)
-      details.push(`Fare: ${formatFare(segment.fare.amount_centavos)}`)
+      const fare = fareDisplay(segment.fare)
+      details.push(fare.text)
+      if (fare.reason) details.push(fare.reason)
       steps.push({
         kind: 'ride',
         title: `Board ${segment.route_code} at ${segment.board_stop_name}`,

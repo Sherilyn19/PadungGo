@@ -40,6 +40,16 @@ def _fewest_transfers_key(option: dict) -> tuple:
         option["_dedup_key"],
     )
 
+def _has_exact_fare(option: dict) -> bool:
+    """Only complete, explicitly exact amounts support price comparisons."""
+    fare = option["fare"]
+    amount = fare.get("total_centavos")
+    return (
+        fare.get("status") == "exact"
+        and fare.get("total_is_complete") is True
+        and type(amount) is int
+        and amount >= 0
+    )
 
 def rank_options(options: list[dict], sort_by: str) -> tuple[list[dict], dict]:
     """Sort in place, disclosing fallback when totals cannot be compared."""
@@ -47,12 +57,15 @@ def rank_options(options: list[dict], sort_by: str) -> tuple[list[dict], dict]:
     warning = None
 
     if sort_by == "cheapest":
-        comparable = [o for o in options if o["fare"]["total_is_complete"]]
+        comparable = [o for o in options if _has_exact_fare(o)]
         if len(comparable) == len(options) and options:
             options.sort(key=lambda o: (o["fare"]["total_centavos"], o["transfers"], o["_dedup_key"]))
         else:
             applied = "fewest_transfers"
-            warning = "Cannot fairly rank by cheapest: some fares are unknown. Fell back to fewest_transfers."
+            warning = (
+                "Cannot fairly rank by cheapest: some fares are approximate or unavailable. "
+                "Fell back to fewest_transfers."
+            )
             options.sort(key=_fewest_transfers_key)
     elif sort_by == "fastest":
         comparable = [o for o in options if o["time"]["total_is_complete"]]
@@ -83,10 +96,9 @@ def apply_labels(options: list[dict]) -> None:
         if option["transfers"] == minimum_transfers:
             option["labels"].append("fewest_transfers")
 
-    complete_fares = [o for o in options if o["fare"]["total_is_complete"]]
-    if complete_fares:
-        cheapest = min(o["fare"]["total_centavos"] for o in complete_fares)
-        for option in complete_fares:
+    if all(_has_exact_fare(option) for option in options):
+        cheapest = min(option["fare"]["total_centavos"] for option in options)
+        for option in options:
             if option["fare"]["total_centavos"] == cheapest:
                 option["labels"].append("cheapest")
 
