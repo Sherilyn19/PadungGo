@@ -4,6 +4,34 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+### Fare classification and display — October 22, 2026
+
+- Review corrections: cheapest-label eligibility considers candidates before
+  result truncation. Pricing requires verified pattern evidence in both strict
+  and historical modes, without changing public source IDs or route visibility.
+- Added regression tests for truncated fare comparisons and verified,
+  documented-only and absent pattern evidence.
+
+- Added backend fare classifications: exact, approximate and unavailable, with
+  explanations. Supported flat fares can be exact; supported distance-band
+  quotes remain approximate because recorded distance may differ from billable
+  distance.
+- Added distance-coverage checks and withheld quotes for unsupported partial
+  distance bands and unresolved monetary rounding ties.
+- Preserved verified-rule evidence, route-or-pattern scope, vehicle matching,
+  mixed-fleet safeguards and passenger-category policies.
+- Complete totals become approximate when any ride is approximate. An
+  unavailable ride prevents a total price. Cheapest ranking and labels require
+  complete exact fares for every candidate.
+- Replaced unexplained fare Unknown text with an amount, an amount labelled
+  Approximate, or Fare unavailable with an explanation.
+- Documented additive API fields and the stricter quotation requirements.
+- Local checks reported: 480 backend tests, 37 frontend tests and the frontend
+  production build passed. These results do not establish production fare
+  applicability or resolve the outstanding official-policy questions.
+- No production data or verification statuses changed. Merge and deployment
+  remain pending.
+
 ### Planner, search and journey display — October 20–21, 2026
 
 Merged to `main`. Production deployment of #22 and #23 has not been verified yet.

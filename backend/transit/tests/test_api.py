@@ -190,4 +190,7 @@ def test_plan_ignores_documented_fare_rules(client, net):
     option = _post_plan(client, body).json()["journey_options"][0]
     assert option["fare"]["total_centavos"] is None
     assert option["fare"]["per_leg"][0]["rule_id"] is None
-    assert "Total fare incomplete: at least one leg has no verified fare." in option["warnings"]
+    assert (
+        "Total fare unavailable: at least one ride has no supported fare calculation."
+        in option["warnings"]
+    )

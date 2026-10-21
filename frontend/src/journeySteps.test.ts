@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { JourneyOption, Segment } from './api'
+import type { JourneyOption, RideSegment, Segment } from './api'
 import { buildJourneySteps, RIDE_COLORS, straightLineWalkingMeters } from './journeySteps'
 
 // Shaped like the production 17D → 42D demo response (values abridged).
@@ -12,7 +12,7 @@ const walk = (from: string, to: string, m: number): Segment => ({
   straight_line_m: m,
 })
 
-const ride = (code: string, board: string, alight: string, status = 'documented'): Segment => ({
+const ride = (code: string, board: string, alight: string, status = 'documented'): RideSegment => ({
   mode: 'ride',
   instruction: '',
   distance_m: 4055,
@@ -29,7 +29,11 @@ const ride = (code: string, board: string, alight: string, status = 'documented'
   board_stop_name: board,
   alight_stop_name: alight,
   geometry: null,
-  fare: { amount_centavos: null },
+  fare: {
+    amount_centavos: null,
+    status: 'unavailable',
+    reason: 'No supported fare calculation.',
+  },
 })
 
 const transfer = (from: string, to: string, fromId: string, toId: string, m: number | null): Segment => ({
@@ -70,7 +74,8 @@ describe('buildJourneySteps', () => {
 
   it('never shows an unknown fare as a price, and keeps data caveats', () => {
     const [, firstRide, sameStop] = buildJourneySteps(demo)
-    expect(firstRide.details).toContain('Fare: Unknown')
+    expect(firstRide.details).toContain('Fare unavailable')
+    expect(firstRide.details).toContain('No supported fare calculation.')
     expect(firstRide.caveats[0]).toMatch(/Historic route data/)
     expect(sameStop.caveats[0]).toMatch(/same stop/)
   })
@@ -98,5 +103,41 @@ describe('straightLineWalkingMeters', () => {
 
   it('is unknown when a transfer distance is unknown', () => {
     expect(straightLineWalkingMeters(option([transfer('A', 'B', 'a', 'b', null)]))).toBeNull()
+  })
+})
+
+
+
+describe('ride fare presentation', () => {
+  it('shows an exact backend amount without an approximate label', () => {
+    const segment = ride('TEST', 'Boarding stop', 'Exit stop', 'verified')
+    segment.fare = {
+      amount_centavos: 1950,
+      status: 'exact',
+      reason: null,
+    }
+
+    const [step] = buildJourneySteps(option([segment]))
+
+    expect(step.details).toContain('₱19.50')
+    expect(step.details.join(' ')).not.toContain('Approximate')
+    expect(step.details.join(' ')).not.toContain('Fare unavailable')
+  })
+
+  it('shows an approximate amount together with its backend explanation', () => {
+    const segment = ride('TEST', 'Boarding stop', 'Exit stop', 'verified')
+    segment.fare = {
+      amount_centavos: 1950,
+      status: 'approximate',
+      reason: 'Based on recorded ride distance; the billable distance may differ.',
+    }
+
+    const [step] = buildJourneySteps(option([segment]))
+
+    expect(step.details).toContain('₱19.50 · Approximate')
+    expect(step.details).toContain(
+      'Based on recorded ride distance; the billable distance may differ.',
+    )
+    expect(step.details.join(' ')).not.toContain('Fare unavailable')
   })
 })

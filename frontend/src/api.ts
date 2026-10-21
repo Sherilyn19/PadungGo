@@ -49,6 +49,14 @@ export interface TransferSegment extends BaseSegment {
   to_stop_id?: string
 }
 
+export type FareStatus = 'exact' | 'approximate' | 'unavailable'
+
+export interface FareAmount {
+  amount_centavos: number | null
+  status: FareStatus
+  reason: string | null
+}
+
 export interface RideSegment extends BaseSegment {
   mode: 'ride'
   route_id: string
@@ -62,7 +70,7 @@ export interface RideSegment extends BaseSegment {
   board_stop_name: string
   alight_stop_name: string
   geometry: LineGeometry | null
-  fare: { amount_centavos: number | null }
+  fare: FareAmount
 }
 
 export type Segment = WalkSegment | TransferSegment | RideSegment
@@ -77,6 +85,8 @@ export interface JourneyOption {
     total_centavos: number | null
     known_subtotal_centavos: number
     total_is_complete: boolean
+    status: FareStatus
+    reason: string | null
   }
   time: {
     walking_seconds: number | null

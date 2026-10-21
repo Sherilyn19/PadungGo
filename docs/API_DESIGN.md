@@ -97,7 +97,7 @@ that no real-world public transport service exists.
 | transfers | 0 or 1 |
 | labels | Supported labels such as fewest_transfers, cheapest, fastest; one option may have several |
 | segments | Ordered walk, ride or transfer_walk objects |
-| fare | currency, per_leg, total_centavos nullable, known_subtotal_centavos, total_is_complete |
+| fare | currency, per_leg, total_centavos nullable, known_subtotal_centavos, total_is_complete, status, reason nullable |
 | time | walking_seconds, waiting_seconds, riding_seconds, total_seconds (all nullable), known_subtotal_seconds, total_is_complete, uncertainty_notes |
 | evidence | Public source IDs/references, dates and lowercase verification status |
 | warnings | Estimate and data limitations |
@@ -112,9 +112,55 @@ contributes to walking time; any separately modeled overhead must be explicit.
 
 fare.per_leg contains one entry per ride: segment reference, amount_centavos
 nullable, rule_id nullable, source references, effective date nullable,
-passenger_category and assumptions. Sum fares only when all legs are known;
-otherwise total_centavos is null and total_is_complete is false. Known subtotal
-is explicitly incomplete and must not be shown as a complete price.
+passenger_category, assumptions, status and reason nullable. Each ride segment's
+fare object also includes status and reason.
+
+The backend assigns status; clients must not infer it from a numeric amount:
+
+| status | Meaning | Display |
+|---|---|---|
+| exact | A supported applicable flat fare with no distance-dependent calculation | Amount without an uncertainty label |
+| approximate | A supported distance-band calculation using recorded ride distance, which may differ from billable distance | Amount followed by "Approximate" |
+| unavailable | No supported amount can be calculated | "Fare unavailable", followed by the supplied reason |
+
+Reasons describe the blocker actually detected. When the specific cause is not
+established, use "No supported fare calculation." Reasons are explanatory text,
+not stable machine-readable error codes.
+
+Existing verified-rule, evidence, route-or-pattern scope, vehicle-class,
+passenger-category and effective-date safeguards remain required. Mixed fleets
+do not receive a guessed vehicle-specific fare. Importer defaults do not prove
+that a fare guide applies to a vehicle.
+
+Pricing also requires verified RouteEvidence for the specific pattern, in
+both strict and historical modes. Documented evidence alone cannot support
+a fare, even if the pattern itself is marked verified. This check does not
+change historical-route visibility or the public source IDs.
+
+Distance-band quotes additionally require a positive integer max_distance_m
+in the rule's policy JSON, supported by the reviewed evidence. It must not be
+smaller than base_distance_m. Missing coverage or a distance beyond that limit
+produces an unavailable quote. No universal distance limit is inferred.
+
+Above the base distance, a partial increment is unavailable because its charging
+policy has not been established. An unresolved monetary rounding tie is also
+unavailable. The underlying calculator's existing round-up behavior is not
+treated as evidence of an official charging rule. Supported distance-band
+amounts remain approximate; this implementation does not establish exact
+billable distance.
+
+Sum fares only when every ride has a supported amount. All exact legs produce
+an exact total; any approximate leg makes a complete total approximate. Any
+unavailable leg makes total_centavos null, total_is_complete false and status
+unavailable. Known subtotal is explicitly incomplete and must not be shown as
+a complete price. Per-leg reasons remain available in the ride steps.
+
+The status and reason fields are additive, but calculation eligibility is
+stricter: a previously numeric amount may now be null. In particular, existing
+distance-band rules without supported max_distance_m metadata cannot produce
+a quote. This change does not update or activate any production fare rule.
+Clients receiving an older response without classification must not assume
+that a numeric amount is exact.
 
 For each time category, use null when any required contribution is unknown.
 known_subtotal_seconds sums individually supported contributions, including those
@@ -125,7 +171,13 @@ as live ETAs. Zero is allowed only for a confirmed absent/zero component.
 
 Deduplicate using ordered pattern IDs, stop occurrence IDs and transfer links.
 Aim for 3–5 valid alternatives; never pad a result to five. Rank cheapest only
-among comparable complete sourced fares, fastest only with comparable supported
+when every candidate has a complete exact fare; otherwise fall back and omit
+the cheapest label. Eligibility for price comparison considers all candidates
+before the result limit is applied. When every candidate has an exact fare,
+the cheapest label identifies the lowest fare among the returned options.
+Truncating an uncertain candidate cannot restore the label. Approximate
+amounts are not ranked as exact prices.
+Rank fastest only with comparable supported
 complete durations. If the requested criterion cannot fairly order all candidates,
 apply fewest_transfers then known walking distance, and disclose the fallback.
 Unknown walking distance cannot win least_walking. Keep deterministic ID tie-breaks.

@@ -175,14 +175,19 @@ def _load_pattern_segments(pattern_ids: list) -> dict:
     return segments_by_pattern
 
 
-def _load_pattern_evidence(pattern_ids: list, statuses: frozenset[str]) -> dict:
-    # Documented evidence counts only when documented data is enabled.
+def _load_pattern_evidence(
+    pattern_ids: list, statuses: frozenset[str],
+) -> tuple[dict, set]:
+    # Preserve public source IDs while separately tracking verified evidence.
     evidence_by_pattern: dict = {}
-    for pattern_id, source_id in RouteEvidence.objects.filter(
+    verified_pattern_ids: set = set()
+    for pattern_id, source_id, status in RouteEvidence.objects.filter(
         pattern_id__in=pattern_ids, status__in=statuses
-    ).values_list("pattern_id", "source_id"):
+    ).values_list("pattern_id", "source_id", "status"):
         evidence_by_pattern.setdefault(pattern_id, set()).add(str(source_id))
-    return evidence_by_pattern
+        if status == "verified":
+            verified_pattern_ids.add(pattern_id)
+    return evidence_by_pattern, verified_pattern_ids
 
 
 def _load_patterns(network: Network, statuses: frozenset[str]) -> None:
@@ -194,7 +199,9 @@ def _load_patterns(network: Network, statuses: frozenset[str]) -> None:
     pattern_ids = [row[0] for row in pattern_rows]
     stops_by_pattern = _load_pattern_stops(pattern_ids)
     segments_by_pattern = _load_pattern_segments(pattern_ids)
-    evidence_by_pattern = _load_pattern_evidence(pattern_ids, statuses)
+    evidence_by_pattern, verified_pattern_ids = _load_pattern_evidence(
+        pattern_ids, statuses,
+    )
 
     for pattern_id, route_id, direction, variant_key, signboard, status, verified_at in pattern_rows:
         if str(route_id) not in network.routes or pattern_id not in stops_by_pattern:
@@ -206,6 +213,7 @@ def _load_patterns(network: Network, statuses: frozenset[str]) -> None:
             stops=tuple(stops_by_pattern[pattern_id]),
             segments=tuple(segments_by_pattern.get(pattern_id, ())),
             evidence_source_ids=tuple(sorted(evidence_by_pattern.get(pattern_id, ()))),
+            has_verified_evidence=pattern_id in verified_pattern_ids,
         ))
 
 

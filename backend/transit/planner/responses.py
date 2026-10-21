@@ -66,10 +66,11 @@ def journey_result(
     options: list[dict], req: PlanRequest, *,
     allow_documented: bool, response_prefix: str,
 ) -> PlanResult:
-    options, ranking = rank_options(options, req.sort_by)
-    options = options[: req.limit]
-    # Labels compare the returned options, after the requested limit.
-    apply_labels(options)
+    candidates, ranking = rank_options(options, req.sort_by)
+    options = candidates[: req.limit]
+    # Fare eligibility uses all candidates, even those outside the result limit.
+    # Label winners and the other labels still compare the returned options.
+    apply_labels(options, fare_candidates=candidates)
     public = _strip_internal(options, response_prefix)
     _attach_walk_points(public, req)
 
