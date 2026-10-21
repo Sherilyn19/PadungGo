@@ -83,12 +83,14 @@ def health(request):
 @api_view(["GET"])
 def locations(request):
     """Curated location search. Not a promise of transit availability."""
-    q = (request.query_params.get("q") or "").strip()
+    from .location_search import normalise_query
+
+    tokens = normalise_query(request.query_params.get("q") or "")
     area_id = _parse_uuid_param(request, "area_id")
 
     qs = Location.objects.select_related("area")
-    if q:
-        qs = qs.filter(name__icontains=q)
+    for token in tokens:
+        qs = qs.filter(name__icontains=token)
     if area_id:
         qs = qs.filter(area_id=area_id)
     rows, next_cursor = _paginate(request, qs, "name")
