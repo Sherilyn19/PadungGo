@@ -6,13 +6,15 @@ database directly.
 
 ## Run locally (Windows PowerShell)
 
+`npm.cmd` works even when PowerShell's execution policy blocks `npm.ps1`.
+
 ```powershell
 cd frontend
-npm install
-Copy-Item .env.example .env.local   # set VITE_API_BASE_URL if not using a local backend
-npm run dev                         # http://localhost:5173
-npm test                            # unit tests
-npm run build                       # production build into dist/
+npm.cmd ci                              # exact versions from package-lock.json
+Copy-Item .env.example .env.local       # set VITE_API_BASE_URL if not using a local backend
+npm.cmd run dev                         # http://localhost:5173
+npm.cmd test                            # Vitest: API client, formatting, journey steps
+npm.cmd run build                       # type-check and production build into dist/
 ```
 
 `VITE_API_BASE_URL` is public (it ends up in the browser bundle). Never put
@@ -33,3 +35,7 @@ secrets in `VITE_*` variables.
   lines, labelled as not verified walking paths.
 - Unknown fares, waits and walking times are shown as "Unknown", never zero.
 - Historic GTFS results are labelled "not field-verified".
+- Numbered journey steps cover walking, boarding, transfers (including
+  same-stop transfers) and getting off.
+- Loading placeholders and short reveal animations; reduced-motion settings
+  turn off the animations and make map camera moves instant.

@@ -6,7 +6,7 @@ inclusion: always
 
 Update this file at the end of each work session, so the next session can continue without repeating discovery.
 
-## Snapshot (Oct 19, 2026)
+## Snapshot (Oct 21, 2026; `main` = 47cd42a)
 
 **What the app is:** a jeepney/bus journey planner for Metro Cebu.
 - Backend: Django + DRF, using PostGIS (or SQLite in lite mode), deployed on Render.
@@ -21,9 +21,11 @@ Update this file at the end of each work session, so the next session can contin
 **Data:** loaded through the GTFS importer, either from the admin upload page or with the `import_gtfs` command.
 
 **Tests:**
-- Backend: a pytest suite.
-- Frontend: only `format.test.ts`.
-- CI: none yet.
+- Backend: pytest, 434 passing at 47cd42a (owner's local run, same tree as the #23 head).
+- Frontend: Vitest, with `api.test.ts`, `format.test.ts` and `journeySteps.test.ts`.
+- CI: GitHub Actions (`.github/workflows/ci.yml`) runs pytest, `makemigrations --check`, `npm test` and `npm run build` on every PR.
+
+**Production data:** 97 active routes and about 257 locations, all imported from the DOTC archive as `documented`. **0 verified patterns.** `PLANNER_ALLOW_DOCUMENTED=True` on Render (owner decision), so every live result is historical and labelled.
 
 ## Hackathon checklist
 
@@ -34,9 +36,9 @@ Update this file at the end of each work session, so the next session can contin
 | Submit by Oct 23, 11:59 PM PHT | ⏳ |
 | Attend in person Oct 25 | ⏳ (user) |
 | Doc completeness / changelog / contribution readiness / demo | Docs are extensive; stale and duplicated sections need fixing ⏳ |
-| Implementation completeness / solution fit / UX | End-to-end search is live; UI states need improvement ⏳ |
-| Security adherence | P0 fixes in progress |
-| Code quality / tooling / testability | Refactor and CI planned |
+| Implementation completeness / solution fit / UX | End-to-end search live; journey steps, loading, reduced motion and empty states done (#21). Current-service rule designed, not built ⏳ |
+| Security adherence | P0 fixes merged (#10, #12). Credential review: no findings so far; secret scanning must be enabled once public ⏳ |
+| Code quality / tooling / testability | Backend refactor (#14) and CI (#11) done ✅ |
 | Deployment / scalability | Render + Vercel are live; cache scaling under review |
 
 ## Work log
@@ -52,6 +54,33 @@ Update this file at the end of each work session, so the next session can contin
 - Production HTTPS verified: valid certificates, and HTTP→HTTPS redirects on Render (301) and Vercel (308). PR #12 enables HSTS at `max-age=300`, with includeSubDomains and preload off. Raise the duration gradually after deploying.
 - The user decided to **keep the `DJANGO_SUPERUSER_*` env vars on Render**. This is harmless now: existing accounts are never reset unless `DJANGO_SUPERUSER_RESET_PASSWORD=True` is set. Do not ask to remove them again.
 - Local test venv: `/projects/sandbox/.venv`. It is not persisted, so recreate it with `python3 -m venv` and `pip install -r backend/requirements.txt`.
+
+**Oct 20–21**
+- Merged (squash):
+  - #15 place-search input;
+  - #16 API-unavailable messages;
+  - #17 placeholder route names;
+  - #18 17D/42D audit;
+  - #19 verified fare-rule safeguards (migration 0004);
+  - #20 LTFRB 2026 fare-guide tests;
+  - #21 journey steps UI;
+  - #22 location-search normalisation;
+  - #23 transfer-stop validation.
+- The owner completed the mobile, keyboard and reduced-motion checks for #21.
+- **14B / current service (unresolved):** the owner reports 14B is hard to find. This is an availability concern, not proof it is inactive. Design decisions so far:
+  - a rejected source is not an exclusion decision;
+  - expired or unsupported verified patterns are excluded, not downgraded;
+  - strict mode requires a reviewer-set deadline, with timestamp-vs-whole-day semantics still to be decided;
+  - field evidence or an official/operator publication can support a review, but neither verifies a pattern by itself;
+  - frequency is a separate, unmet requirement.
+
+  Deadline renewal and its interaction with verified fare rules still need assessing. Explicit exclusion already works through `Route.active=False` or pattern `needs_review` in Admin.
+- **Timezone:** `views.py` uses `date.today()`. Django sets the process TZ from `TIME_ZONE`, so this is probably already Manila time. A separate assessment is pending; it is not a confirmed defect.
+- **Credential review:**
+  - History (all branches and PR heads), merge-resolution content, 21 PR/issue comments and 31 CI run logs scanned with gitleaks plus pattern searches. No credentials found; only placeholders and masked GitHub tokens.
+  - The secret-scanning API returned 403 to Kiro.
+  - Not covered: Render, Vercel and Supabase dashboards.
+- Deleted branches: `feat/fare-guide-2026`, `feat/journey-steps-ui`, `fix/location-search-tokens`. Five other merged branches have been verified as fully integrated.
 
 ## Work split (confirmed Oct 19)
 
@@ -71,4 +100,7 @@ Update this file at the end of each work session, so the next session can contin
 
 ## Open items
 
+- Submission tasks: see `docs/SUBMISSION.md` (public release, video, form, Oct 25 attendance).
+- Verify that production runs 47cd42a or later.
+- Current-service eligibility rule (PR 2): waiting on the open decisions above.
 - The frontend bundle is 1.27 MB because of MapLibre. Code splitting is an optional P3 item.
