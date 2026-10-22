@@ -25,6 +25,14 @@ class Route(models.Model):
     vehicle_class = models.CharField(max_length=20, choices=VehicleClass.choices)
     operator = models.CharField(max_length=200, blank=True)
     active = models.BooleanField(default=True)
+    service_availability = models.CharField(
+        max_length=20,
+        choices=[
+            ("not_flagged", "Not flagged"),
+            ("scarce", "Scarce"),
+        ],
+        default="not_flagged",
+    )
 
     class Meta:
         ordering = ["code"]

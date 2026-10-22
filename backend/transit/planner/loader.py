@@ -143,11 +143,17 @@ def _load_stops(network: Network) -> None:
 
 def _load_routes(network: Network) -> None:
     for row in Route.objects.filter(active=True).values_list(
-        "id", "code", "name", "vehicle_class", "operator"
+        "id", "code", "name", "vehicle_class", "operator",
+        "service_availability",
     ):
         route_id = str(row[0])
         network.routes[route_id] = RouteData(
-            id=route_id, code=row[1], name=row[2], vehicle_class=row[3], operator=row[4] or None,
+            id=route_id,
+            code=row[1],
+            name=row[2],
+            vehicle_class=row[3],
+            operator=row[4] or None,
+            service_availability=row[5],
         )
 
 

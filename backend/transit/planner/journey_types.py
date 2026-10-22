@@ -70,6 +70,7 @@ class RouteData:
     name: str
     vehicle_class: str
     operator: Optional[str]
+    service_availability: str = "not_flagged"
 
 
 @dataclass(frozen=True)

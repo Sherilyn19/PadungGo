@@ -316,4 +316,5 @@ def test_exact_candidates_keep_returned_cheapest_label_after_limit(sort_by):
         "requested": sort_by,
         "applied": sort_by,
         "warning": None,
+        "scarce_last": True,
     }
