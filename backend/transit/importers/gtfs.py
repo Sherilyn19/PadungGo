@@ -10,6 +10,7 @@ Writes derived rows and public source metadata, not the feed file itself.
 """
 from __future__ import annotations
 
+import re
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -66,28 +67,33 @@ def clean_stop_name(raw: str) -> str:
         parts.append(p)
     return " & ".join(parts)
 
-
 def _real_text(raw: str | None) -> str:
-    """Collapse whitespace; feed placeholders such as 'Name missing' become ''.
-
-    Storing a placeholder would show it to commuters as if it were the route name.
-    """
+    """Remove feed placeholders while preserving meaningful parenthetical names."""
     text = " ".join((raw or "").split())
+    if text.lower() in _PLACEHOLDERS:
+        return ""
+
+    # Preserve real place names such as "(Ibabao)".
+    text = re.sub(
+        r"\s*\((?:name missing|nodata)\)$",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
     return "" if text.lower() in _PLACEHOLDERS else text
 
 
 def route_code_and_name(row: dict) -> tuple[str, str]:
-    """Pick the passenger-facing code and the descriptive name.
-
-    Some feeds (e.g. the Cebu DOTC archive) put the code in route_id and the
-    place list in route_short_name. A short_name with spaces or longer than a
-    typical code is treated as the name.
-    """
+    """Choose a route code and name without mistaking a cleaned name for a code."""
     rid = (row.get("route_id") or "").strip()
-    short = _real_text(row.get("route_short_name"))
+    raw_short = " ".join((row.get("route_short_name") or "").split())
+    short = _real_text(raw_short)
     long_ = _real_text(row.get("route_long_name"))
-    if short and len(short) <= 8 and " " not in short:
+
+    # Classify the original field so cleaning a name cannot turn it into a code.
+    if short and len(raw_short) <= 8 and " " not in raw_short:
         return short, long_
+
     name = long_ or short
     return (rid or short)[:20], name
 

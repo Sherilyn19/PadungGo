@@ -265,3 +265,72 @@ def test_plan_guide_estimate_contract(
     for segment in option["segments"]:
         if segment["mode"] != "ride":
             assert "guide_fare_estimate" not in segment
+
+@pytest.mark.parametrize(
+    "utc_hour,expected_date",
+    (
+        (15, "2026-10-17"),
+        (17, "2026-10-18"),
+    ),
+)
+def test_plan_data_updated_on_uses_manila_date(
+    client, net, utc_hour, expected_date
+):
+    from datetime import datetime, timezone
+
+    from transit.models import NetworkDataVersion
+
+    row, _ = NetworkDataVersion.objects.get_or_create(
+        pk=NetworkDataVersion.SINGLETON_ID
+    )
+    timestamp = datetime(2026, 10, 17, utc_hour, tzinfo=timezone.utc)
+    NetworkDataVersion.objects.filter(pk=row.pk).update(
+        updated_at=timestamp
+    )
+    row.refresh_from_db()
+    version_before = row.version
+
+    response = _post_plan(client, {
+        "origin": {"latitude": 10.300, "longitude": 123.900},
+        "destination": {"latitude": 10.300, "longitude": 123.927},
+    })
+
+    assert response.status_code == 200
+    assert response.json()["data_updated_on"] == expected_date
+    row.refresh_from_db()
+    assert row.updated_at == timestamp
+    assert row.version == version_before
+
+
+def test_plan_data_updated_on_missing_row_preserves_other_fields(client, net):
+    from datetime import datetime, timezone
+
+    from transit.models import NetworkDataVersion
+
+    body = {
+        "origin": {"latitude": 10.300, "longitude": 123.900},
+        "destination": {"latitude": 10.300, "longitude": 123.927},
+    }
+    row, _ = NetworkDataVersion.objects.get_or_create(
+        pk=NetworkDataVersion.SINGLETON_ID
+    )
+    NetworkDataVersion.objects.filter(pk=row.pk).update(
+        updated_at=datetime(2026, 10, 17, 17, tzinfo=timezone.utc)
+    )
+
+    present_response = _post_plan(client, body)
+    assert present_response.status_code == 200
+    present = present_response.json()
+    assert present.pop("data_updated_on") == "2026-10-18"
+    assert present["journey_options"]
+
+    # These are isolated test records, not production data.
+    NetworkDataVersion.objects.all().delete()
+
+    missing_response = _post_plan(client, body)
+    assert missing_response.status_code == 200
+    missing = missing_response.json()
+    assert "data_updated_on" in missing
+    assert missing.pop("data_updated_on") is None
+    assert missing == present
+    assert not NetworkDataVersion.objects.exists()
