@@ -1,6 +1,6 @@
 import { ArrowRight, MousePointerClick, PanelLeftOpen, PanelRightOpen, X } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
-import { ApiError, planJourney, type LatLng, type Place, type PlanResponse, type SortBy } from './api'
+import { ApiError, planJourney, type JourneyOption, type LatLng, type Place, type PlanResponse, type SortBy } from './api'
 import BottomSheet, { type SheetSnap } from './components/layout/BottomSheet'
 import PanelHeader from './components/layout/PanelHeader'
 import ResizablePanel from './components/layout/ResizablePanel'
@@ -8,6 +8,8 @@ import MapView from './components/map/MapView'
 import SearchForm, { type PickTarget } from './components/search/SearchForm'
 import TripDetails, { TripDetailsHeader } from './components/trips/TripDetails'
 import TripResults from './components/trips/TripResults'
+import { tripFareDisplay } from './fareEstimates'
+import { tripFareFor, useFareChoices, vehicleChoicesFor } from './hooks/useFareChoices'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import { useResizablePanel } from './hooks/useResizablePanel'
 import { rides, tripName } from './tripTimeline'
@@ -52,6 +54,8 @@ export default function App() {
   const [slow, setSlow] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const latestRequest = useRef(0)
+  // Passenger and jeepney choices only change displayed fares, never route data.
+  const { choices: fareChoices, setPassenger, setVehicle, resetVehicles } = useFareChoices()
 
   const run = useCallback(async (next: SearchState, sort: SortBy, transfers: 0 | 1) => {
     // Only the newest request may update the screen.
@@ -62,6 +66,7 @@ export default function App() {
     setPlan(null)
     setSelectedId(null)
     setDetailsOpen(false)
+    resetVehicles()
     setSearch(next)
     setSheetSnap('half')
     const slowTimer = window.setTimeout(() => setSlow(true), 5000)
@@ -77,7 +82,7 @@ export default function App() {
       window.clearTimeout(slowTimer)
       if (requestId === latestRequest.current) setLoading(false)
     }
-  }, [])
+  }, [resetVehicles])
 
   const rerun = (sort: SortBy, transfers: 0 | 1) => {
     if (search && (plan || error)) void run(search, sort, transfers)
@@ -132,6 +137,21 @@ export default function App() {
     destinationName: search?.to.name ?? destination?.name ?? 'Destination',
   }
 
+  // Cards and details read the same choices, so their totals always agree.
+  const fareFor = useCallback((option: JourneyOption) => tripFareDisplay(tripFareFor(fareChoices, option)), [fareChoices])
+
+  const tripDetails = selected && (
+    <TripDetails
+      key={selected.id}
+      option={selected}
+      endpoints={endpoints}
+      passenger={fareChoices.passenger}
+      vehicles={vehicleChoicesFor(fareChoices, selected)}
+      onPassengerChange={setPassenger}
+      onVehicleChange={(rideIndex, vehicle) => setVehicle(selected, rideIndex, vehicle)}
+    />
+  )
+
   const searchAndResults = (
     <div className="space-y-3 p-3">
       <SearchForm
@@ -165,6 +185,7 @@ export default function App() {
         onSwitchDirection={search ? swap : null}
         selectedId={selectedId}
         onSelect={openDetails}
+        fareFor={fareFor}
         maxTransfers={maxTransfers}
         onAllowTransfer={() => {
           setMaxTransfers(1)
@@ -185,7 +206,7 @@ export default function App() {
     >
       <TripDetailsHeader closeMode={isWide ? 'hide' : 'back'} onClose={closeDetails} />
       <div className="bg-grid min-h-0 flex-1 overflow-y-auto">
-        <TripDetails key={selected.id} option={selected} endpoints={endpoints} />
+        {tripDetails}
       </div>
     </ResizablePanel>
   )
@@ -290,7 +311,7 @@ export default function App() {
             header={selected && detailsOpen ? <TripDetailsHeader closeMode="back" onClose={closeDetails} /> : <PanelHeader />}
             contentKey={selected && detailsOpen ? `trip-${selected.id}` : 'list'}
           >
-            {selected && detailsOpen && <TripDetails key={selected.id} option={selected} endpoints={endpoints} />}
+            {detailsOpen && tripDetails}
             {/* Kept mounted so "All trips" returns to the same list and scroll position. */}
             <div hidden={Boolean(selected && detailsOpen)}>{searchAndResults}</div>
           </BottomSheet>

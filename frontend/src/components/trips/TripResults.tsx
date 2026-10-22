@@ -1,6 +1,7 @@
 import { CircleAlert, MapPin, RotateCcw, Route, Search, Undo2 } from 'lucide-react'
 import { useState } from 'react'
-import type { PlanResponse } from '../../api'
+import type { JourneyOption, PlanResponse } from '../../api'
+import type { FareDisplay } from '../../fareDisplay'
 import { explainRanking, explainReason } from '../../format'
 import TripCard from './TripCard'
 
@@ -18,6 +19,7 @@ interface Props {
   onSwitchDirection: (() => void) | null
   selectedId: string | null
   onSelect: (id: string) => void
+  fareFor: (option: JourneyOption) => FareDisplay
   maxTransfers: 0 | 1
   onAllowTransfer: () => void
 }
@@ -116,7 +118,7 @@ function DirectionTabs({ isReturn, onSwitch, count }: { isReturn: boolean; onSwi
   )
 }
 
-function TripList({ plan, selectedId, onSelect }: Pick<Props, 'selectedId' | 'onSelect'> & { plan: PlanResponse }) {
+function TripList({ plan, selectedId, onSelect, fareFor }: Pick<Props, 'selectedId' | 'onSelect' | 'fareFor'> & { plan: PlanResponse }) {
   const [visible, setVisible] = useState(PAGE_SIZE)
   const options = plan.journey_options
   const remaining = options.length - Math.min(visible, options.length)
@@ -126,7 +128,7 @@ function TripList({ plan, selectedId, onSelect }: Pick<Props, 'selectedId' | 'on
       {ranking && <p className="px-1 text-xs text-ink-muted">{ranking}</p>}
       <ol className="space-y-2" aria-label="Trips">
         {options.slice(0, visible).map((option, index) => (
-          <TripCard key={option.id} option={option} index={index} selected={option.id === selectedId} onSelect={onSelect} />
+          <TripCard key={option.id} option={option} index={index} selected={option.id === selectedId} fare={fareFor(option)} onSelect={onSelect} />
         ))}
       </ol>
       {remaining > 0 && (
@@ -175,7 +177,7 @@ export default function TripResults(props: Props) {
           (plan.journey_options.length === 0 ? (
             <Empty plan={plan} maxTransfers={props.maxTransfers} onAllowTransfer={props.onAllowTransfer} onSwitchDirection={props.onSwitchDirection} />
           ) : (
-            <TripList plan={plan} selectedId={props.selectedId} onSelect={props.onSelect} />
+            <TripList plan={plan} selectedId={props.selectedId} onSelect={props.onSelect} fareFor={props.fareFor} />
           ))}
       </section>
     </>

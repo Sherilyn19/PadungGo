@@ -1,11 +1,14 @@
-import { ArrowLeft, ArrowRight, Banknote, Clock, Footprints, PanelLeftClose, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Clock, Footprints, PanelLeftClose, TriangleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { JourneyOption } from '../../api'
-import { totalFareDisplay } from '../../fareDisplay'
+import { tripFare, type PassengerType, type VehicleChoice } from '../../fareEstimates'
 import { formatDistance, formatDuration } from '../../format'
-import { buildTimeline, needsLocalCheck, straightLineWalkingMeters, transferLabel, tripName, type TripEndpoints } from '../../tripTimeline'
+import { buildTimeline, needsLocalCheck, rideColor, rides, straightLineWalkingMeters, transferLabel, tripName, type TripEndpoints } from '../../tripTimeline'
+import FareBreakdown from '../fares/FareBreakdown'
+import PassengerSelector from '../fares/PassengerSelector'
+import RideFareFooter from '../fares/RideFareFooter'
+import TripFareSummary from '../fares/TripFareSummary'
 import JourneyStrip from './JourneyStrip'
-import TripFare from './TripFare'
 import TripTimeline from './TripTimeline'
 
 interface HeaderProps {
@@ -55,40 +58,63 @@ export function TripDetailsHeader({ onClose, closeMode }: HeaderProps) {
   )
 }
 
-// Summary and timeline for one trip. Callers key it by trip ID so the entry
-// animation replays and no stale steps remain when another trip is picked.
-export default function TripDetails({ option, endpoints }: { option: JourneyOption; endpoints: TripEndpoints }) {
+interface Props {
+  option: JourneyOption
+  endpoints: TripEndpoints
+  passenger: PassengerType
+  vehicles: VehicleChoice[]
+  onPassengerChange: (passenger: PassengerType) => void
+  onVehicleChange: (rideIndex: number, vehicle: VehicleChoice) => void
+}
+
+// Summary, fare choices and timeline for one trip. Callers key it by trip ID
+// so the entry animation replays and no stale steps remain when another trip
+// is picked. Fare choices live in the parent, so changing them updates the
+// amounts in place without reloading or resetting the panel.
+export default function TripDetails({ option, endpoints, passenger, vehicles, onPassengerChange, onVehicleChange }: Props) {
   const name = tripName(option)
   const riding = option.time.riding_seconds
   const walking = straightLineWalkingMeters(option)
+  const legs = rides(option)
+  const fare = tripFare(option, vehicles, passenger)
 
   return (
       <div>
-        <section className="fade-up space-y-3 border-b border-line bg-white p-3">
+        <section className="fade-up space-y-3 border-b border-cream-line bg-white p-3">
           <p className="flex flex-wrap items-center gap-x-1.5 text-lg leading-snug font-bold text-ink">
             <span className="break-words">{name.from}</span>
             <ArrowRight size={17} className="shrink-0 text-brand-500" aria-label="to" />
             <span className="break-words">{name.to}</span>
           </p>
           <JourneyStrip option={option} />
-          <div className="grid grid-cols-[1fr_1fr_1.25fr] gap-1.5">
+          <TripFareSummary fare={fare} transfers={transferLabel(option.transfers)} direct={option.transfers === 0} />
+          <div className="grid grid-cols-2 gap-1.5">
             <Fact icon={<Clock size={12} aria-hidden="true" />} label="Ride">
               {riding !== null ? formatDuration(riding) : '—'}
             </Fact>
             <Fact icon={<Footprints size={12} aria-hidden="true" />} label="Walk">
               {walking !== null ? `${formatDistance(walking)}+` : '—'}
             </Fact>
-            <Fact icon={<Banknote size={12} aria-hidden="true" />} label="Fare">
-              <TripFare fare={totalFareDisplay(option.fare)} short />
-            </Fact>
           </div>
-          <span className={`badge ${option.transfers === 0 ? 'badge-blue' : ''}`}>{transferLabel(option.transfers)}</span>
+          <PassengerSelector value={passenger} onChange={onPassengerChange} />
         </section>
 
-        <section className="p-3 pl-4" aria-label="Directions">
-          <TripTimeline steps={buildTimeline(option, endpoints)} />
+        <section className="space-y-4 p-3 pl-4" aria-label="Directions">
+          <TripTimeline
+            steps={buildTimeline(option, endpoints)}
+            rideFooter={(rideIndex) => (
+              <RideFareFooter
+                routeCode={legs[rideIndex].route_code}
+                color={rideColor(rideIndex)}
+                fare={fare.rides[rideIndex]}
+                vehicle={vehicles[rideIndex] ?? 'unsure'}
+                onVehicleChange={(vehicle) => onVehicleChange(rideIndex, vehicle)}
+              />
+            )}
+          />
+          <FareBreakdown rides={legs} fare={fare} />
           {needsLocalCheck(option) && (
-            <p className="mt-4 flex items-start gap-2 rounded-[4px] border border-caution/25 bg-caution-50 px-3 py-2 text-xs text-caution">
+            <p className="flex items-start gap-2 rounded-[4px] border border-caution/25 bg-caution-50 px-3 py-2 text-xs text-caution">
               <TriangleAlert size={15} className="mt-px shrink-0" aria-hidden="true" />
               Routes can change. Check the signboard or ask the driver before you ride.
             </p>
