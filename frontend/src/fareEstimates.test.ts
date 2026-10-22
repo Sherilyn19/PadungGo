@@ -7,7 +7,6 @@ import {
   rideFareDisplay,
   tripFare,
   tripFareDisplay,
-  type PassengerType,
 } from './fareEstimates'
 
 // Literal amounts from docs/FARE_GUIDE_2026-09-28.md (new-fare columns), as
@@ -66,9 +65,9 @@ function trip(...legs: RideSegment[]): JourneyOption {
 }
 
 describe('passenger fare column', () => {
-  it('uses the guide discounted column for students, seniors and PWD only', () => {
+  it('maps the grouped Student · Senior · PWD choice to the guide discounted column', () => {
     expect(fareColumn('regular')).toBe('regular')
-    for (const p of ['student', 'senior', 'pwd'] as PassengerType[]) expect(fareColumn(p)).toBe('discounted')
+    expect(fareColumn('discounted')).toBe('discounted')
   })
 })
 
@@ -87,13 +86,11 @@ describe('rideFare from guide estimates', () => {
   })
 
   it('uses the printed discounted amounts, not a percentage of the regular fare', () => {
-    for (const p of ['student', 'senior', 'pwd'] as PassengerType[]) {
-      expect(rideFare(six, 'traditional', p).low).toBe(1450)
-      expect(rideFare(six, 'modern', p).low).toBe(1750)
-      expect(rideFareDisplay(rideFare(six, 'unsure', p)).text).toBe('₱14.50–₱17.50 Estimated')
-    }
+    expect(rideFare(six, 'traditional', 'discounted').low).toBe(1450)
+    expect(rideFare(six, 'modern', 'discounted').low).toBe(1750)
+    expect(rideFareDisplay(rideFare(six, 'unsure', 'discounted')).text).toBe('₱14.50–₱17.50 Estimated')
     // 80% of ₱21.75 would be ₱17.40; the guide prints ₱17.50.
-    expect(rideFare(six, 'modern', 'student').low).not.toBe(1740)
+    expect(rideFare(six, 'modern', 'discounted').low).not.toBe(1740)
   })
 
   it('always labels guide amounts Estimated and allows choosing the jeepney type', () => {
@@ -103,8 +100,8 @@ describe('rideFare from guide estimates', () => {
 
   it('formats every amount with exactly two decimals', () => {
     const ten = ride('X', estimate(10))
-    expect(rideFareDisplay(rideFare(ten, 'traditional', 'student')).amount).toBe('₱20.75')
-    expect(rideFareDisplay(rideFare(ten, 'modern', 'student')).amount).toBe('₱25.00')
+    expect(rideFareDisplay(rideFare(ten, 'traditional', 'discounted')).amount).toBe('₱20.75')
+    expect(rideFareDisplay(rideFare(ten, 'modern', 'discounted')).amount).toBe('₱25.00')
   })
 })
 
@@ -128,7 +125,7 @@ describe('rides without a defensible fare', () => {
     expect(rideFare(ride('X', bad), 'modern', 'regular').basis).toBe('none')
     const negative = estimate(6)
     negative.amounts_centavos!.traditional.discounted = -1
-    expect(rideFare(ride('X', negative), 'traditional', 'student').basis).toBe('none')
+    expect(rideFare(ride('X', negative), 'traditional', 'discounted').basis).toBe('none')
   })
 })
 
@@ -142,7 +139,7 @@ describe('verified fares', () => {
   })
 
   it('are never reused for another passenger category', () => {
-    expect(rideFare(verified, 'traditional', 'student').basis).toBe('none')
+    expect(rideFare(verified, 'traditional', 'discounted').basis).toBe('none')
   })
 
   it('stay Estimated when the backend classed them approximate', () => {
@@ -179,7 +176,7 @@ describe('tripFare totals', () => {
   })
 
   it('applies one passenger type to every ride', () => {
-    const fare = tripFare(trip(r1, r2), ['modern', 'modern'], 'pwd')
+    const fare = tripFare(trip(r1, r2), ['modern', 'modern'], 'discounted')
     expect(fare.total).toEqual({ low: 1750 + 1350, high: 1750 + 1350 })
   })
 

@@ -132,6 +132,9 @@ export interface PlanResponse {
   request_coverage_status: string
   reason: string | null
   journey_options: JourneyOption[]
+  // Manila calendar date ("YYYY-MM-DD") of the last route-data change.
+  // Missing on older backends; null when the server has no record.
+  data_updated_on?: string | null
   ranking: { requested: string; applied: string; warning: string | null }
   warnings: string[]
 }

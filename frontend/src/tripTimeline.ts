@@ -61,6 +61,17 @@ export function stopName(name: string, fallback = 'the stop shown on the map'): 
   return isUnnamedStop(name) ? fallback : name
 }
 
+// The Cebu DOTC feed uses "Name missing" as a placeholder route name, either
+// alone ("Name missing") or after a place ("LABANGON (Name missing)"). Show
+// only the real part; the route code always identifies the jeepney.
+const NAME_PLACEHOLDER = /\(?\s*(name missing|no ?data)\s*\)?/gi
+
+export function routeDisplayName(name: string | null | undefined, code: string): string | undefined {
+  const cleaned = (name ?? '').replace(NAME_PLACEHOLDER, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned || cleaned.toLowerCase() === code.trim().toLowerCase()) return undefined
+  return titleCase(cleaned)
+}
+
 export function tripName(option: JourneyOption): { from: string; to: string } {
   const legs = rides(option)
   if (legs.length === 0) return { from: 'Start', to: 'Destination' }
@@ -123,7 +134,7 @@ function rideSteps(segment: RideSegment, rideIndex: number): TimelineStep[] {
       detail: segment.signboard
         ? `Look for the “${segment.signboard}” signboard`
         : `Look for ${segment.route_code} on the signboard`,
-      routeName: segment.route_name ? titleCase(segment.route_name) : undefined,
+      routeName: routeDisplayName(segment.route_name, segment.route_code),
     },
     // The ride block header already names the jeepney, so this row says how long.
     { ...shared, kind: 'ride', title: rideStats(segment) ? `Stay on for ${rideStats(segment)}` : `Stay on ${segment.route_code}` },
@@ -131,8 +142,8 @@ function rideSteps(segment: RideSegment, rideIndex: number): TimelineStep[] {
       ...shared,
       kind: 'alight',
       title: `Get off at ${stopName(segment.alight_stop_name)}`,
-      // "Lugar lang" is how Cebuano commuters ask the driver to stop.
-      detail: 'Say “Lugar lang” to stop',
+      // Bisaya: "Almost there! Get ready to get off."
+      detail: 'Hapit na! Andam na sa pagnaog.',
     },
   ]
 }

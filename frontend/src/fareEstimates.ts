@@ -8,13 +8,13 @@ import { formatFareRange } from './format'
 import { rides } from './tripTimeline'
 
 export type VehicleChoice = GuideVehicleType | 'unsure'
-export type PassengerType = 'regular' | 'student' | 'senior' | 'pwd'
+// Student, senior and PWD share one choice: both guides print a single
+// "Student / Elderly / PWD" column with identical amounts.
+export type PassengerType = GuideFareColumn
 
 export const PASSENGER_TYPES: { value: PassengerType; label: string }[] = [
   { value: 'regular', label: 'Regular' },
-  { value: 'student', label: 'Student' },
-  { value: 'senior', label: 'Senior' },
-  { value: 'pwd', label: 'PWD' },
+  { value: 'discounted', label: 'Student · Senior · PWD' },
 ]
 
 export const VEHICLE_CHOICES: { value: VehicleChoice; label: string }[] = [
@@ -25,10 +25,9 @@ export const VEHICLE_CHOICES: { value: VehicleChoice; label: string }[] = [
 
 export const DEFAULT_PASSENGER: PassengerType = 'regular'
 
-// The guides print one "Student / Elderly / PWD" column, so all three use the
-// guide's own discounted amounts (never a percentage of the regular fare).
+// Uses the guide's own discounted amounts, never a percentage of the regular fare.
 export function fareColumn(passenger: PassengerType): GuideFareColumn {
-  return passenger === 'regular' ? 'regular' : 'discounted'
+  return passenger
 }
 
 export interface RideFare {
@@ -63,8 +62,10 @@ function hasVerifiedQuote(segment: RideSegment): boolean {
 function verifiedFare(segment: RideSegment, passenger: PassengerType): RideFare {
   const { fare } = segment
   // A verified quote is for one passenger category; never reuse it for another.
+  // Verified rules are set per category (student, senior or PWD separately),
+  // so one of them cannot stand for the grouped discount choice.
   const quotedFor = fare.passenger_category ?? DEFAULT_PASSENGER
-  if (quotedFor !== passenger || !isCentavos(fare.amount_centavos)) return NO_FARE
+  if (passenger !== 'regular' || quotedFor !== 'regular' || !isCentavos(fare.amount_centavos)) return NO_FARE
   return {
     low: fare.amount_centavos,
     high: fare.amount_centavos,

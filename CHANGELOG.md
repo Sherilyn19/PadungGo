@@ -4,6 +4,24 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+### Friendlier wording, Bisaya messages and new headers — October 22, 2026
+
+- Get-off step now says "Hapit na! Andam na sa pagnaog." The yellow route
+  notice is replaced by "Padayon lang! Basaha ang karatula o pangutan-a ang
+  drayber sa dili pa ka mosakay." plus the route-data update date when the
+  server provides `data_updated_on`.
+- Distances spell out "meters" (e.g. "224 meters", "547+ meters"); long
+  rides read "1 hr 15 min". Map legend says "Walk".
+- Route names hide the feed placeholder "Name missing" (e.g. "LABANGON
+  (Name missing)" shows as "Labangon"; a placeholder-only name is hidden and
+  the route code still shows). Stored data is unchanged.
+- Passenger choice is Regular | Student · Senior · PWD, since both fare
+  guides print one shared discounted column.
+- Favicon replaced with the PadungGo header logo (SVG, 32px PNG, Apple
+  touch icon).
+- Panel headers restyled after the owner's blue linocut reference: navy to
+  cobalt, printed speckles, a hand-cut white frame and a small star.
+
 ### Fare estimates (backend) — October 22, 2026
 
 - Added per-ride PUJ guide estimates with integer-centavo arithmetic,

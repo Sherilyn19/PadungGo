@@ -42,15 +42,15 @@ describe('fare choices update the fare immediately', () => {
   it('recalculates every ride when the passenger type changes', () => {
     let state = fareChoicesReducer(INITIAL_FARE_CHOICES, { type: 'vehicle', option, rideIndex: 0, vehicle: 'traditional' })
     state = fareChoicesReducer(state, { type: 'vehicle', option, rideIndex: 1, vehicle: 'traditional' })
-    state = fareChoicesReducer(state, { type: 'passenger', passenger: 'student' })
+    state = fareChoicesReducer(state, { type: 'passenger', passenger: 'discounted' })
     expect(tripFareDisplay(tripFareFor(state, option)).text).toBe('₱29.00 Estimated')
   })
 
   it('keeps the passenger type but clears jeepney choices for a new search', () => {
-    let state = fareChoicesReducer(INITIAL_FARE_CHOICES, { type: 'passenger', passenger: 'senior' })
+    let state = fareChoicesReducer(INITIAL_FARE_CHOICES, { type: 'passenger', passenger: 'discounted' })
     state = fareChoicesReducer(state, { type: 'vehicle', option, rideIndex: 0, vehicle: 'modern' })
     state = fareChoicesReducer(state, { type: 'reset-vehicles' })
-    expect(state).toEqual({ passenger: 'senior', vehicles: {} })
+    expect(state).toEqual({ passenger: 'discounted', vehicles: {} })
   })
 
   it('ignores a ride index that does not exist', () => {
