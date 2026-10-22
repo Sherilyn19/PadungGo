@@ -1,8 +1,8 @@
-import { ArrowLeft, ArrowRight, Clock, Footprints, PanelLeftClose, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Clock, Footprints, PanelLeftClose, Signpost } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { JourneyOption } from '../../api'
 import { tripFare, type PassengerType, type VehicleChoice } from '../../fareEstimates'
-import { formatDistance, formatDuration } from '../../format'
+import { formatCalendarDate, formatDuration, formatMinimumDistance } from '../../format'
 import { buildTimeline, needsLocalCheck, rideColor, rides, straightLineWalkingMeters, transferLabel, tripName, type TripEndpoints } from '../../tripTimeline'
 import FareBreakdown from '../fares/FareBreakdown'
 import PassengerSelector from '../fares/PassengerSelector'
@@ -31,7 +31,7 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
 
 export function TripDetailsHeader({ onClose, closeMode }: HeaderProps) {
   return (
-      <header className="titlebar flex h-14 shrink-0 items-center gap-2 px-3">
+      <header className="titlebar titlebar-light flex h-14 shrink-0 items-center gap-2 px-3">
         {closeMode === 'back' && (
           <button
             type="button"
@@ -61,6 +61,8 @@ export function TripDetailsHeader({ onClose, closeMode }: HeaderProps) {
 interface Props {
   option: JourneyOption
   endpoints: TripEndpoints
+  // Date of the last route-data change, from the server ("YYYY-MM-DD").
+  dataUpdatedOn?: string | null
   passenger: PassengerType
   vehicles: VehicleChoice[]
   onPassengerChange: (passenger: PassengerType) => void
@@ -71,12 +73,13 @@ interface Props {
 // so the entry animation replays and no stale steps remain when another trip
 // is picked. Fare choices live in the parent, so changing them updates the
 // amounts in place without reloading or resetting the panel.
-export default function TripDetails({ option, endpoints, passenger, vehicles, onPassengerChange, onVehicleChange }: Props) {
+export default function TripDetails({ option, endpoints, dataUpdatedOn, passenger, vehicles, onPassengerChange, onVehicleChange }: Props) {
   const name = tripName(option)
   const riding = option.time.riding_seconds
   const walking = straightLineWalkingMeters(option)
   const legs = rides(option)
   const fare = tripFare(option, vehicles, passenger)
+  const updated = formatCalendarDate(dataUpdatedOn)
 
   return (
       <div>
@@ -93,7 +96,7 @@ export default function TripDetails({ option, endpoints, passenger, vehicles, on
               {riding !== null ? formatDuration(riding) : '—'}
             </Fact>
             <Fact icon={<Footprints size={12} aria-hidden="true" />} label="Walk">
-              {walking !== null ? `${formatDistance(walking)}+` : '—'}
+              {walking !== null ? formatMinimumDistance(walking) : '—'}
             </Fact>
           </div>
           <PassengerSelector value={passenger} onChange={onPassengerChange} />
@@ -114,10 +117,14 @@ export default function TripDetails({ option, endpoints, passenger, vehicles, on
           />
           <FareBreakdown rides={legs} fare={fare} />
           {needsLocalCheck(option) && (
-            <p className="flex items-start gap-2 rounded-[4px] border border-caution/25 bg-caution-50 px-3 py-2 text-xs text-caution">
-              <TriangleAlert size={15} className="mt-px shrink-0" aria-hidden="true" />
-              Routes can change. Check the signboard or ask the driver before you ride.
-            </p>
+            <div className="flex items-start gap-2 rounded-[6px] border border-moss-200 bg-moss-50 px-3 py-2 text-moss-800">
+              <Signpost size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                {/* Bisaya: "Keep going! Read the signboard or ask the driver before you ride." */}
+                <p className="text-sm font-semibold">Padayon lang! Basaha ang karatula o pangutan-a ang drayber sa dili pa ka mosakay.</p>
+                {updated && <p className="mt-0.5 text-xs text-ink-muted">Route info updated {updated}</p>}
+              </div>
+            </div>
           )}
         </section>
       </div>

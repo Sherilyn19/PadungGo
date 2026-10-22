@@ -280,7 +280,7 @@ export default function MapView({ origin, destination, option, onMapClick, inset
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-5 border-t-2 border-dotted border-ink-soft" aria-hidden="true" />
-            Walk (approx.)
+            Walk
           </span>
         </div>
       )}

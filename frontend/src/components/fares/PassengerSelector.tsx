@@ -5,13 +5,19 @@ import SegmentedControl from '../ui/SegmentedControl'
 
 const ICONS: Record<PassengerType, ReactNode> = {
   regular: <User size={14} aria-hidden="true" />,
-  student: <GraduationCap size={14} aria-hidden="true" />,
-  senior: <HandHeart size={14} aria-hidden="true" />,
-  pwd: <Accessibility size={14} aria-hidden="true" />,
+  // One small icon per group, so all three stay recognisable at a glance.
+  discounted: (
+    <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+      <GraduationCap size={14} />
+      <HandHeart size={14} />
+      <Accessibility size={14} />
+    </span>
+  ),
 }
 
-// One passenger type for the whole trip. Icons appear once the panel is wide
-// enough, so the four labels never get squeezed on narrow screens.
+// One passenger type for the whole trip. Student, senior and PWD pay the same
+// discounted fare in both guides, so they share one choice. Icons appear once
+// the panel is wide enough, so the labels never get squeezed on phones.
 export default function PassengerSelector({ value, onChange }: { value: PassengerType; onChange: (value: PassengerType) => void }) {
   return (
     <div className="@container">
@@ -23,7 +29,7 @@ export default function PassengerSelector({ value, onChange }: { value: Passenge
         value={value}
         onChange={onChange}
         accent="var(--color-moss-600)"
-        className="[&_svg]:hidden @[22rem]:[&_svg]:block"
+        className="grid-cols-[minmax(0,2fr)_minmax(0,3fr)] [&_svg]:hidden @[22rem]:[&_svg]:block"
         options={PASSENGER_TYPES.map((p) => ({ ...p, icon: ICONS[p.value] }))}
       />
     </div>

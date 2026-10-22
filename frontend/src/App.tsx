@@ -145,6 +145,7 @@ export default function App() {
       key={selected.id}
       option={selected}
       endpoints={endpoints}
+      dataUpdatedOn={plan?.data_updated_on}
       passenger={fareChoices.passenger}
       vehicles={vehicleChoicesFor(fareChoices, selected)}
       onPassengerChange={setPassenger}

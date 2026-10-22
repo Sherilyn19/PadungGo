@@ -22,13 +22,22 @@ export function formatDuration(seconds: number | null | undefined): string {
   if (minutes < 60) return `${minutes} min`
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  return m ? `${h} h ${m} min` : `${h} h`
+  return m ? `${h} hr ${m} min` : `${h} hr`
 }
 
 export function formatDistance(meters: number | null | undefined): string {
   if (meters === null || meters === undefined) return 'Unknown'
-  if (meters < 1000) return `${Math.round(meters)} m`
+  // Spelled out, so "224 m" is never mistaken for minutes.
+  const rounded = Math.round(meters)
+  if (rounded < 1000) return `${rounded} ${rounded === 1 ? 'meter' : 'meters'}`
   return `${(meters / 1000).toFixed(1)} km`
+}
+
+// A lower bound such as "547+ meters" or "1.2+ km" (walks are measured as
+// straight lines, so the real path is at least this long).
+export function formatMinimumDistance(meters: number): string {
+  const [amount, unit] = formatDistance(meters).split(' ')
+  return `${amount}+ ${unit}`
 }
 
 const REASONS: Record<string, string> = {
@@ -42,7 +51,7 @@ const REASONS: Record<string, string> = {
 
 export function explainReason(reason: string | null): string {
   if (!reason) return ''
-  return REASONS[reason] ?? 'No journey was found for this request.'
+  return REASONS[reason] ?? 'We couldn’t find a trip. Try a nearby main road.'
 }
 
 export function titleCase(text: string): string {
@@ -64,4 +73,17 @@ export function explainRanking(ranking: { requested: string; applied: string; wa
   const applied = SORT_NAMES[ranking.applied] ?? ranking.applied
   const requested = SORT_NAMES[ranking.requested] ?? ranking.requested
   return `Can’t sort by ${requested} yet, so trips are shown by ${applied}.`
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// "2026-10-18" -> "Oct 18, 2026". Parsed by hand so the browser's time zone
+// can never shift the date by a day. Anything else returns null.
+export function formatCalendarDate(value: string | null | undefined): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '')
+  if (!match) return null
+  const [, year, month, day] = match
+  const monthIndex = Number(month) - 1
+  if (monthIndex < 0 || monthIndex > 11 || Number(day) < 1 || Number(day) > 31) return null
+  return `${MONTHS[monthIndex]} ${Number(day)}, ${year}`
 }

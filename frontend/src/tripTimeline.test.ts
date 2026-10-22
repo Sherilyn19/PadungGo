@@ -4,6 +4,7 @@ import {
   buildTimeline,
   groupTimeline,
   RIDE_COLORS,
+  routeDisplayName,
   straightLineWalkingMeters,
   stopName,
   transferLabel,
@@ -115,7 +116,7 @@ describe('buildTimeline', () => {
       option([ride('01K', 'A', 'Colon'), transfer('Colon', 'Junquera', 'a', 'b', 120), ride('02B', 'Junquera', 'C')]),
       ends,
     )
-    expect(steps.find((s) => s.kind === 'transfer')!.detail).toBe('Walk about 120 m to Junquera')
+    expect(steps.find((s) => s.kind === 'transfer')!.detail).toBe('Walk about 120 meters to Junquera')
   })
 
   it('skips negligible walks instead of listing a 0 m step', () => {
@@ -154,5 +155,30 @@ describe('straightLineWalkingMeters', () => {
 
   it('is unknown when a transfer distance is unknown', () => {
     expect(straightLineWalkingMeters(option([transfer('A', 'B', 'a', 'b', null)]))).toBeNull()
+  })
+})
+
+describe('routeDisplayName', () => {
+  // Real names from the live data that carry the feed's placeholder.
+  it('keeps the real place and drops the placeholder', () => {
+    expect(routeDisplayName('LABANGON (Name Missing)', '12H')).toBe('Labangon')
+    expect(routeDisplayName('MANDAUE (Ibabao) (Name missing)', '21G')).toBe('Mandaue (Ibabao)')
+  })
+
+  it('shows no name when the whole name is a placeholder or just the code', () => {
+    expect(routeDisplayName('Name missing', '42D')).toBeUndefined()
+    expect(routeDisplayName('  ', '42D')).toBeUndefined()
+    expect(routeDisplayName('42d', '42D')).toBeUndefined()
+  })
+
+  it('leaves real names alone', () => {
+    expect(routeDisplayName('PLAZA HOUSING - LAHUG - CARBON via F. Ramos', '04I')).toBe('Plaza Housing - Lahug - Carbon Via F. Ramos')
+  })
+})
+
+describe('get-off message', () => {
+  it('cheers the commuter on in Bisaya', () => {
+    const alight = buildTimeline(option([ride('42D', 'A', 'B')]), { originName: 'S', destinationName: 'E' }).find((s) => s.kind === 'alight')!
+    expect(alight.detail).toBe('Hapit na! Andam na sa pagnaog.')
   })
 })
