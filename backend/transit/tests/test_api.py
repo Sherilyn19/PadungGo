@@ -194,3 +194,74 @@ def test_plan_ignores_documented_fare_rules(client, net):
         "Total fare unavailable: at least one ride has no supported fare calculation."
         in option["warnings"]
     )
+
+@pytest.mark.parametrize(
+    "destination,expected_km",
+    (
+        ({"latitude": 10.300, "longitude": 123.927}, [3]),
+        ({"latitude": 10.3005, "longitude": 123.936}, [2, 2]),
+    ),
+)
+def test_plan_guide_estimate_contract(
+    client, net, monkeypatch, destination, expected_km
+):
+    from datetime import date
+
+    from transit.api import views
+
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 10, 22)
+
+    # The endpoint uses today's date; pin it after the guide takes effect.
+    monkeypatch.setattr(views, "date", FixedDate)
+
+    response = _post_plan(client, {
+        "origin": {"latitude": 10.300, "longitude": 123.900},
+        "destination": destination,
+        "max_transfers": len(expected_km) - 1,
+    })
+
+    assert response.status_code == 200
+    options = [
+        option
+        for option in response.json()["journey_options"]
+        if option["transfers"] == len(expected_km) - 1
+    ]
+    assert options
+
+    option = options[0]
+    rides = [s for s in option["segments"] if s["mode"] == "ride"]
+    assert [ride["distance_m"] for ride in rides] == [
+        km * 1000 for km in expected_km
+    ]
+
+    for ride, km in zip(rides, expected_km):
+        assert ride["guide_fare_estimate"] == {
+            "status": "available",
+            "reason": None,
+            "guide_effective_date": "2026-09-28",
+            "chargeable_km": km,
+            "known_vehicle_type": None,
+            "amounts_centavos": {
+                "traditional": {"regular": 1400, "discounted": 1125},
+                "modern": {"regular": 1700, "discounted": 1350},
+            },
+        }
+        # The fixture's verified fare keeps its own amount and evidence.
+        assert ride["fare"]["amount_centavos"] == 1300
+        assert ride["fare"]["status"] == "exact"
+        assert ride["fare"]["passenger_category"] == "regular"
+        assert ride["fare"]["rule_id"] is not None
+        assert ride["fare"]["source_ids"]
+
+    assert option["fare"]["total_centavos"] == (
+        1300 if len(expected_km) == 1 else 2600
+    )
+    assert option["fare"]["status"] == "exact"
+    assert option["fare"]["total_is_complete"] is True
+
+    for segment in option["segments"]:
+        if segment["mode"] != "ride":
+            assert "guide_fare_estimate" not in segment

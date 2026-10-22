@@ -4,6 +4,13 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+### Fare estimates (backend) — October 22, 2026
+
+- Added per-ride PUJ guide estimates with integer-centavo arithmetic,
+  per-ride kilometre ceiling, regular/discounted columns, and a 50 km
+  limit. Vehicle classification remains unknown; verified fares and
+  ranking remain unchanged. Added calculator, planner and API tests.
+
 ### Fare estimates in trip details (frontend) — October 22, 2026
 
 - Passenger selector (Regular, Student, Senior, PWD) for the whole trip and a

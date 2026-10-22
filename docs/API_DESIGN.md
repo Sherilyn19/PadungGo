@@ -198,6 +198,95 @@ Unknown walking distance cannot win least_walking. Keep deterministic ID tie-bre
 }
 ```
 
+## Guide fare estimates
+
+Every ride segment returned by `POST /api/v1/journeys/plan` includes
+`guide_fare_estimate`. Walking segments do not include this field.
+
+Example for a 5,900-metre ride:
+
+```json
+{
+  "status": "available",
+  "reason": null,
+  "guide_effective_date": "2026-09-28",
+  "chargeable_km": 6,
+  "known_vehicle_type": null,
+  "amounts_centavos": {
+    "traditional": {"regular": 1800, "discounted": 1450},
+    "modern": {"regular": 2175, "discounted": 1750}
+  }
+}
+```
+
+The example is the value of `guide_fare_estimate`, not a complete segment.
+
+### Calculation and scope
+
+Rates and printed tables are recorded in
+[the fare-guide evidence document](FARE_GUIDE_2026-09-28.md).
+
+- All amounts are integer PHP centavos.
+- Each ride uses its own distance, rounded up to whole kilometres under
+  the owner's estimate policy. This fractional-distance policy is not
+  stated in the supplied guides.
+- The first four kilometres use the base amount. Additional whole
+  kilometres use the printed increment. Round the resulting amount once
+  to the nearest 25 centavos using integer arithmetic.
+- Traditional base/increment: regular 1400/200; discounted 1120/160.
+- Aircon modern/electric base/increment: regular 1700/240;
+  discounted 1360/192.
+- `discounted` is the printed Student / Elderly / PWD column, used for
+  student, senior and PWD selections. Never calculate it from the
+  rounded regular amount or apply another discount.
+- `modern` refers only to aircon modern and electric PUJ. It does not
+  establish coverage for non-aircon modern vehicles.
+- Existing documented route distances may support estimates. Estimate
+  availability does not verify a route, distance, vehicle or fare.
+- `known_vehicle_type` is always null in this implementation. Neither
+  route labels nor matching verified fare rules establish guide eligibility.
+- The endpoint uses the server's current date for guide eligibility.
+
+### Unavailable estimates
+
+An unavailable estimate retains all six keys. `status` is `unavailable`;
+`chargeable_km`, `known_vehicle_type` and `amounts_centavos` are null.
+`guide_effective_date` remains `2026-09-28`.
+
+Reasons are evaluated in this order:
+
+| Reason | Condition |
+|---|---|
+| `missing_distance` | Missing, non-integer, boolean, zero or negative distance |
+| `beyond_guide_range` | Chargeable distance exceeds 50 km |
+| `not_puj` | Vehicle class is `bus` |
+| `guide_not_in_effect` | Query date is before September 28, 2026 |
+
+Within the current vehicle-class enum, `jeepney`, `modern_puv` and `mixed`
+receive both guide options when distance and date are supported. Their
+labels never automatically select an option.
+
+### Consumer behavior and verified fares
+
+The existing segment `fare`, journey `fare`, and ranking behavior remain
+unchanged. Guide estimates do not populate verified totals or establish
+eligibility for cheapest-fare ranking.
+
+Consumers preserve an existing exact or approximate verified quote for
+its quoted passenger category. They must not reuse that quote for a
+different category or discount it again. This change does not add
+passenger-category request support or additional verified quotes.
+
+For guide-based rides, consumers select the appropriate vehicle and fare
+column. “Not sure” uses the lower and higher guide amounts. Journey ranges
+sum the per-ride lower bounds and upper bounds separately, using integer
+centavos. Show a complete total only when every ride has a supported amount.
+
+Display guide-based amounts as Estimated, with exactly two decimal
+places. For an unsupported ride, show a brief message such as
+“Ask the driver for this ride's fare.” The guide range represents these
+two supplied guide options, not every possible vehicle fare.
+
 ## Independent return query
 
 Send a second POST /api/v1/journeys/plan with origin=B and destination=A.

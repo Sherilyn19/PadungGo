@@ -5,6 +5,7 @@ from typing import Optional
 
 from .fare_quotes import quote_leg_fare
 from .fare_totals import summarise_fares
+from .guide_fares import guide_fare_estimate
 from .journey_types import Network, TransferData
 from .ranking import journey_key
 from .search_types import RideLeg, SearchContext, TransferCandidate
@@ -96,6 +97,11 @@ def _ride_segment(context: SearchContext, leg: RideLeg) -> dict:
         "estimate_basis": "sourced_observation" if riding_seconds is not None else None,
         "waiting_seconds": None,
         "fare": fare,
+        "guide_fare_estimate": guide_fare_estimate(
+            distance_m=distance_m,
+            vehicle_class=route.vehicle_class,
+            on=context.on,
+        ),
         "source_ids": source_ids,
     }
 
