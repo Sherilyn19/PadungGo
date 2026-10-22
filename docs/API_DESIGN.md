@@ -316,6 +316,38 @@ and cleaning a descriptive name does not turn it into a route code.
 Existing stored records are not rewritten. This change does not authorize
 deleting sources or re-importing production data.
 
+## Route availability
+
+Each ride segment includes `service_availability`, either `not_flagged`
+or `scarce`. Each journey includes `has_scarce_ride`, true when at least
+one ride is scarce. The ranking object includes `scarce_last: true`,
+including successful empty results.
+
+For older responses, clients default missing availability to
+`not_flagged`, missing `has_scarce_ride` to false, and missing
+`ranking.scarce_last` to false. Clients must not reorder results.
+
+Availability is set on exact Route records in Admin. Route codes are not
+unique. `not_flagged` means no scarcity report is recorded; it does not
+mean frequent or verified service. No waiting-time estimate is introduced.
+
+After existing deduplication and ranking, the backend stably groups
+journeys without scarce rides before journeys with scarce rides, then
+applies the requested result limit. Existing sorting, fallback warnings
+and tie-breaks remain intact within each group. If all options are scarce,
+they are returned normally. Labels retain their existing comparison
+semantics; grouping does not establish cheapest-fare eligibility.
+
+Inactive routes remain stored but are excluded from direct and transfer
+planning and route listings. Their route-detail endpoint returns 404.
+Availability changes do not alter fare calculations or path evidence.
+Scarcity-report provenance is documented separately from route-path
+sources; `evidence.references` remains unchanged.
+
+Existing rows default to `not_flagged` through migration 0005. Individual
+scarcity flags and exclusions require separate, exact-record Admin edits;
+the migration does not apply the owner's route decisions automatically.
+
 ## Independent return query
 
 Send a second POST /api/v1/journeys/plan with origin=B and destination=A.

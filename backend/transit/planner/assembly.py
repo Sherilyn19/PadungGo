@@ -74,6 +74,7 @@ def _ride_segment(context: SearchContext, leg: RideLeg) -> dict:
         "route_pattern_id": pattern.id,
         "direction": pattern.direction,
         "vehicle_class": route.vehicle_class,
+        "service_availability": route.service_availability,
         "operator": route.operator,
         "route_code": route.code,
         "route_name": route.name,
@@ -207,6 +208,10 @@ def _assemble_option(network: Network, segments: list[dict], transfers: int) -> 
     )
     return {
         "transfers": transfers,
+        "has_scarce_ride": any(
+            segment.get("service_availability") == "scarce"
+            for segment in ride_segments
+        ),
         "labels": [],
         "segments": segments,
         "fare": fare,

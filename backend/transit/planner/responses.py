@@ -25,7 +25,12 @@ def empty_result(req: PlanRequest, reason: str) -> PlanResult:
         request_coverage_status=LIMITED,
         reason=reason,
         journey_options=[],
-        ranking={"requested": req.sort_by, "applied": req.sort_by, "warning": None},
+        ranking={
+            "requested": req.sort_by,
+            "applied": req.sort_by,
+            "warning": None,
+            "scarce_last": True,
+        },
         warnings=[_EMPTY_WARNINGS[reason]],
     )
 
@@ -67,6 +72,9 @@ def journey_result(
     allow_documented: bool, response_prefix: str,
 ) -> PlanResult:
     candidates, ranking = rank_options(options, req.sort_by)
+    # Stable grouping preserves the existing ranking within each group.
+    candidates.sort(key=lambda option: option.get("has_scarce_ride", False))
+    ranking["scarce_last"] = True
     options = candidates[: req.limit]
     # Fare eligibility uses all candidates, even those outside the result limit.
     # Label winners and the other labels still compare the returned options.

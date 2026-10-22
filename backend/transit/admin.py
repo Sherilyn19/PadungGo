@@ -132,8 +132,11 @@ class RouteSegmentInline(admin.TabularInline):
 
 @admin.register(Route)
 class RouteAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "vehicle_class", "operator", "active")
-    list_filter = ("vehicle_class", "active")
+    list_display = (
+        "code", "name", "vehicle_class", "operator",
+        "active", "service_availability",
+    )
+    list_filter = ("vehicle_class", "active", "service_availability")
     search_fields = ("code", "name", "operator")
 
 
