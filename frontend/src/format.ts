@@ -1,8 +1,19 @@
 // Display helpers. Unknown values are shown as unknown, never as zero.
 
+// Formats whole centavos with integer maths, so no floating-point rounding
+// can change a displayed amount (e.g. 1825 -> "₱18.25").
 export function formatFare(centavos: number | null | undefined): string {
-  if (centavos === null || centavos === undefined) return 'Unknown'
-  return `₱${(centavos / 100).toFixed(2)}`
+  if (centavos === null || centavos === undefined || !Number.isSafeInteger(centavos) || centavos < 0) return 'Unknown'
+  const pesos = Math.floor(centavos / 100)
+  const cents = String(centavos % 100).padStart(2, '0')
+  return `₱${pesos}.${cents}`
+}
+
+// "₱18.00" when both ends match, otherwise "₱18.00–₱21.75".
+export function formatFareRange(lowCentavos: number, highCentavos: number): string {
+  return lowCentavos === highCentavos
+    ? formatFare(lowCentavos)
+    : `${formatFare(lowCentavos)}–${formatFare(highCentavos)}`
 }
 
 export function formatDuration(seconds: number | null | undefined): string {

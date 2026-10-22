@@ -1,7 +1,7 @@
 import { ArrowRight, ChevronRight, Clock } from 'lucide-react'
 import { memo, type CSSProperties } from 'react'
 import type { JourneyOption } from '../../api'
-import { totalFareDisplay } from '../../fareDisplay'
+import type { FareDisplay } from '../../fareDisplay'
 import { formatDuration } from '../../format'
 import { rides, transferLabel, tripName } from '../../tripTimeline'
 import { RidePlates } from './RidePlate'
@@ -11,11 +11,13 @@ interface Props {
   option: JourneyOption
   index: number
   selected: boolean
+  // Trip total for the commuter's current passenger and jeepney choices.
+  fare: FareDisplay
   onSelect: (id: string) => void
 }
 
 // Compact, clickable trip summary. Details open in the trip details panel.
-function TripCard({ option, index, selected, onSelect }: Props) {
+function TripCard({ option, index, selected, fare, onSelect }: Props) {
   const name = tripName(option)
   const riding = option.time.riding_seconds
   return (
@@ -47,7 +49,7 @@ function TripCard({ option, index, selected, onSelect }: Props) {
                 {formatDuration(riding)} ride
               </span>
             )}
-            <TripFare fare={totalFareDisplay(option.fare)} />
+            <TripFare fare={fare} />
           </span>
         </span>
         <ChevronRight

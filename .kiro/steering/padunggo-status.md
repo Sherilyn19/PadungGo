@@ -120,3 +120,10 @@ Update this file at the end of each work session, so the next session can contin
 - Verify that production runs 47cd42a or later.
 - Current-service eligibility rule (PR 2): waiting on the open decisions above.
 - The frontend bundle is 1.27 MB because of MapLibre. Code splitting is an optional P3 item.
+
+## Fare estimates (Oct 22, 2026)
+
+- Owner decisions: per-ride Traditional/Modern/Not sure (range); ceil each ride's km; Regular/Student/Senior/PWD (guide's discounted column); older route distances OK for "Estimated"; verified fares keep priority.
+- Contract: each ride segment gets `guide_fare_estimate` {status, reason, guide_effective_date, chargeable_km, known_vehicle_type, amounts_centavos{traditional,modern}{regular,discounted}}. Frontend type: `frontend/src/api.ts`.
+- Ownership: Kiro = `frontend/**` (PR #30, draft, branch `feat/fare-estimates`). Codex = `backend/**` + `docs/API_DESIGN.md` on `feat/fare-estimates-backend`. Merge backend first.
+- Known gaps: the Modern table is aircon modern/electric only; the LTFRB "not less than 20%" wording conflict is unresolved (we use printed cells); there is no evidence of per-route vehicle type.

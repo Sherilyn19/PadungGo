@@ -4,6 +4,23 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+### Fare estimates in trip details (frontend) — October 22, 2026
+
+- Passenger selector (Regular, Student, Senior, PWD) for the whole trip and a
+  per-ride jeepney type picker (Traditional, Modern, Not sure).
+- "Estimated total" summary and per-ride fare breakdown in the trip details
+  panel; trip cards show the same total. "Not sure" shows the
+  traditional-to-modern range; trip ranges add each ride's low and high.
+- Amounts come from the backend's `guide_fare_estimate` (LTFRB PUJ guides,
+  effective 2026-09-28). The frontend only picks and adds them. Verified
+  fares keep priority and are never reused for another passenger type. Rides
+  without a supported fare say "Ask the driver for this ride's fare." and no
+  total is shown.
+- Cream, moss and coral accents from the owner's second palette reference.
+  Ride colours are now blue, moss, coral, charcoal, teal and plum.
+- `formatFare` uses integer centavo maths and rejects fractional or negative
+  amounts.
+
 ### Commuter UI redesign — October 21, 2026
 
 - New blue design system based on the owner's reference: one blue accent,
