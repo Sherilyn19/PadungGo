@@ -1,7 +1,6 @@
 import {
   ArrowDownToDot,
   ArrowRightLeft,
-  Banknote,
   BusFront,
   CircleDot,
   Flag,
@@ -9,10 +8,9 @@ import {
   MoveDown,
   type LucideIcon,
 } from 'lucide-react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { groupTimeline, rideColor, rideSoftColor, type TimelineKind, type TimelineStep } from '../../tripTimeline'
 import RidePlate from './RidePlate'
-import TripFare from './TripFare'
 
 const KIND: Record<TimelineKind, { label: string; icon: LucideIcon }> = {
   start: { label: 'Start', icon: CircleDot },
@@ -71,19 +69,18 @@ function Row({ step, index, line }: { step: TimelineStep; index: number; line: '
         </p>
         <p className="text-sm leading-snug font-semibold break-words text-ink">{step.title}</p>
         {step.detail && <p className="mt-0.5 text-[13px] text-ink-muted">{step.detail}</p>}
-        {step.fare && (
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
-            <Banknote size={14} style={{ color }} aria-hidden="true" />
-            <span className="sr-only">Fare:</span>
-            <TripFare fare={step.fare} />
-          </p>
-        )}
       </div>
     </li>
   )
 }
 
-export default function TripTimeline({ steps }: { steps: TimelineStep[] }) {
+interface Props {
+  steps: TimelineStep[]
+  // Extra content at the bottom of each ride block (jeepney type and fare).
+  rideFooter?: (rideIndex: number) => ReactNode
+}
+
+export default function TripTimeline({ steps, rideFooter }: Props) {
   const blocks = groupTimeline(steps)
   let index = 0
   return (
@@ -116,6 +113,7 @@ export default function TripTimeline({ steps }: { steps: TimelineStep[] }) {
                   <Row key={s} step={step} index={index++} line={s < block.steps.length - 1 ? 'solid' : 'none'} />
                 ))}
               </ol>
+              {rideFooter && <div className="mt-3 ml-11">{rideFooter(block.rideIndex)}</div>}
             </div>
           </li>
         )

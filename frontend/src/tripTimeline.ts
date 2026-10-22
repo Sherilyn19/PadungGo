@@ -2,18 +2,19 @@
 // result card and an ordered timeline (start, walk, board, ride, get off,
 // transfer, arrive). Only facts from the API are used, in plain words.
 import type { JourneyOption, RideSegment, Segment, TransferSegment } from './api'
-import { fareDisplay, type FareDisplay } from './fareDisplay'
 import { formatDistance, formatDuration, titleCase } from './format'
 
-// Ride colours: PadungGo blue first, then teal, rose, periwinkle and amber
-// taken from the owner's palette reference. All pass white-text contrast.
-// Shared with the map so each ride's line matches its timeline.
+// Ride colours: PadungGo blue first, then moss green and muted coral from the
+// owner's cream/sage/coral reference, then charcoal, teal and plum. Every main
+// colour passes 4.5:1 contrast with white text. Shared with the map so each
+// ride's line matches its timeline.
 export const RIDE_PALETTE = [
   { main: '#0078d7', soft: '#e6f1fb' },
+  { main: '#4d7a35', soft: '#eef3e6' },
+  { main: '#b5524c', soft: '#f9ecea' },
+  { main: '#2f2f2f', soft: '#f1eee6' },
   { main: '#1a7778', soft: '#e2f2f1' },
-  { main: '#c2456a', soft: '#fbe9ee' },
-  { main: '#5059a8', soft: '#eceef8' },
-  { main: '#a86b00', soft: '#fbf1dc' },
+  { main: '#7a5a8c', soft: '#f2edf5' },
 ] as const
 
 export const RIDE_COLORS = RIDE_PALETTE.map((c) => c.main)
@@ -39,7 +40,6 @@ export interface TimelineStep {
   rideIndex?: number
   routeCode?: string
   routeName?: string
-  fare?: FareDisplay
 }
 
 export interface TripEndpoints {
@@ -124,7 +124,6 @@ function rideSteps(segment: RideSegment, rideIndex: number): TimelineStep[] {
         ? `Look for the “${segment.signboard}” signboard`
         : `Look for ${segment.route_code} on the signboard`,
       routeName: segment.route_name ? titleCase(segment.route_name) : undefined,
-      fare: fareDisplay(segment.fare),
     },
     // The ride block header already names the jeepney, so this row says how long.
     { ...shared, kind: 'ride', title: rideStats(segment) ? `Stay on for ${rideStats(segment)}` : `Stay on ${segment.route_code}` },

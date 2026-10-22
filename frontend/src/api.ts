@@ -55,6 +55,28 @@ export interface FareAmount {
   amount_centavos: number | null
   status: FareStatus
   reason: string | null
+  // Passenger category the verified quote was made for (backend default: regular).
+  passenger_category?: string
+  // Set only when an admin-verified fare rule produced the amount.
+  rule_id?: string | null
+}
+
+// Estimates from the LTFRB PUJ fare guides (effective 2026-09-28), computed
+// by the backend for every ride. Contract: docs/API_DESIGN.md, "Guide fare
+// estimates". The frontend only picks and adds these amounts; it never
+// calculates a fare itself.
+export type GuideVehicleType = 'traditional' | 'modern'
+export type GuideFareColumn = 'regular' | 'discounted'
+
+export interface GuideFareEstimate {
+  status: 'available' | 'unavailable'
+  // Machine-readable cause when unavailable, e.g. "beyond_guide_range".
+  reason: string | null
+  guide_effective_date: string
+  chargeable_km: number | null
+  // Only set when admin-verified evidence confirms the vehicle type.
+  known_vehicle_type: GuideVehicleType | null
+  amounts_centavos: Record<GuideVehicleType, Record<GuideFareColumn, number>> | null
 }
 
 export interface RideSegment extends BaseSegment {
@@ -71,6 +93,8 @@ export interface RideSegment extends BaseSegment {
   alight_stop_name: string
   geometry: LineGeometry | null
   fare: FareAmount
+  // Missing on backends deployed before guide estimates existed.
+  guide_fare_estimate?: GuideFareEstimate | null
 }
 
 export type Segment = WalkSegment | TransferSegment | RideSegment

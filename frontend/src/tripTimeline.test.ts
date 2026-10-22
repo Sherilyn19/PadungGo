@@ -147,25 +147,6 @@ describe('buildTimeline', () => {
   })
 })
 
-describe('ride fare presentation', () => {
-  it('asks commuters to check with the driver when no fare is supported', () => {
-    const board = buildTimeline(demo, ends).find((s) => s.kind === 'board')!
-    expect(board.fare?.text).toBe('Ask the driver')
-    expect(board.fare?.reason).toBe('No supported fare calculation.')
-  })
-
-  it('labels a backend approximate fare as Estimated and an exact one plainly', () => {
-    const approx = ride('T', 'A', 'B', 'verified')
-    approx.fare = { amount_centavos: 1950, status: 'approximate', reason: 'Based on ride distance.' }
-    const exact = ride('T', 'A', 'B', 'verified')
-    exact.fare = { amount_centavos: 1950, status: 'exact', reason: null }
-    const [a] = buildTimeline(option([approx]), ends).filter((s) => s.kind === 'board')
-    const [e] = buildTimeline(option([exact]), ends).filter((s) => s.kind === 'board')
-    expect(a.fare?.text).toBe('₱19.50 Estimated')
-    expect(e.fare?.text).toBe('₱19.50')
-  })
-})
-
 describe('straightLineWalkingMeters', () => {
   it('adds access, transfer and exit walks', () => {
     expect(straightLineWalkingMeters(demo)).toBe(681.5)

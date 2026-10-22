@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { explainRanking, explainReason, formatDistance, formatDuration, formatFare, titleCase } from './format'
+import { explainRanking, explainReason, formatDistance, formatDuration, formatFare, formatFareRange, titleCase } from './format'
 
 describe('format helpers', () => {
   it('never shows unknown values as zero', () => {
@@ -33,5 +33,24 @@ describe('format helpers', () => {
       'Can’t sort by fastest yet, so trips are shown by fewest transfers.',
     )
     expect(explainRanking({ requested: 'cheapest', applied: 'cheapest', warning: null })).toBeNull()
+  })
+})
+
+describe('money formatting with whole centavos', () => {
+  it('always shows exactly two decimals without floating-point drift', () => {
+    expect(formatFare(1825)).toBe('₱18.25')
+    expect(formatFare(1835)).toBe('₱18.35')
+    expect(formatFare(5)).toBe('₱0.05')
+    expect(formatFare(12750)).toBe('₱127.50')
+  })
+
+  it('refuses fractional or negative centavos', () => {
+    expect(formatFare(18.5)).toBe('Unknown')
+    expect(formatFare(-100)).toBe('Unknown')
+  })
+
+  it('shows one amount when the range has no spread', () => {
+    expect(formatFareRange(1800, 1800)).toBe('₱18.00')
+    expect(formatFareRange(1800, 2175)).toBe('₱18.00–₱21.75')
   })
 })
