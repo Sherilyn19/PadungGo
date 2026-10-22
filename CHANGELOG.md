@@ -4,6 +4,11 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Added per-ride PUJ guide estimates with integer-centavo arithmetic,
+  per-ride kilometre ceiling, regular/discounted columns, and a 50 km
+  limit. Vehicle classification remains unknown; verified fares and
+  ranking remain unchanged. Added calculator, planner and API tests.
+
 ### Commuter UI redesign — October 21, 2026
 
 - New blue design system based on the owner's reference: one blue accent,
