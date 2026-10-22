@@ -4,6 +4,10 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Refresh the network update timestamp during cache invalidation so
+  journey responses reflect Admin saves and completed GTFS imports.
+  Added a regression test for route saves and Manila date conversion.
+
 - Clean trailing placeholder suffixes from names on future GTFS imports,
   preserving route codes and meaningful parentheses. Add read-only
   `data_updated_on` to journey-plan responses using the stored network
