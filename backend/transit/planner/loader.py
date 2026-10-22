@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from django.db.models import Exists, F, OuterRef
+from django.utils import timezone
 
 from transit.models import (
     DataSource,
@@ -72,7 +73,8 @@ def invalidate_network_cache() -> None:
     """
     _CACHE.clear()
     updated = NetworkDataVersion.objects.filter(pk=NetworkDataVersion.SINGLETON_ID).update(
-        version=F("version") + 1
+        version=F("version") + 1,
+        updated_at=timezone.now(),  # QuerySet.update() skips auto_now.
     )
     if not updated:
         NetworkDataVersion.objects.get_or_create(pk=NetworkDataVersion.SINGLETON_ID)

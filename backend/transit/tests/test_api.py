@@ -334,3 +334,37 @@ def test_plan_data_updated_on_missing_row_preserves_other_fields(client, net):
     assert missing.pop("data_updated_on") is None
     assert missing == present
     assert not NetworkDataVersion.objects.exists()
+
+
+def test_route_save_refreshes_data_updated_on(client, net, monkeypatch):
+    from datetime import datetime, timezone
+
+    from transit.models import NetworkDataVersion
+    from transit.planner import loader
+
+    old_time = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    edit_time = datetime(2026, 10, 17, 17, tzinfo=timezone.utc)
+    NetworkDataVersion.objects.filter(
+        pk=NetworkDataVersion.SINGLETON_ID
+    ).update(updated_at=old_time)
+    before = NetworkDataVersion.objects.get(
+        pk=NetworkDataVersion.SINGLETON_ID
+    ).version
+
+    monkeypatch.setattr(loader.timezone, "now", lambda: edit_time)
+    route = net["routes"]["A"]
+    route.name = "Updated test route"
+    route.save()
+
+    row = NetworkDataVersion.objects.get(
+        pk=NetworkDataVersion.SINGLETON_ID
+    )
+    assert row.version == before + 1
+    assert row.updated_at == edit_time
+
+    response = _post_plan(client, {
+        "origin": {"latitude": 10.300, "longitude": 123.900},
+        "destination": {"latitude": 10.300, "longitude": 123.927},
+    })
+    assert response.status_code == 200
+    assert response.json()["data_updated_on"] == "2026-10-18"

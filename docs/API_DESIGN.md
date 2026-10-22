@@ -301,9 +301,10 @@ If the singleton row does not exist, the value is null.
 This lookup does not create or modify the row. Other response fields
 and error responses remain unchanged.
 
-This is the stored network-marker timestamp, not a field-verification
-date. Existing version-counter updates do not always refresh this
-timestamp, so it must not be interpreted as the latest route edit.
+This network-wide timestamp refreshes when cache invalidation runs,
+including after Django Admin saves and completed GTFS imports.
+It is not a field-verification date or a separate update date for each
+route. Direct SQL and bulk updates require explicit cache invalidation.
 
 ## Imported route-name cleanup
 
