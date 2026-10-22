@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -10,7 +11,7 @@ from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from transit.models import Location, Route, RoutePattern
+from transit.models import Location, NetworkDataVersion, Route, RoutePattern
 from transit.planner import PlanRequest, plan_journeys
 from transit.planner.engine import PlannerError
 from transit.planner.loader import load_network, resolve_location
@@ -203,9 +204,19 @@ def plan_journey(request):
         return error_response("invalid_request", str(exc), http=http_status.HTTP_400_BAD_REQUEST)
 
     payload = result.to_dict()
+    updated_at = (
+        NetworkDataVersion.objects
+        .filter(pk=NetworkDataVersion.SINGLETON_ID)
+        .values_list("updated_at", flat=True)
+        .first()
+    )
+    payload["data_updated_on"] = (
+        updated_at.astimezone(ZoneInfo("Asia/Manila")).date().isoformat()
+        if updated_at is not None
+        else None
+    )
     attach_ride_geometry(payload["journey_options"])
     return Response(payload)
-
 
 plan_journey.throttle_scope = "plan"
 

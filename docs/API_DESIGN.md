@@ -287,6 +287,34 @@ places. For an unsupported ride, show a brief message such as
 “Ask the driver for this ride's fare.” The guide range represents these
 two supplied guide options, not every possible vehicle fare.
 
+## Network data update date
+
+Successful `POST /api/v1/journeys/plan` responses include the top-level
+field `data_updated_on`: a `YYYY-MM-DD` string or null, including responses
+with no journey options.
+
+The value is the singleton `NetworkDataVersion.updated_at` converted to
+Asia/Manila, then formatted as a date. For example,
+`2026-10-17T17:00:00Z` becomes `"2026-10-18"`.
+If the singleton row does not exist, the value is null.
+
+This lookup does not create or modify the row. Other response fields
+and error responses remain unchanged.
+
+This is the stored network-marker timestamp, not a field-verification
+date. Existing version-counter updates do not always refresh this
+timestamp, so it must not be interpreted as the latest route edit.
+
+## Imported route-name cleanup
+
+Future GTFS imports remove trailing `(Name missing)` and `(nodata)`
+suffixes case-insensitively. Meaningful parentheses such as `(Ibabao)`
+remain intact. Placeholder-only names retain existing fallback behavior,
+and cleaning a descriptive name does not turn it into a route code.
+
+Existing stored records are not rewritten. This change does not authorize
+deleting sources or re-importing production data.
+
 ## Independent return query
 
 Send a second POST /api/v1/journeys/plan with origin=B and destination=A.

@@ -194,3 +194,53 @@ def test_api_plan_returns_street_geometry_for_imported_rides(client, settings):
     walk = resp.json()["journey_options"][0]["segments"][0]
     assert walk["start"] == {"latitude": 10.3, "longitude": 123.9}
     assert walk["end"] == ride["start"]
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    (
+        ("LABANGON (Name missing)", "LABANGON"),
+        ("MANDAUE (Ibabao) (Name missing)", "MANDAUE (Ibabao)"),
+        ("LABANGON (NAME MISSING)", "LABANGON"),
+        ("  LABANGON   (Name missing)  ", "LABANGON"),
+        ("LABANGON (nodata)", "LABANGON"),
+        ("MANDAUE (Ibabao)", "MANDAUE (Ibabao)"),
+        ("(Name missing) LABANGON", "(Name missing) LABANGON"),
+    ),
+)
+def test_route_placeholder_suffix_cleanup(raw, expected):
+    from transit.importers.gtfs import _real_text, route_code_and_name
+
+    assert _real_text(raw) == expected
+    assert route_code_and_name({
+        "route_id": "42D",
+        "route_short_name": raw,
+        "route_long_name": "",
+    }) == ("42D", expected)
+    assert route_code_and_name({
+        "route_id": "internal-id",
+        "route_short_name": "42D",
+        "route_long_name": raw,
+    }) == ("42D", expected)
+
+
+def test_all_existing_route_placeholders_keep_fallbacks():
+    from transit.importers.gtfs import (
+        _PLACEHOLDERS,
+        _real_text,
+        route_code_and_name,
+    )
+
+    for placeholder in _PLACEHOLDERS:
+        for raw in (placeholder, placeholder.upper()):
+            assert _real_text(raw) == ""
+            assert route_code_and_name({
+                "route_id": "42D",
+                "route_short_name": raw,
+                "route_long_name": raw,
+            }) == ("42D", "")
+            assert route_code_and_name({
+                "route_id": "internal-id",
+                "route_short_name": "42D",
+                "route_long_name": raw,
+            }) == ("42D", "")

@@ -4,6 +4,11 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Clean trailing placeholder suffixes from names on future GTFS imports,
+  preserving route codes and meaningful parentheses. Add read-only
+  `data_updated_on` to journey-plan responses using the stored network
+  timestamp converted to Asia/Manila, or null when absent.
+
 ### Friendlier wording, Bisaya messages and new headers — October 22, 2026
 
 - Get-off step now says "Hapit na! Andam na sa pagnaog." The yellow route
