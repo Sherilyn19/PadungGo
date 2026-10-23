@@ -11,5 +11,7 @@ os.environ.setdefault("PADUNGGO_DB_ENGINE", "sqlite")  # no GDAL/PostGIS needed
 os.environ.setdefault("DJANGO_DEBUG", "True")
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-not-secret")
 os.environ.setdefault("PADUNGGO_SQLITE_PATH", ":memory:")
+# Never call the real Geoapify service from tests, even if a key is exported.
+os.environ["GEOAPIFY_API_KEY"] = ""
 
 from config.settings import *  # noqa: E402,F401,F403

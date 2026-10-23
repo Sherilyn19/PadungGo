@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from transit.api.location_search import normalise_query
+from transit.search_text import build_search_text, normalise_query
 from transit.models import Area, Location
 
 
@@ -26,6 +26,11 @@ from transit.models import Area, Location
 )
 def test_normalise_query(query, expected):
     assert normalise_query(query) == expected
+
+
+def test_search_text_combines_name_and_aliases():
+    assert build_search_text("Fuente Osmeña", "FO, Rotonda\nCircle") == (
+        "fuente osmena fo rotonda circle")
 
 
 @pytest.fixture

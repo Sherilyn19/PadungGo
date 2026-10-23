@@ -204,6 +204,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": os.environ.get("DRF_ANON_THROTTLE", "120/min"),
         "plan": os.environ.get("DRF_PLAN_THROTTLE", "30/min"),
+        "places": os.environ.get("DRF_PLACES_THROTTLE", "40/min"),
     },
     "EXCEPTION_HANDLER": "transit.api.errors.exception_handler",
 }
@@ -264,4 +265,24 @@ PLANNER = {
     "STOP_SEARCH_RADIUS_M": int(os.environ.get("PLANNER_STOP_RADIUS_M", "500")),
     # Walking speed used only to qualify approximate straight-line estimates.
     "WALK_SPEED_MPS": float(os.environ.get("PLANNER_WALK_SPEED_MPS", "1.3")),
+}
+
+# --- Address labels and place suggestions (Geoapify) -----------------------
+# The key stays on the server: browsers call PadungGo, which calls Geoapify.
+# Without a key both features fall back gracefully (no provider results).
+
+GEOAPIFY = {
+    "API_KEY": os.environ.get("GEOAPIFY_API_KEY", ""),
+    # Switchable without a code change, e.g. Geoapify's EU endpoint.
+    "BASE_URL": os.environ.get("GEOAPIFY_BASE_URL", "https://api.geoapify.com/v1/geocode").rstrip("/"),
+    # The free plan allows 3,000 credits/day (1 per request); stay below it.
+    "DAILY_REQUEST_LIMIT": int(os.environ.get("GEOAPIFY_DAILY_LIMIT", "2500")),
+    # Share of the daily limit suggestions may use, reserving the rest for
+    # address labels after "My location" or a map pin.
+    "SUGGEST_SHARE": float(os.environ.get("GEOAPIFY_SUGGEST_SHARE", "0.8")),
+    "TIMEOUT_SECONDS": float(os.environ.get("GEOAPIFY_TIMEOUT_SECONDS", "4")),
+    # Suggestions are limited to this lon/lat rectangle (Metro Cebu and nearby).
+    "SEARCH_RECT": os.environ.get("GEOAPIFY_SEARCH_RECT", "123.70,10.15,124.10,10.50"),
+    # A reverse result farther than this from the point is not shown as its address.
+    "MAX_ADDRESS_DISTANCE_M": int(os.environ.get("GEOAPIFY_MAX_ADDRESS_DISTANCE_M", "100")),
 }

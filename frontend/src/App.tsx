@@ -9,7 +9,9 @@ import SearchForm, { type PickTarget } from './components/search/SearchForm'
 import TripDetails, { TripDetailsHeader } from './components/trips/TripDetails'
 import TripResults from './components/trips/TripResults'
 import { tripFareDisplay } from './fareEstimates'
+import { pendingPoint } from './places'
 import { tripFareFor, useFareChoices, vehicleChoicesFor } from './hooks/useFareChoices'
+import { useAddressLabel } from './hooks/useAddressLabel'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import { useResizablePanel } from './hooks/useResizablePanel'
 import { rides, tripName } from './tripTimeline'
@@ -42,6 +44,9 @@ export default function App() {
 
   const [origin, setOrigin] = useState<Place | null>(null)
   const [destination, setDestination] = useState<Place | null>(null)
+  // GPS and map points get a readable address once the lookup returns.
+  useAddressLabel(origin, setOrigin)
+  useAddressLabel(destination, setDestination)
   const [picking, setPicking] = useState<PickTarget | null>(null)
   const [sortBy, setSortBy] = useState<SortBy>('fewest_transfers')
   const [maxTransfers, setMaxTransfers] = useState<0 | 1>(1)
@@ -91,7 +96,7 @@ export default function App() {
   const onMapClick = useCallback(
     (p: LatLng) => {
       if (!picking) return
-      const place: Place = { ...p, name: 'Pinned on map', source: 'map' }
+      const place: Place = pendingPoint(p, 'map')
       if (picking === 'origin') setOrigin(place)
       else setDestination(place)
       setPicking(null)

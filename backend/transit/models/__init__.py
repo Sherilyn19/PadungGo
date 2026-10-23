@@ -24,6 +24,7 @@ from .evidence import DataSource, RecordEvidence, RouteEvidence
 from .fares import FareRule
 from .geography import Area, Location, Stop
 from .network import PatternStop, Route, RoutePattern, RouteSegment, TransferConnection
+from .providers import ProviderUsage
 
 __all__ = [
     # enums
@@ -51,6 +52,8 @@ __all__ = [
     "FareRule",
     # cache coordination
     "NetworkDataVersion",
+    # external provider quota
+    "ProviderUsage",
     # evidence
     "DataSource",
     "RouteEvidence",

@@ -37,6 +37,9 @@ class LocationKind(models.TextChoices):
     TERMINAL = "terminal", "Terminal"
     MALL = "mall", "Mall"
     TRANSPORT_HUB = "transport_hub", "Transport hub"
+    SCHOOL = "school", "School or university"
+    BUSINESS = "business", "Business or office"
+    ATTRACTION = "attraction", "Tourist attraction"
     PLACE = "place", "Place"
 
 

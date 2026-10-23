@@ -6,6 +6,7 @@ import uuid
 from django.db import models
 
 from ..geocompat import point_field
+from ..search_text import build_search_text
 from .enums import AreaKind, LocationKind, RecordStatus, StopStatus
 
 
@@ -38,6 +39,14 @@ class Location(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200)
+    aliases = models.CharField(
+        max_length=500, blank=True,
+        help_text="Other names people type, separated by commas, e.g. CTU, Cebu Tech. "
+                  "A shared alias may go on every campus or branch; keep each "
+                  "record's name specific so users can tell them apart.",
+    )
+    # Accent-free lower-case words of name + aliases; filled in on save.
+    search_text = models.TextField(blank=True, editable=False)
     kind = models.CharField(max_length=20, choices=LocationKind.choices, default=LocationKind.PLACE)
     area = models.ForeignKey(
         Area, null=True, blank=True, on_delete=models.PROTECT, related_name="locations"
@@ -58,6 +67,13 @@ class Location(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    def save(self, *args, **kwargs):
+        self.search_text = build_search_text(self.name, self.aliases)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and {"name", "aliases"} & set(update_fields):
+            kwargs["update_fields"] = {*update_fields, "search_text"}
+        super().save(*args, **kwargs)
 
 
 class Stop(models.Model):

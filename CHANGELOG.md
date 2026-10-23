@@ -4,6 +4,14 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Readable addresses and better place search (migration 0006). After "My
+  location" or a map pin, the app shows the address found through Geoapify, or
+  "Selected location — address unavailable" with coordinates; the exact point
+  is still used for planning. Suggestions ignore case and accents, match Admin
+  aliases (e.g. CTU on each separately named campus) and add Geoapify map
+  results, labelled separately. The key stays on the server; quotas are guarded
+  by caching, throttling and a shared daily counter.
+
 - Route availability (#35 backend, plus frontend): Admin can mark a route
   Scarce (`Route.service_availability`, migration 0005). Trips with a
   Scarce ride are listed after other trips before the result limit is
