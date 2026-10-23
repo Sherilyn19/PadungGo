@@ -1,0 +1,19 @@
+.map-canvas-entrance { opacity: 0; transition: opacity 900ms ease-out; }
+.map-canvas-entrance--ready { opacity: 1; }
+.map-loading-notice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 280px;
+  width: calc(100% - 48px);
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  background: var(--color-cream);
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-canvas-entrance { transition: none; }
+}

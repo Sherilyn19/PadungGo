@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import type { JourneyOption, LatLng, Place } from '../../api'
 import { rideColor } from '../../tripTimeline'
 import MapCredits from './MapCredits'
+import './map-entrance.css'
 import { tripMarkers, type TripMarkerKind } from './tripMarkers'
 
 // OpenFreeMap: free OpenStreetMap-based tiles, no API key. Its required
@@ -23,6 +24,7 @@ export interface MapInsets {
 }
 
 interface Props {
+  onReady: () => void
   origin: Place | null
   destination: Place | null
   option: JourneyOption | null
@@ -113,7 +115,11 @@ function clearMarkers(list: PlacedMarker[]) {
   list.length = 0
 }
 
-export default function MapView({ origin, destination, option, onMapClick, insets }: Props) {
+export default function MapView({ origin, destination, option, onMapClick, insets, onReady }: Props) {
+  const [mapReady, setMapReady] = useState(false)
+  const [mapError, setMapError] = useState(false)
+  const onReadyRef = useRef(onReady)
+  onReadyRef.current = onReady
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<MLMap | null>(null)
   const endpointMarkers = useRef<PlacedMarker[]>([])
@@ -127,13 +133,21 @@ export default function MapView({ origin, destination, option, onMapClick, inset
 
   useEffect(() => {
     if (!container.current) return
-    const m = new maplibregl.Map({
-      container: container.current,
-      style: STYLE_URL,
-      center: CEBU_CENTER,
-      zoom: 12.5,
-      attributionControl: false,
-    })
+    let m: MLMap
+    try {
+      m = new maplibregl.Map({
+        container: container.current,
+        style: STYLE_URL,
+        center: CEBU_CENTER,
+        zoom: 12.5,
+        attributionControl: false,
+      })
+    } catch {
+      setMapError(true)
+      onReadyRef.current()
+      return
+    }
+    m.on('error', () => setMapError(true))
     // Credits show at start, then fold into the (i) button on first interaction.
     // Only the user's own drag/zoom counts; the map also moves itself on load.
     const foldOnUserMove = (e: { originalEvent?: unknown }) => {
@@ -144,6 +158,9 @@ export default function MapView({ origin, destination, option, onMapClick, inset
     m.on('movestart', foldOnUserMove)
     m.once('click', () => setCreditsOpen(false))
     m.on('load', () => {
+      setMapReady(true)
+      setMapError(false)
+      onReadyRef.current()
       m.addSource('journey', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addLayer({
         id: 'journey-walk',
@@ -190,6 +207,7 @@ export default function MapView({ origin, destination, option, onMapClick, inset
       clearMarkers(endpointMarkers.current)
       clearMarkers(stopMarkers.current)
       m.remove()
+      map.current = null
     }
   }, [])
 
@@ -278,9 +296,10 @@ export default function MapView({ origin, destination, option, onMapClick, inset
 
   // Also fold the credits after five seconds, as the OSM guideline allows.
   useEffect(() => {
+    if (!mapReady) return
     const timer = window.setTimeout(() => setCreditsOpen(false), CREDITS_VISIBLE_MS)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [mapReady])
 
   const overlayLimit = Math.round(window.innerHeight * 0.55)
   const control =
@@ -290,7 +309,8 @@ export default function MapView({ origin, destination, option, onMapClick, inset
     // A fully open phone sheet would push the corner overlays to the top of the
     // screen; past ~half height they stay behind the sheet instead.
     <div className="relative h-full w-full" style={{ ['--map-bottom-inset' as string]: `${Math.min(insets.bottom, overlayLimit)}px` }}>
-      <div ref={container} className="h-full w-full" aria-label="Map of Metro Cebu" role="region" />
+      <div ref={container} className={`map-canvas-entrance h-full w-full${mapReady ? ' map-canvas-entrance--ready' : ''}`} aria-label="Map of Metro Cebu" aria-busy={!mapReady} role="region" />
+      {!mapReady && <p className="map-loading-notice" role="status">{mapError ? 'The map could not connect. You can still use the trip planner. Refresh to try the map again.' : 'The map is taking a little longer. You can still plan your trip.'}</p>}
       {option && insets.bottom <= overlayLimit && (
         <div
           className="fade-up pointer-events-none absolute left-3 z-10 flex items-center gap-3 rounded-[4px] border border-line bg-white/95 px-2.5 py-1.5 text-[11px] text-ink-muted shadow-[0_2px_6px_rgb(6_47_87/0.12)] transition-[bottom] duration-300"

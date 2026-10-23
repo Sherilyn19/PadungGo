@@ -1,4 +1,6 @@
 import { ArrowRight, MousePointerClick, PanelLeftOpen, PanelRightOpen, X } from 'lucide-react'
+import RetroLoadingScreen from './components/loading/RetroLoadingScreen'
+import { useStartupReadiness } from './hooks/useStartupReadiness'
 import { useCallback, useRef, useState } from 'react'
 import { ApiError, planJourney, type JourneyOption, type LatLng, type Place, type PlanResponse, type SortBy } from './api'
 import BottomSheet, { type SheetSnap } from './components/layout/BottomSheet'
@@ -37,6 +39,7 @@ const WIDE_QUERY = '(min-width: 1100px)'
 
 export default function App() {
   const motionRoot = useInteractionMotion()
+  const { ready: startupReady, markReady } = useStartupReadiness()
   const hasPanels = useMediaQuery(PANELS_QUERY)
   const isWide = useMediaQuery(WIDE_QUERY)
   const main = useResizablePanel({ storageKey: 'padunggo.sidebar', min: 320, max: 560, defaultWidth: 380, persistCollapsed: true })
@@ -234,7 +237,9 @@ export default function App() {
   const mapLeftInset = hasPanels && !isWide && detailsOpen && selected && main.collapsed ? main.width : 0
 
   return (
-    <div ref={motionRoot} className="app-entrance relative flex h-full overflow-hidden bg-surface text-ink">
+    <>
+    <RetroLoadingScreen ready={startupReady} />
+    <div ref={motionRoot} inert={!startupReady} data-startup={startupReady ? 'ready' : 'loading'} className="relative flex h-full overflow-hidden bg-surface text-ink">
       {hasPanels ? (
         <ResizablePanel id="trip-panel" label="Trip planner" panel={main} className={mainVisible ? 'border-r border-brand-900/20' : ''}>
           <PanelHeader onCollapse={main.toggleCollapsed} />
@@ -246,6 +251,7 @@ export default function App() {
 
       <main className="relative h-full min-w-0 flex-1">
         <MapView
+          onReady={markReady}
           origin={origin}
           destination={destination}
           option={selected}
@@ -335,5 +341,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   )
 }

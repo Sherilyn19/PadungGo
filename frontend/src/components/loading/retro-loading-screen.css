@@ -1,0 +1,70 @@
+.retro-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background-color: var(--color-brand-100);
+  background-image: radial-gradient(var(--color-brand-300) 0.7px, transparent 0.7px);
+  background-size: 6px 6px;
+  opacity: 1;
+  transition: opacity 600ms ease;
+}
+.retro-loading-screen--leaving { opacity: 0; pointer-events: none; }
+[data-startup='loading'] .planner-entrance > * { animation: none; }
+.retro-loading-window {
+  width: min(100%, 390px);
+  border: 2px solid var(--color-brand-900);
+  background: var(--color-cream);
+  padding: 4px;
+  box-shadow: inset 1px 1px white, 6px 6px 0 var(--color-brand-300);
+  color: var(--color-brand-900);
+}
+.retro-loading-titlebar, .retro-loading-status, .retro-loading-titlebar > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.retro-loading-titlebar {
+  background: var(--color-brand-700);
+  color: white;
+  padding: 6px 8px;
+  font-family: var(--font-pixel);
+  font-size: 15px;
+}
+.retro-loading-window-controls { letter-spacing: 3px; }
+.retro-loading-content { text-align: center; padding: 28px 12px 24px; }
+.retro-loading-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px;
+  border: 1px dashed var(--color-brand-400);
+  background: var(--color-brand-50);
+  color: var(--color-brand-700);
+  transform: rotate(-5deg);
+}
+.retro-loading-heading { margin-top: 18px; font-family: var(--font-pixel); font-size: 22px; line-height: 1.2; }
+.retro-loading-dots { display: flex; justify-content: center; gap: 13px; margin: 26px 0; }
+.retro-loading-dots > span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-brand-600);
+  box-shadow: inset 2px 2px 0 rgb(255 255 255 / 0.4), 2px 2px 0 var(--color-brand-200);
+  animation: retro-dot-hop 1250ms ease-in-out infinite;
+  animation-delay: calc(var(--dot-index) * 110ms);
+}
+@keyframes retro-dot-hop {
+  0%, 55%, 100% { transform: translateY(0); opacity: 0.55; }
+  25% { transform: translateY(-9px); opacity: 1; }
+}
+.retro-loading-phrase { font-size: 14px; font-weight: 600; }
+.retro-loading-caption { margin-top: 8px; color: var(--color-ink-muted); font-size: 12px; }
+.retro-loading-status { border: 1px solid var(--color-line-strong); padding: 5px 7px; font-size: 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .retro-loading-screen { transition: none; }
+  .retro-loading-dots > span { animation: none; opacity: 1; }
+}
