@@ -3,7 +3,9 @@ import type { JourneyOption, RideSegment, Segment } from './api'
 import {
   buildTimeline,
   groupTimeline,
+  isScarceRide,
   RIDE_COLORS,
+  scarceTripsListedLast,
   routeDisplayName,
   straightLineWalkingMeters,
   stopName,
@@ -180,5 +182,69 @@ describe('get-off message', () => {
   it('cheers the commuter on in Bisaya', () => {
     const alight = buildTimeline(option([ride('42D', 'A', 'B')]), { originName: 'S', destinationName: 'E' }).find((s) => s.kind === 'alight')!
     expect(alight.detail).toBe('Hapit na! Andam na sa pagnaog.')
+  })
+})
+
+describe('scarce rides', () => {
+  it('carries scarcity from the ride into its timeline block', () => {
+    const scarceRide: RideSegment = {
+      ...ride('14B', 'Jones', 'Colon'),
+      service_availability: 'scarce',
+    }
+
+    expect(isScarceRide(scarceRide)).toBe(true)
+
+    const blocks = groupTimeline(buildTimeline(option([scarceRide]), ends))
+    const rideBlock = blocks.find((block) => block.type === 'ride')
+
+    expect(rideBlock).toMatchObject({
+      type: 'ride',
+      routeCode: '14B',
+      scarce: true,
+    })
+  })
+
+  it('does not flag missing metadata or explicitly unflagged rides', () => {
+    expect(isScarceRide(ride('17D', 'A', 'B'))).toBe(false)
+    expect(isScarceRide({
+      ...ride('17D', 'A', 'B'),
+      service_availability: 'not_flagged',
+    })).toBe(false)
+
+    const blocks = groupTimeline(buildTimeline(demo, ends))
+    expect(
+      blocks.filter((block) => block.type === 'ride')
+        .every((block) => !block.scarce),
+    ).toBe(true)
+  })
+
+  it('explains scarcity ordering only when confirmed by the response', () => {
+    const ordinary = option([ride('17D', 'A', 'B')])
+    const scarce = { ...ordinary, has_scarce_ride: true }
+    const ranking = {
+      requested: 'fewest_transfers',
+      applied: 'fewest_transfers',
+      warning: null,
+    }
+
+    expect(scarceTripsListedLast({
+      journey_options: [ordinary, scarce],
+      ranking: { ...ranking, scarce_last: true },
+    })).toBe(true)
+
+    expect(scarceTripsListedLast({
+      journey_options: [ordinary],
+      ranking: { ...ranking, scarce_last: true },
+    })).toBe(false)
+
+    expect(scarceTripsListedLast({
+      journey_options: [scarce],
+      ranking,
+    })).toBe(false)
+
+    expect(scarceTripsListedLast({
+      journey_options: [ordinary],
+      ranking,
+    })).toBe(false)
   })
 })

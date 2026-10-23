@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 import { groupTimeline, rideColor, rideSoftColor, type TimelineKind, type TimelineStep } from '../../tripTimeline'
-import RidePlate from './RidePlate'
+import RidePlate, { ScarceBadge } from './RidePlate'
 
 const KIND: Record<TimelineKind, { label: string; icon: LucideIcon }> = {
   start: { label: 'Start', icon: CircleDot },
@@ -106,6 +106,8 @@ export default function TripTimeline({ steps, rideFooter }: Props) {
                   Ride {block.rideIndex + 1}
                 </span>
                 <RidePlate code={block.routeCode} rideIndex={block.rideIndex} />
+                {block.scarce && <ScarceBadge />}
+
                 {block.routeName && <span className="w-full text-xs text-ink-soft">{block.routeName}</span>}
               </div>
               <ol>

@@ -4,6 +4,15 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Route availability (#35 backend, plus frontend): Admin can mark a route
+  Scarce (`Route.service_availability`, migration 0005). Trips with a
+  Scarce ride are listed after other trips before the result limit is
+  applied, and the chosen sort still applies within each group. The app
+  shows a "Scarce" badge on those rides and briefly explains its meaning.
+  No waiting times are shown. Older responses without these fields show no
+  badge. Routes excluded from suggestions still use `active = False`, with
+  their records kept.
+
 - Refresh the network update timestamp during cache invalidation so
   journey responses reflect Admin saves and completed GTFS imports.
   Added a regression test for route saves and Manila date conversion.
