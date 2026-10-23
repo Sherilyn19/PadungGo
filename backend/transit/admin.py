@@ -17,6 +17,13 @@ from django.template.response import TemplateResponse
 from django.urls import path
 
 from .planner.loader import invalidate_network_cache
+from .importers.osm_route import (
+    OSMRouteError,
+    apply_extensions,
+    download_command,
+    parse_osm_route,
+    plan_extension,
+)
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
     CITY_NAMES,
@@ -296,6 +303,50 @@ def adjust_stop_stretch(modeladmin, request, queryset):
     return TemplateResponse(request, "admin/transit/stop_stretch.html", context)
 
 
+@admin.action(description="Add stops at the start from an OpenStreetMap route (preview first)", permissions=["change"])
+def extend_start_from_osm(modeladmin, request, queryset):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    step = request.POST.get("step", "")
+    join_stop = (request.POST.get("join_stop") or "Ginebra San Miguel").strip()
+    patterns = list(queryset.select_related("route").order_by("route__code", "variant_key"))
+    plans = route = None
+    payload = error = ""
+    try:
+        if step == "preview":
+            upload = request.FILES.get("route_file")
+            if upload is None:
+                raise OSMRouteError("Choose the downloaded file first.")
+            raw = upload.read(MAX_UPLOAD_BYTES + 1)
+            route = parse_osm_route(raw)
+            payload = raw.decode("utf-8")
+        elif step == "apply":
+            payload = request.POST.get("payload", "")
+            route = parse_osm_route(payload.encode("utf-8"))
+        if route is not None:
+            plans = [plan_extension(p, route, join_stop) for p in patterns]
+            if step == "apply" and not any(plan.problem for plan in plans):
+                added = apply_extensions(plans, route)
+                modeladmin.message_user(request, f"Done. Added {added // max(len(plans), 1)} stops at the start of "
+                                                 f"{len(plans)} routes.")
+                return None
+    except (OSMRouteError, UnicodeDecodeError) as exc:
+        error = str(exc) if isinstance(exc, OSMRouteError) else "That file is not readable text."
+        plans = None
+    context = {
+        **modeladmin.admin_site.each_context(request), "title": "Add stops at the start of a route",
+        "plans": plans, "can_apply": bool(plans) and not any(p.problem for p in plans),
+        "route": route, "payload": payload, "error": error, "join_stop": join_stop,
+        "selected": [str(p.pk) for p in patterns], "patterns": patterns,
+        "action_name": "extend_start_from_osm", "download_command": download_command(),
+        "opts": modeladmin.model._meta,
+    }
+    return TemplateResponse(request, "admin/transit/extend_from_osm.html", context)
+
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+
 # Spreadsheet apps run cells starting with these characters as formulas.
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
@@ -370,7 +421,7 @@ class RoutePatternAdmin(admin.ModelAdmin):
     list_filter = ("direction", "status", "route__vehicle_class")
     search_fields = ("route__code", "signboard", "variant_key")
     list_select_related = ("route",)
-    actions = [export_ordered_stops, adjust_stop_stretch]
+    actions = [export_ordered_stops, adjust_stop_stretch, extend_start_from_osm]
     inlines = [PatternStopInline, RouteSegmentInline]
 
 

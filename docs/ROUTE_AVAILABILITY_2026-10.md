@@ -92,8 +92,20 @@ J. Solon Drive as the last Carbon-side stop and switch off the stops after it
 up to M. J. Cuenco Avenue & Osmena Boulevard. Set Signboard to "Manalili" on
 those four patterns.
 
+Ibabao start (draft from OpenStreetMap): contributors map routes 22A and 22D with
+the same first stop, C. M. Cabahug (10.3244, 123.9502), and the stretch up to
+Ginebra San Miguel meets the stored start (Cebu North Road) about 90 m away.
+The Admin action "Add stops at the start from an OpenStreetMap route (preview
+first)" adds those 12 stops, with road distances and shape from the map, in front
+of the selected routes. Source: OpenStreetMap relation 3208066 (ODbL, credit
+OpenStreetMap contributors). Stored as documented, not field-verified. 21A and
+21D have no OpenStreetMap route of their own; they share the corridor, so the
+same stretch is used. OpenStreetMap's 22A takes a different road via SM City Cebu
+after Subangdaku; that variant is not modelled.
+
 Still missing (no geometry invented):
-- The Ibabao terminal and the road from Cebu North Road to Ibabao-Estancia.
+- The exact boarding spot in Ibabao-Estancia (the OpenStreetMap start is the best
+  available, not field-checked).
 - The Ayala to Mandaue return for 21B; the stored return never passes Ayala.
 - Endpoints for 21F, 21G, 22G.
 
