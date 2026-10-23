@@ -4,6 +4,18 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- "Explain this trip" (AI): a button in Trip details asks `openai/gpt-oss-20b`
+  (OpenAI, Apache 2.0 open weights, hosted by GroqCloud) for a short plain-English
+  explanation of the selected trip. New endpoint `POST /api/v1/journeys/explain`;
+  the server plans again and finds the trip from opaque ride IDs, so clients
+  cannot supply route facts. The model gets minimal facts (no coordinates), its
+  answer is checked against the planner's facts before display, and timeouts,
+  quota or bad answers show an "unavailable" state without affecting the
+  itinerary. Per-visitor throttle `DRF_EXPLAIN_THROTTLE` (6/min), a daily provider
+  cap, and caching. Disabled until `AI_API_KEY` is set. Not yet verified against
+  the live hosted model. No migration; ride segments of the plan response are
+  now typed with their `route_pattern_id` / occurrence IDs on the frontend.
+
 - Trip planning is now limited per visitor (30 searches a minute, adjustable with
   DRF_PLAN_THROTTLE). The old setting was attached to the wrong object and never
   applied. Over the limit, the app answers 429 with a plain message and Retry-After.

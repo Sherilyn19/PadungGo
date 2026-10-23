@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Clock, Footprints, PanelLeftClose, Signpost } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { JourneyOption } from '../../api'
+import type { JourneyOption, TripSearch } from '../../api'
 import { tripFare, type PassengerType, type VehicleChoice } from '../../fareEstimates'
 import { formatCalendarDate, formatDuration, formatMinimumDistance } from '../../format'
 import { buildTimeline, needsLocalCheck, rideColor, rides, straightLineWalkingMeters, transferLabel, tripName, type TripEndpoints } from '../../tripTimeline'
@@ -9,6 +9,7 @@ import PassengerSelector from '../fares/PassengerSelector'
 import RideFareFooter from '../fares/RideFareFooter'
 import TripFareSummary from '../fares/TripFareSummary'
 import JourneyStrip from './JourneyStrip'
+import TripExplanation from './TripExplanation'
 import TripTimeline from './TripTimeline'
 
 interface HeaderProps {
@@ -61,6 +62,8 @@ export function TripDetailsHeader({ onClose, closeMode }: HeaderProps) {
 interface Props {
   option: JourneyOption
   endpoints: TripEndpoints
+  // The search behind this trip, used only by "Explain this trip".
+  search: TripSearch | null
   // Date of the last route-data change, from the server ("YYYY-MM-DD").
   dataUpdatedOn?: string | null
   passenger: PassengerType
@@ -73,7 +76,7 @@ interface Props {
 // so the entry animation replays and no stale steps remain when another trip
 // is picked. Fare choices live in the parent, so changing them updates the
 // amounts in place without reloading or resetting the panel.
-export default function TripDetails({ option, endpoints, dataUpdatedOn, passenger, vehicles, onPassengerChange, onVehicleChange }: Props) {
+export default function TripDetails({ option, endpoints, search, dataUpdatedOn, passenger, vehicles, onPassengerChange, onVehicleChange }: Props) {
   const name = tripName(option)
   const riding = option.time.riding_seconds
   const walking = straightLineWalkingMeters(option)
@@ -101,6 +104,8 @@ export default function TripDetails({ option, endpoints, dataUpdatedOn, passenge
           </div>
           <PassengerSelector value={passenger} onChange={onPassengerChange} />
         </section>
+
+        <TripExplanation option={option} search={search} />
 
         <section className="space-y-4 p-3 pl-4" aria-label="Directions">
           <TripTimeline

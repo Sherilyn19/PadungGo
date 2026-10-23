@@ -436,10 +436,118 @@ same-city requests, directionality, independent returns, one-transfer cap, empty
 results, fallback ranking, private-field exclusion and safe dependency failures.
 See [routing](ROUTING_ALGORITHM.md) and [database](DATABASE_DESIGN.md).
 
-## AI explanation endpoint
+## Explain this trip (AI explanation)
 
-The AI feature explains a completed planner response. It receives a selected
-journey option, public evidence fields, warnings and the user's question. It has
-no authority to search unverified routes, change fares/directions or write route
-records. Responses preserve the source itinerary and uncertainty labels. The
-exact endpoint path is deferred until implementation design.
+`POST /api/v1/journeys/explain` returns a short plain-English explanation of one
+trip the planner already returned. It is optional and on request; the planner
+and every other endpoint work without it.
+
+**Authority.** The planner owns routes, stops, transfers, fares, timing,
+scarcity and verification status. The AI model only rewords them. It cannot add
+routes or stops, calculate fares, infer frequency or current operation, or turn
+an unknown or approximate value into a certain one.
+
+**Model and provider (submitted configuration).** `openai/gpt-oss-20b`, an
+open-weight model released under the Apache 2.0 licence, served by GroqCloud
+through its OpenAI-compatible API (`https://api.groq.com/openai/v1`). Server-side
+settings: `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` (see `backend/.env.example`).
+
+### Request
+
+The same search as `/journeys/plan`, plus the rides of the chosen trip:
+
+```json
+{
+  "origin": {"location_id": "..."},
+  "destination": {"latitude": 10.30, "longitude": 123.93},
+  "max_transfers": 1,
+  "sort_by": "fewest_transfers",
+  "rides": [
+    {"route_pattern_id": "<uuid>", "board_occurrence_id": "<uuid>", "alight_occurrence_id": "<uuid>"}
+  ]
+}
+```
+
+- `rides` has one entry (direct) or two (one transfer), in travel order. The IDs
+  are the `route_pattern_id`, `board_occurrence_id` and `alight_occurrence_id`
+  values of the ride segments in the plan response.
+- **The client cannot supply facts.** Unknown fields, at any level, return 400.
+  The server plans again with the same inputs and looks for the trip whose
+  rides match. No match returns 404 `not_found` ("That trip is no longer
+  available. Please search again."), for example after a data update.
+- Origin and destination coordinates are used only to plan again. They are not
+  sent to the AI provider and are not logged.
+
+### Successful response (HTTP 200)
+
+```json
+{
+  "status": "ok",
+  "explanation": "Board 17D at ... Waiting time is unknown. ...",
+  "notices": ["Built from documented ... not field-verified ...", "Waiting time is unknown: no verified frequency data."],
+  "ai_generated": true,
+  "model": "openai/gpt-oss-20b"
+}
+```
+
+- `ai_generated` is always `true`; clients must label the text as AI-generated
+  and may refuse text that is not.
+- `notices` are written by the server from planner data (the planner's own
+  warnings, scarce routes, unknown waiting time, straight-line walking). They do
+  not depend on the model and must be shown with the explanation.
+
+### Unavailable response (HTTP 200)
+
+Provider problems are not HTTP errors, because the app works fine without an
+explanation:
+
+```json
+{"status": "unavailable", "reason": "timeout", "message": "...", "retryable": true}
+```
+
+| `reason` | Meaning | `retryable` |
+|---|---|---|
+| `not_configured` | No key, model or safe HTTPS endpoint is set | false |
+| `quota` | The daily cap on provider calls (`AI_DAILY_REQUEST_LIMIT`) is used | false |
+| `rate_limited` | Provider answered 429; calls pause for 30 s | true |
+| `timeout` | No answer within `AI_TIMEOUT_SECONDS` (default 10) | true |
+| `error` | Provider unreachable, rejected the request, or sent an unreadable reply | true |
+| `invalid_output` | The answer failed the accuracy checks twice; it is never shown | true |
+
+Other statuses: 400 `invalid_request` (malformed body, unknown field, bad ID,
+unknown `location_id`), 404 `not_found`, 429 `rate_limited` (per-visitor limit
+`DRF_EXPLAIN_THROTTLE`, default 6/min, plus the general limit).
+
+### What the model is given
+
+Built by `transit/ai/trip_facts.py` from the matched planner option: data status
+(`verified` or `historic_not_field_verified`), ordered steps (walk, ride with
+route code, route name, board stop, get-off stop, `scarce_service`, known ride
+minutes, transfer walk with stop names and metres), the fare total only when the
+planner's total is complete (else `{"known": false}`), and `waiting_time:
+"unknown"`. It contains no coordinates, typed place names, database IDs or user
+identifiers.
+
+### Output checks
+
+`transit/ai/output_checks.py` accepts an answer only if it is at most 900
+characters, has no markup or links, names every route code in travel order and
+every stop, repeats the required warnings (not field-verified, scarce, unknown
+fare, unknown waiting time, approximate fare), and contains no route code, price,
+time, distance or number outside the planner's facts, no frequency / 24-hour /
+"running now" / "cheapest" / alternative-route claim, and no landmark word that
+is not part of a real stop name. One failed answer is retried once with the
+failed check named; then the response is `unavailable`/`invalid_output`.
+
+Limits: the checks are a safety net, not proof that every sentence is true. Route
+codes are recognised in the Cebu shape (digits then letters, e.g. `17D`), and
+landmark detection is a word list. The UI tells commuters that AI can make
+mistakes and that the directions come from the planner.
+
+### Privacy and cost controls
+
+The key is sent only in a request header from the server. Nothing logs prompts,
+facts, model output, coordinates, URLs or the key. A shared daily counter
+(`ProviderUsage`, provider `ai`) caps provider calls, identical trips reuse a
+cached answer (`AI_CACHE_SECONDS`, per server process), and the per-visitor
+throttle limits bursts.
