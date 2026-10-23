@@ -156,11 +156,20 @@ def staff(client):
     return client
 
 
-def test_admin_page_offers_city_choice_and_browser_download_links(staff):
-    page = staff.get("/admin/transit/location/import-osm/").content.decode()
+def test_powershell_commands_are_safe_and_identify_the_app():
     for city in osm_import.CITY_NAMES:
-        assert f"Download {city} data" in page
-    assert "overpass-api.de/api/interpreter?data=" in page
+        command = osm_import.powershell_download_command(city)
+        assert "'" not in osm_import.overpass_query(city)  # cannot break out of the quoted string
+        assert osm_import.USER_AGENT in command
+        assert f"^({city})$" in command
+        assert command.rstrip().endswith(f"-OutFile '{city.lower().replace(' ', '-')}.json'")
+
+
+def test_admin_page_offers_city_choice_and_powershell_commands(staff):
+    page = staff.get("/admin/transit/location/import-osm/").content.decode()
+    assert "Invoke-WebRequest" in page
+    assert "-OutFile &#x27;lapu-lapu.json&#x27;" in page or "-OutFile 'lapu-lapu.json'" in page
+    assert "<a href=\"https://overpass" not in page  # no dead browser links
 
 
 def test_admin_file_upload_imports_places(staff):

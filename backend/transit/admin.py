@@ -18,9 +18,9 @@ from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
     CITY_NAMES,
     OSMImportError,
-    download_url,
     import_osm_file,
     import_osm_places,
+    powershell_download_command,
 )
 from .models.enums import VehicleClass
 
@@ -153,7 +153,7 @@ class LocationAdmin(admin.ModelAdmin):
                 error = str(exc)
         context = {**self.admin_site.each_context(request), "report": report, "error": error,
                    "cities": CITY_NAMES, "chosen_city": chosen_city,
-                   "download_links": [(name, download_url(name)) for name in CITY_NAMES],
+                   "download_commands": [(name, powershell_download_command(name)) for name in CITY_NAMES],
                    "title": "Import places from OpenStreetMap"}
         return TemplateResponse(request, "admin/transit/osm_places_import.html", context)
 
