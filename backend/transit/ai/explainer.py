@@ -22,7 +22,7 @@ from .trip_facts import TripFacts, build_trip_facts
 logger = logging.getLogger(__name__)
 
 # Change this when the prompt changes, so old cached answers are not reused.
-PROMPT_VERSION = "2"
+PROMPT_VERSION = "3"
 MAX_ATTEMPTS = 2
 
 SYSTEM_PROMPT = """You rewrite one pre-computed jeepney trip in Metro Cebu as a short, friendly explanation for a commuter.
@@ -48,6 +48,7 @@ class Explanation:
     text: str = ""
     notices: tuple = ()
     reason: str | None = None      # why it is unavailable
+    check: str | None = None       # for invalid_output: the failed check's code, never text
     model: str = ""
 
 
@@ -73,8 +74,8 @@ def _cache_key(facts: TripFacts) -> str:
     return "ai:explain:" + hashlib.sha256(identity.encode()).hexdigest()
 
 
-def _unavailable(reason: str) -> Explanation:
-    return Explanation(status="unavailable", reason=reason)
+def _unavailable(reason: str, check: str | None = None) -> Explanation:
+    return Explanation(status="unavailable", reason=reason, check=check)
 
 
 def explain_trip(option: dict) -> Explanation:
@@ -102,4 +103,4 @@ def explain_trip(option: dict) -> Explanation:
         # Only the reason code is logged, never the model's text. WARNING level
         # so it shows in Render's logs, which hide INFO by default.
         logger.warning("AI explanation rejected by output check: %s", problem)
-    return _unavailable("invalid_output")
+    return _unavailable("invalid_output", check=problem)

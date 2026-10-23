@@ -4,6 +4,13 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Fix: "Explain this trip" no longer rejects ordinary wording. Accepted now:
+  "10-minute ride", "1 transfer" (the trip's own transfer count), "->" arrows,
+  "no guarantee", "has not yet been verified", and more ways of saying a fare or
+  wait is unknown. Invented prices, times, numbers, routes and verification
+  claims are still rejected. An `invalid_output` response now includes `check`,
+  the code of the failed check (never any answer text).
+
 - Fix: "Explain this trip" rejected real trips whose stops have no name in the
   imported feed ("Unnamed stop (feed id …)"), because the answer had to repeat
   that placeholder. Such stops are now described as "the stop shown on the map"

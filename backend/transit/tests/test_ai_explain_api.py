@@ -482,3 +482,12 @@ def test_other_visitors_are_not_blocked_by_a_heavy_one(client, net, provider):
 
 def test_only_post_is_allowed(client, net):
     assert client.get(EXPLAIN_URL).status_code == 405
+
+
+def test_unavailable_response_names_the_failed_check_but_never_the_answer(client, net, provider):
+    secret_text = "Take A1 from Stop One to Stop Four, then ride 63C. The fare is ₱13.00. The wait is unknown."
+    provider(reply(secret_text))
+    resp = explain_direct(client)
+    body = resp.json()
+    assert body["reason"] == "invalid_output" and body["check"] == "unknown_route_code"
+    assert "63C" not in resp.content.decode() and "explanation" not in body
