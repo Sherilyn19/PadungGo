@@ -24,7 +24,9 @@ commuter's timezone; retain effective dates of fare rules.
 | Method and path | Input | Public output |
 |---|---|---|
 | GET /api/v1/health | None | Minimal service status; no secrets or connection strings |
-| GET /api/v1/locations | q, optional area_id, limit (default 20; maximum 50), cursor | Matching curated places with id, name, kind, area, latitude, longitude, next_cursor |
+| GET /api/v1/locations | q, optional area_id, limit (default 20; maximum 50), cursor | Matching curated places with id, name, kind, area, latitude, longitude, next_cursor. Matching ignores case and accents and includes Admin aliases |
+| GET /api/v1/places/suggestions | q (first 100 characters used) | PadungGo locations first, then Geoapify map results; see "Place suggestions and address labels" |
+| POST /api/v1/places/address | JSON `{latitude, longitude}` | Readable address for a GPS or map point, or a reason none is shown |
 | GET /api/v1/routes | Optional area_id, cursor, limit (default 20; maximum 50) | Verified active services and directional pattern summaries, next_cursor |
 | GET /api/v1/routes/{id} | Route ID | Identity, vehicle class, known operator, verified variants, signboards, ordered stop occurrences, geometry, evidence dates and limitations |
 
@@ -45,6 +47,41 @@ Location search is not a promise of transit availability. General address search
 may use a compliant geocoder through a controlled backend adapter; do not pretend
 a small curated catalog resolves every possible place name. All four selection
 methods ultimately produce coordinates or a known location ID.
+
+## Place suggestions and address labels
+
+The Geoapify key exists only on the backend (`GEOAPIFY_API_KEY`). Browsers call
+PadungGo, which calls Geoapify, so Geoapify receives the typed text or the
+coordinates from PadungGo's server, not the user's device or IP address.
+
+**Suggestions** return `{results, provider: {name, status, attribution}}`. Each
+result has `source` (`padunggo` or `geoapify`), `location_id` (only for PadungGo
+records; plan with it), `name`, `detail`, `kind`, `latitude`, `longitude`, and
+`status` (PadungGo records) or `data_attribution` (map results). Map results only
+locate a place; they are not evidence that any route serves it. PadungGo records
+matching an alias exactly come first. Several campuses that share an alias are all
+listed, each under its own name; the app never picks one. Provider results close
+to a PadungGo record with a similar name are dropped as duplicates. Geoapify is
+used only for text of three or more letters, limited to the Metro Cebu rectangle.
+
+**Address** returns `{status, label, latitude, longitude, distance_m, reason,
+attribution}`. `latitude`/`longitude` are always the values sent, never the
+provider's. `status` is `resolved`, `no_result` (no address within
+`GEOAPIFY_MAX_ADDRESS_DISTANCE_M`, default 100 m), or `unavailable` with `reason`
+`disabled`, `quota`, `rate_limited`, `timeout` or `error`. The app then shows
+"Selected location — address unavailable" with the coordinates. POST keeps
+coordinates out of URLs and access logs.
+
+**Quota protection:** a 300 ms typing pause before each request; browser and
+server caches (case-insensitive); a per-client limit (`DRF_PLACES_THROTTLE`,
+default 40/min); and a database counter shared by all workers
+(`GEOAPIFY_DAILY_LIMIT`, default 2,500 of the free plan's 3,000 daily credits).
+Suggestions may use 80% of that (`GEOAPIFY_SUGGEST_SHARE`), reserving the rest for
+addresses. After HTTP 429 the provider is paused for 60 s; after a rejected key,
+10 min.
+
+**Attribution:** wherever Geoapify results are shown, display "Powered by
+Geoapify" and the data credit returned (normally "© OpenStreetMap contributors").
 
 Public route details omit internal candidate records and private reviewer notes.
 Unknown/unpublished route IDs return 404. Route lists describe verified records,

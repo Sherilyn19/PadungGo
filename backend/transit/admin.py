@@ -20,6 +20,7 @@ from .models import (
     FareRule,
     Location,
     PatternStop,
+    ProviderUsage,
     RecordEvidence,
     Route,
     RouteEvidence,
@@ -107,9 +108,9 @@ class AreaAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "area", "status", "latitude", "longitude")
+    list_display = ("name", "aliases", "kind", "area", "status", "latitude", "longitude")
     list_filter = ("kind", "status")
-    search_fields = ("name",)
+    search_fields = ("name", "aliases")
 
 
 @admin.register(Stop)
@@ -174,3 +175,18 @@ class RouteEvidenceAdmin(admin.ModelAdmin):
 class RecordEvidenceAdmin(admin.ModelAdmin):
     list_display = ("status", "source", "reviewed_at", "reviewer")
     list_filter = ("status",)
+
+
+@admin.register(ProviderUsage)
+class ProviderUsageAdmin(admin.ModelAdmin):
+    """Daily Geoapify request counts, for checking the free-plan quota."""
+
+    list_display = ("day", "provider", "requests")
+    list_filter = ("provider",)
+    ordering = ("-day",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

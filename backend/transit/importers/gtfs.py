@@ -21,6 +21,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from transit.geocompat import make_linestring, make_point
+from transit.search_text import build_search_text
 from transit.models import (
     DataSource,
     EvidenceStatus,
@@ -315,6 +316,8 @@ def _build_locations(stops: dict[str, Stop], source: DataSource) -> list[Locatio
         locations.append(Location(
             name=stop.name, kind="place", latitude=stop.latitude,
             longitude=stop.longitude, point=make_point(stop.latitude, stop.longitude),
+            # bulk_create skips save(), so fill the search words here.
+            search_text=build_search_text(stop.name),
             status=RecordStatus.DOCUMENTED, source=source,
         ))
     return locations

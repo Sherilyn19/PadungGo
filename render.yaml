@@ -32,3 +32,5 @@ services:
         sync: false                  # paste the Supabase Session pooler URI
       - key: FRONTEND_ORIGIN
         sync: false                  # your Vercel URL, once the frontend exists
+      - key: GEOAPIFY_API_KEY
+        sync: false                  # server-side only; never a VITE_* variable

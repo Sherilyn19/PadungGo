@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
@@ -16,6 +17,7 @@ from transit.planner import PlanRequest, plan_journeys
 from transit.planner.engine import PlannerError
 from transit.planner.loader import load_network, resolve_location
 from transit.planner.journey_types import Endpoint
+from transit.search_text import normalise_query
 
 from .errors import error_response
 from .geometry import attach_ride_geometry
@@ -84,14 +86,13 @@ def health(request):
 @api_view(["GET"])
 def locations(request):
     """Curated location search. Not a promise of transit availability."""
-    from .location_search import normalise_query
-
     tokens = normalise_query(request.query_params.get("q") or "")
     area_id = _parse_uuid_param(request, "area_id")
 
     qs = Location.objects.select_related("area")
     for token in tokens:
-        qs = qs.filter(name__icontains=token)
+        # search_text holds accent-free words of the name and aliases.
+        qs = qs.filter(Q(search_text__contains=token) | Q(name__icontains=token))
     if area_id:
         qs = qs.filter(area_id=area_id)
     rows, next_cursor = _paginate(request, qs, "name")

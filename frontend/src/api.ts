@@ -10,18 +10,56 @@ export interface LatLng {
   longitude: number
 }
 
-export interface Place extends LatLng {
-  id?: string
-  name: string
-  source: 'search' | 'gps' | 'map'
+// Where a chosen point came from. Planning always uses latitude/longitude
+// (or id for PadungGo locations); the name is only a label.
+export type PlaceSource = 'search' | 'provider' | 'gps' | 'map'
+
+// For GPS and map points: whether a readable address has been found yet.
+export type AddressStatus = 'pending' | 'resolved' | 'unavailable'
+
+export interface Attribution {
+  text: string
+  url: string | null
 }
 
-export interface LocationResult extends LatLng {
-  id: string
+export interface Place extends LatLng {
+  // Only PadungGo location records have an id.
+  id?: string
   name: string
+  source: PlaceSource
+  addressStatus?: AddressStatus
+  attribution?: Attribution[]
+}
+
+export interface PlaceSuggestion extends LatLng {
+  // "padunggo": our own location record; "geoapify": a map-data result that
+  // says nothing about which routes serve it.
+  source: 'padunggo' | 'geoapify'
+  location_id: string | null
+  name: string
+  detail: string | null
   kind: string
-  area: string | null
-  status: string
+  status?: string
+  data_attribution?: Attribution
+}
+
+export interface SuggestionsResponse {
+  results: PlaceSuggestion[]
+  provider: {
+    name: string
+    // ok | skipped | disabled | quota | rate_limited | timeout | error
+    status: string
+    attribution: Attribution[]
+  }
+}
+
+export interface AddressResponse extends LatLng {
+  status: 'resolved' | 'no_result' | 'unavailable'
+  label: string | null
+  distance_m: number | null
+  // Why no address: disabled | quota | rate_limited | timeout | error
+  reason: string | null
+  attribution: Attribution[] | null
 }
 
 export interface LineGeometry {
@@ -189,10 +227,10 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
       0,
       true,
     )
-    } finally {
-      clearTimeout(timer)
-      signal?.removeEventListener('abort', forwardAbort)
-    }
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', forwardAbort)
+  }
 
   let body: unknown = null
   if (resp.headers.get('content-type')?.includes('application/json')) {
@@ -219,8 +257,17 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
   return body as T
 }
 
-export function searchLocations(q: string, signal?: AbortSignal): Promise<{ results: LocationResult[] }> {
-  return request(`/locations?q=${encodeURIComponent(q)}&limit=8`, undefined, signal)
+export function suggestPlaces(q: string, signal?: AbortSignal): Promise<SuggestionsResponse> {
+  return request(`/places/suggestions?q=${encodeURIComponent(q)}`, undefined, signal)
+}
+
+// POST keeps the coordinates out of URLs and server access logs.
+export function lookUpAddress(point: LatLng, signal?: AbortSignal): Promise<AddressResponse> {
+  return request('/places/address', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ latitude: point.latitude, longitude: point.longitude }),
+  }, signal)
 }
 
 // Older API deployments accept at most 5 options.
