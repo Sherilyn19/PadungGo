@@ -13,7 +13,6 @@ from datetime import date
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
 
 from transit.ai.explainer import explain_trip
 from transit.planner import PlanRequest, plan_journeys
@@ -23,7 +22,7 @@ from transit.planner.validation import MAX_JOURNEY_OPTIONS
 
 from .errors import error_response
 from .serializers import ExplainRequestSerializer
-from .throttles import ExplainRateThrottle
+from .throttles import ExplainRateThrottle, GeneralRateThrottle
 from .views import _planner_config, _resolve_endpoint, _UnresolvableLocation
 
 # Plain-language text for each reason, and whether trying again can help.
@@ -61,7 +60,7 @@ def _unavailable_response(reason: str, check: str | None = None) -> Response:
 
 @api_view(["POST"])
 # This decorator replaces the defaults, so keep the general per-visitor limit.
-@throttle_classes([AnonRateThrottle, ExplainRateThrottle])
+@throttle_classes([GeneralRateThrottle, ExplainRateThrottle])
 def explain_journey(request):
     serializer = ExplainRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

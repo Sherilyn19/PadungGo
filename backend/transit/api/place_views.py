@@ -10,13 +10,12 @@ from rest_framework import serializers
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
 
 from transit.places.geoapify import reverse_address
 from transit.places.suggestions import place_suggestions
 
 from .errors import error_response
-from .throttles import PlacesRateThrottle
+from .throttles import GeneralRateThrottle, PlacesRateThrottle
 
 MAX_QUERY_LENGTH = 100
 
@@ -27,7 +26,7 @@ class PointSerializer(serializers.Serializer):
 
 
 @api_view(["GET"])
-@throttle_classes([AnonRateThrottle, PlacesRateThrottle])
+@throttle_classes([GeneralRateThrottle, PlacesRateThrottle])
 def suggestions(request):
     query = (request.query_params.get("q") or "").strip()[:MAX_QUERY_LENGTH]
     return Response(place_suggestions(query))
@@ -35,7 +34,7 @@ def suggestions(request):
 
 # POST keeps coordinates out of URLs, so server access logs never record them.
 @api_view(["POST"])
-@throttle_classes([AnonRateThrottle, PlacesRateThrottle])
+@throttle_classes([GeneralRateThrottle, PlacesRateThrottle])
 def address(request):
     point = PointSerializer(data=request.data)
     if not point.is_valid():
