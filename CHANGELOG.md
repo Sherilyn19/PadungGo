@@ -8,7 +8,7 @@ Significant changes will be recorded here as development occurs. Do not backdate
   Scarce (`Route.service_availability`, migration 0005). Trips with a
   Scarce ride are listed after other trips before the result limit is
   applied, and the chosen sort still applies within each group. The app
-  shows a "Scarce" badge on those rides and says why they are listed last.
+  shows a "Scarce" badge on those rides and briefly explains its meaning.
   No waiting times are shown. Older responses without these fields show no
   badge. Routes excluded from suggestions still use `active = False`, with
   their records kept.

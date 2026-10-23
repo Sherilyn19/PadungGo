@@ -19,7 +19,7 @@ export default function RidePlate({ code, rideIndex, size = 'md' }: { code: stri
 // time is known, so the wording stays general.
 export function ScarceBadge() {
   return (
-    <span className="badge badge-scarce" title="Commuters report few trips on this route. You may wait longer.">
+    <span className="badge badge-scarce" title="Few jeepneys">
       <Hourglass size={12} aria-hidden="true" />
       Scarce
     </span>
