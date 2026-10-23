@@ -1,0 +1,24 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Import places from OpenStreetMap</h1>
+<p>Downloads named schools, hospitals, malls, landmarks, attractions, offices and
+terminals inside <strong>Cebu City, Mandaue and Lapu-Lapu</strong> from OpenStreetMap
+(one request to the free Overpass server; no key or cost) and makes them searchable,
+including by acronym.</p>
+<ul>
+  <li>Places are stored as <strong>documented</strong> locations. They are not route or stop evidence.</li>
+  <li>Running it again updates the same records; it never changes hand-made or GTFS locations, routes or fares.</li>
+  <li>Data © OpenStreetMap contributors, ODbL 1.0.</li>
+  <li>It can take one to three minutes. Press the button once.</li>
+</ul>
+{% if report %}
+  <p style="padding:8px;background:#e6f4ea;border:1px solid #9ad1a8;">{{ report }}</p>
+{% endif %}
+{% if error %}
+  <p style="padding:8px;background:#fdecea;border:1px solid #f5b7b1;">{{ error }}</p>
+{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <p><input type="submit" value="Import places" class="default"></p>
+</form>
+{% endblock %}

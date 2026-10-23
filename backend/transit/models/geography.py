@@ -45,8 +45,11 @@ class Location(models.Model):
                   "A shared alias may go on every campus or branch; keep each "
                   "record's name specific so users can tell them apart.",
     )
-    # Accent-free lower-case words of name + aliases; filled in on save.
+    # Accent-free lower-case words of name, aliases and acronyms; filled in on save.
     search_text = models.TextField(blank=True, editable=False)
+    # Identity in an imported dataset, e.g. "osm:node/123", so re-imports update
+    # the same record instead of adding duplicates. Blank for hand-made records.
+    external_ref = models.CharField(max_length=60, blank=True, db_index=True, editable=False)
     kind = models.CharField(max_length=20, choices=LocationKind.choices, default=LocationKind.PLACE)
     area = models.ForeignKey(
         Area, null=True, blank=True, on_delete=models.PROTECT, related_name="locations"

@@ -4,6 +4,12 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Smarter place search (migration 0007). Suggestions start from the first
+  letter, match word beginnings and automatically worked-out acronyms (e.g.
+  usjr, cnu, mcia) without hardcoding any place. Admin can import named places
+  in Cebu City, Mandaue and Lapu-Lapu from OpenStreetMap; Geoapify results are
+  limited to those three cities.
+
 - Readable addresses and better place search (migration 0006). After "My
   location" or a map pin, the app shows the address found through Geoapify, or
   "Selected location — address unavailable" with coordinates; the exact point

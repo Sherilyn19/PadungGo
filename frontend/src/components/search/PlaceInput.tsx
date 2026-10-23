@@ -45,7 +45,9 @@ export default function PlaceInput({ label, placeholder, value, onChange, pickin
 
   useEffect(() => {
     const q = text.trim()
-    if (!open || q.length < 2 || q === value?.name) {
+    // PadungGo's own places are suggested from the first letter; the backend
+    // only asks the paid-quota provider from three letters.
+    if (!open || q.length < 1 || q === value?.name) {
       setResults([])
       setBusy(false)
       return

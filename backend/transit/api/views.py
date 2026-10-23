@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
@@ -17,6 +16,7 @@ from transit.planner import PlanRequest, plan_journeys
 from transit.planner.engine import PlannerError
 from transit.planner.loader import load_network, resolve_location
 from transit.planner.journey_types import Endpoint
+from transit.places.suggestions import filter_by_words
 from transit.search_text import normalise_query
 
 from .errors import error_response
@@ -90,9 +90,8 @@ def locations(request):
     area_id = _parse_uuid_param(request, "area_id")
 
     qs = Location.objects.select_related("area")
-    for token in tokens:
-        # search_text holds accent-free words of the name and aliases.
-        qs = qs.filter(Q(search_text__contains=token) | Q(name__icontains=token))
+    # Matches word beginnings of the name, aliases and acronyms, ignoring case/accents.
+    qs = filter_by_words(qs, tokens)
     if area_id:
         qs = qs.filter(area_id=area_id)
     rows, next_cursor = _paginate(request, qs, "name")
