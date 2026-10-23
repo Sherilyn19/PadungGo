@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from transit.search_text import build_search_text, normalise_query
+from transit.search_text import acronyms, build_search_text, normalise_query
 from transit.models import Area, Location
 
 
@@ -15,7 +15,7 @@ from transit.models import Area, Location
         ("...", []),
         ("", []),
         ("CEBU   south", ["cebu", "south"]),
-        ("Café, A&B/C-D'E(F)", ["cafe", "a", "b", "c", "d", "e"]),
+        ("Café, A&B/C-D'E(F)", ["cafe", "a", "b", "c", "de", "f"]),  # apostrophes join words
         ("Gabuya gabuya GABUYA south", ["gabuya", "south"]),
         ("one two three four five six seven eight",
          ["one", "two", "three", "four", "five", "six"]),
@@ -28,9 +28,24 @@ def test_normalise_query(query, expected):
     assert normalise_query(query) == expected
 
 
-def test_search_text_combines_name_and_aliases():
-    assert build_search_text("Fuente Osmeña", "FO, Rotonda\nCircle") == (
-        "fuente osmena fo rotonda circle")
+def test_search_text_combines_name_aliases_and_acronyms():
+    assert build_search_text("Fuente Osmeña", "Rotonda\nCircle") == (
+        "fuente osmena rotonda circle fo")
+
+
+@pytest.mark.parametrize("name,expected", [
+    ("University of San Jose-Recoletos", "usjr"),
+    ("University of San Carlos", "usc"),
+    ("University of Cebu - Banilad Campus", "uc"),
+    ("Cebu Doctors' University", "cdu"),
+    ("Mactan-Cebu International Airport", "mcia"),
+])
+def test_acronyms(name, expected):
+    assert expected in acronyms(name)
+
+
+def test_single_word_has_no_acronym():
+    assert acronyms("Ayala") == []
 
 
 @pytest.fixture

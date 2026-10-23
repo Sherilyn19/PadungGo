@@ -15,6 +15,7 @@ from django.template.response import TemplateResponse
 from django.urls import path
 
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
+from .places.osm_import import OSMImportError, import_osm_places
 from .models.enums import VehicleClass
 
 from .models import (
@@ -114,6 +115,28 @@ class LocationAdmin(admin.ModelAdmin):
     list_display = ("name", "aliases", "kind", "area", "status", "latitude", "longitude")
     list_filter = ("kind", "status")
     search_fields = ("name", "aliases")
+    change_list_template = "admin/transit/location_changelist.html"
+
+    def get_urls(self):
+        extra = [path("import-osm/", self.admin_site.admin_view(self.import_osm_view),
+                      name="transit_import_osm_places")]
+        return extra + super().get_urls()
+
+    def import_osm_view(self, request):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        report = error = None
+        if request.method == "POST":
+            try:
+                result = import_osm_places()
+                cities = ", ".join(f"{c}: {n}" for c, n in sorted(result.by_city.items()))
+                report = (f"Done. {result.created} added, {result.updated} updated, "
+                          f"{result.unchanged} unchanged ({cities}).")
+            except OSMImportError as exc:
+                error = str(exc)
+        context = {**self.admin_site.each_context(request), "report": report,
+                   "error": error, "title": "Import places from OpenStreetMap"}
+        return TemplateResponse(request, "admin/transit/osm_places_import.html", context)
 
 
 @admin.register(Stop)

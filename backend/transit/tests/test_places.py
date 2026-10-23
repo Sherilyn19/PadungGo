@@ -150,6 +150,9 @@ def test_alias_lists_every_campus_first(client, campuses):
     assert names[:2] == ["Example Tech University - North Campus",
                          "Example Tech University - South Campus"]
     assert "Etuy Street" in names
+    # The acronym is also worked out from the name, with no alias typed.
+    by_acronym = [r["name"] for r in client.get(SUGGEST_URL, {"q": "ETU"}).json()["results"]]
+    assert by_acronym[:2] == names[:2]
     assert all(r["source"] == "padunggo" and r["location_id"] for r in results)
 
 
@@ -162,6 +165,7 @@ def test_case_and_accent_insensitive(client, campuses, query):
 def test_locations_endpoint_matches_accents_and_aliases(client, campuses):
     names = [r["name"] for r in client.get("/api/v1/locations", {"q": "osmena"}).json()["results"]]
     assert names == ["Fuente Osmeña Circle"]
+    # Word beginnings only: "etu" matches "ETU" and "Etuy", not words containing it.
     assert len(client.get("/api/v1/locations", {"q": "ETU"}).json()["results"]) == 3
 
 
@@ -169,10 +173,12 @@ def test_provider_results_are_labelled_and_deduplicated(client, campuses, provid
     calls, replies = provider
     replies.append({"results": [
         # Same place as a curated record: dropped.
-        {"name": "Fuente Osmeña Circle", "lat": 10.3101, "lon": 123.8901,
+        {"name": "Fuente Osmeña Circle", "lat": 10.3101, "lon": 123.8901, "city": "Cebu City",
          "address_line2": "Cebu City", "category": "tourism.attraction"},
-        {"name": "Osmeña Bakery", "lat": 10.29, "lon": 123.90,
+        {"name": "Osmeña Bakery", "lat": 10.29, "lon": 123.90, "city": "Cebu City",
          "address_line2": "Colon Street, Cebu City", "category": "commercial.food_and_drink"},
+        # Outside Cebu City, Mandaue and Lapu-Lapu: dropped.
+        {"name": "Osmeña Store", "lat": 10.25, "lon": 123.84, "city": "Talisay"},
     ]})
     body = client.get(SUGGEST_URL, {"q": "osmena"}).json()
 
@@ -210,3 +216,40 @@ def test_suggestions_keep_daily_reserve_for_addresses(client, provider, settings
     # The reserved share still lets the address lookup reach the provider.
     assert address["status"] == "no_result"
     assert len(calls) == 2
+
+
+@pytest.fixture
+def universities():
+    for name, kind in (("University of San Jose-Recoletos", "school"),
+                       ("Cebu Normal University", "school"),
+                       ("Normal Street", "place"),
+                       ("Mactan-Cebu International Airport", "transport_hub")):
+        Location.objects.create(name=name, kind=kind, latitude=10.3, longitude=123.9)
+
+
+@pytest.mark.parametrize("query,first", [
+    ("usjr", "University of San Jose-Recoletos"),
+    ("USJ", "University of San Jose-Recoletos"),
+    ("cnu", "Cebu Normal University"),
+    ("mcia", "Mactan-Cebu International Airport"),
+    ("san jose", "University of San Jose-Recoletos"),
+])
+def test_acronyms_and_word_beginnings(client, universities, query, first):
+    assert client.get(SUGGEST_URL, {"q": query}).json()["results"][0]["name"] == first
+
+
+def test_word_inside_name_is_found(client, universities):
+    names = [r["name"] for r in client.get(SUGGEST_URL, {"q": "normal"}).json()["results"]]
+    assert set(names) == {"Normal Street", "Cebu Normal University"}
+
+
+def test_one_letter_suggests_without_provider(client, universities, provider):
+    calls, _ = provider
+    body = client.get(SUGGEST_URL, {"q": "u"}).json()
+    assert body["results"][0]["name"] == "University of San Jose-Recoletos"
+    assert body["provider"]["status"] == "skipped"
+    assert calls == []
+
+
+def test_middle_of_word_does_not_match(client, universities):
+    assert client.get(SUGGEST_URL, {"q": "ormal"}).json()["results"] == []

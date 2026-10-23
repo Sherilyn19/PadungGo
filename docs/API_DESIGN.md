@@ -64,6 +64,21 @@ listed, each under its own name; the app never picks one. Provider results close
 to a PadungGo record with a similar name are dropped as duplicates. Geoapify is
 used only for text of three or more letters, limited to the Metro Cebu rectangle.
 
+**Matching** works on word beginnings of each location's name, aliases and
+acronyms, ignoring case and accents, from the first typed letter. Acronyms are
+worked out from names, never typed into code: "University of San Jose-Recoletos"
+is found by "usjr", "Cebu Normal University" by "cnu". Exact acronyms, aliases and
+first words rank first; within a level, schools, malls and attractions come before
+shops and streets. Geoapify is asked only when PadungGo's own places do not fill
+the list, and its results are kept only inside Cebu City, Mandaue and Lapu-Lapu.
+
+**Imported places:** Admin → Locations → "Import places from OpenStreetMap" loads
+named schools, hospitals, malls, landmarks, attractions, offices and terminals in
+those three cities (one free Overpass request; ODbL, credited by the map's
+OpenStreetMap attribution). They are `documented` locations, not route evidence.
+Re-running updates the same records by OpenStreetMap id (`external_ref`) and never
+touches hand-made or GTFS locations.
+
 **Address** returns `{status, label, latitude, longitude, distance_m, reason,
 attribution}`. `latitude`/`longitude` are always the values sent, never the
 provider's. `status` is `resolved`, `no_result` (no address within

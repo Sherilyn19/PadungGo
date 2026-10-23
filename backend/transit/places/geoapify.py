@@ -180,7 +180,19 @@ def _kind(result: dict) -> str:
     return "place"
 
 
+# Suggestions cover Cebu City, Mandaue and Lapu-Lapu only (spellings vary).
+SERVICE_CITIES = frozenset({"cebu city", "mandaue", "mandaue city", "lapu lapu",
+                            "lapu lapu city", "lapulapu", "lapulapu city"})
+
+
+def in_service_city(result: dict) -> bool:
+    city = result.get("city")
+    return isinstance(city, str) and " ".join(search_tokens(city)) in SERVICE_CITIES
+
+
 def _suggestion(result: dict) -> dict | None:
+    if not in_service_city(result):
+        return None
     lat, lon = _coordinate(result.get("lat")), _coordinate(result.get("lon"))
     name = result.get("name") or result.get("address_line1")
     if lat is None or lon is None or not isinstance(name, str) or not name.strip():
@@ -199,7 +211,7 @@ def _suggestion(result: dict) -> dict | None:
 
 
 def suggest_places(text: str) -> ProviderResult:
-    """Place suggestions inside the configured Metro Cebu rectangle."""
+    """Place suggestions in Cebu City, Mandaue and Lapu-Lapu."""
     words = " ".join(search_tokens(text))
     key = f"{PROVIDER}:suggest:" + hashlib.sha256(words.encode()).hexdigest()
     cached = cache.get(key)

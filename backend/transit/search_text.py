@@ -1,9 +1,23 @@
-"""Normalise location text so search ignores case, accents and punctuation."""
+"""Normalise location text so search ignores case, accents and punctuation.
+
+Acronyms are worked out from each name (never typed into code), so
+"University of San Jose-Recoletos" is also found by "usjr" and
+"Cebu Normal University" by "cnu".
+"""
 from __future__ import annotations
 
+import re
 import unicodedata
 
 MAX_QUERY_TOKENS = 6
+
+# Small joining words people leave out of acronyms (English, Spanish, Cebuano/Filipino).
+ACRONYM_SKIP_WORDS = frozenset({
+    "of", "the", "and", "for", "in", "at", "de", "del", "dela", "la", "las", "los",
+    "y", "ng", "sa", "san", "sta", "sto",
+})
+# Words that describe a branch rather than the institution, e.g. "- Basak Campus".
+_BRANCH_SEPARATOR = re.compile(r"\s+[-–—]\s+|\s*[(:]")
 
 
 def search_tokens(text: str, limit: int | None = None) -> list[str]:
@@ -12,6 +26,9 @@ def search_tokens(text: str, limit: int | None = None) -> list[str]:
     characters = []
     for character in decomposed:
         if unicodedata.category(character).startswith("M"):
+            continue
+        # Apostrophes join a word ("Doctors'") instead of splitting it.
+        if character in "'’":
             continue
         characters.append(character if character.isalnum() else " ")
 
@@ -34,11 +51,34 @@ def split_aliases(aliases: str) -> list[str]:
     return [a.strip() for a in (aliases or "").replace("\n", ",").split(",") if a.strip()]
 
 
-def build_search_text(name: str, aliases: str = "") -> str:
-    """Stored, normalised words of a location's name and aliases.
+def acronyms(name: str) -> list[str]:
+    """Likely acronyms of a name, longest form first.
 
-    Kept as a column so the database can filter accent-insensitively without a
-    PostgreSQL extension, while list pagination still happens in the database.
+    Both the whole name and the part before a branch label ("- Basak Campus",
+    "(Main)") are used, with and without small joining words. "San" is kept
+    in the full form so "University of San Carlos" gives both "usc" and "uc".
     """
-    words = search_tokens(" ".join([name, *split_aliases(aliases)]))
+    found: list[str] = []
+    parts = [name, _BRANCH_SEPARATOR.split(name, maxsplit=1)[0]]
+    for part in parts:
+        words = [w for w in search_tokens(part) if not w.isdigit()]
+        if len(words) < 2:
+            continue
+        keep_san = [w for w in words if w not in ACRONYM_SKIP_WORDS or w in {"san", "sta", "sto"}]
+        content = [w for w in words if w not in ACRONYM_SKIP_WORDS]
+        every = words
+        for chosen in (keep_san, content, every):
+            initials = "".join(w[0] for w in chosen)
+            if len(initials) >= 2 and initials not in found:
+                found.append(initials)
+    return found
+
+
+def build_search_text(name: str, aliases: str = "") -> str:
+    """Stored, normalised words of a location's name, aliases and acronyms.
+
+    Kept as a column so the database can filter accent-insensitively and by
+    word beginnings without a PostgreSQL extension.
+    """
+    words = search_tokens(" ".join([name, *split_aliases(aliases), *acronyms(name)]))
     return " ".join(words)
