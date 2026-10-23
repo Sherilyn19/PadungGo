@@ -29,7 +29,6 @@ sorting is preserved within each group, before the result limit.
 | 03C, 03D | Owner explicitly approved exclusion after an ambiguous 03-series report. |
 | 03G, 03K | Latest classmate report: inactive (supersedes an earlier positive implication about 03K). |
 | 07C | Classmates: no longer operates. |
-| 07E | Classmate: "07E kay wala na ang operate." |
 | 12N | Excluded based on classmate reports. |
 | 42D | Owner's precautionary product decision. |
 
@@ -50,14 +49,12 @@ or replacement of traditional vehicles with modern vehicles.
 
 ## Application status (checked 2026-10-23 through the public API)
 
-- Exclusions: none of 03C, 03D, 03G, 03K, 07C, 07E, 12N, 42D appears among
+- Exclusions: none of 03C, 03D, 03G, 03K, 07C, 12N, 42D appears among
   the 90 active routes.
 - Scarcity: live journey plans returned `service_availability: "scarce"` for
   rides on all six scarce routes, with those journeys grouped last.
-- 07E had no active record before the changes. Whether an inactive 07E record
-  exists or it was never imported is not yet established; do not create one
-  merely to disable it.
-- 03K's record UUID was not captured.
+- 03K stays excluded (inactive) after the owner reconsidered; it is not marked
+  Scarce. Its record UUID was not captured.
 
 Route codes are not unique; decisions are applied to exact Route records.
 The planner does not hardcode route codes or UUIDs.
