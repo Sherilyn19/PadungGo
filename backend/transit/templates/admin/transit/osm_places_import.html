@@ -31,12 +31,18 @@ The app retries by itself if the free OpenStreetMap server is busy.</p>
 </form>
 
 <h2>Option 2: if option 1 keeps failing</h2>
+<p>Download the data on your own computer, then upload the file here. A web browser cannot
+do the download (the OpenStreetMap server refuses browsers), so use Windows PowerShell:</p>
 <ol>
-  <li>Open a link below in a new tab. Wait about a minute until a page of text appears.</li>
-  <li>Save it: press Ctrl+S and keep the name ending in <code>.json</code> (or right-click, Save as).</li>
-  <li>Choose that file here and press the button.</li>
+  <li>Open PowerShell and run <code>cd $HOME\Downloads</code>.</li>
+  <li>Copy and paste a city's command below, press Enter, and wait up to two minutes.
+      If it shows a 502 or 504 error, just run it again.</li>
+  <li>It saves a <code>.json</code> file in that folder. Choose it below and press the button.</li>
 </ol>
-<p>{% for name, link in download_links %}<a href="{{ link }}" target="_blank" rel="noopener noreferrer">Download {{ name }} data</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+{% for name, command in download_commands %}
+  <p><strong>{{ name }}</strong> (click the box to select all)</p>
+  <textarea readonly rows="4" style="width:100%;max-width:900px;font-family:monospace;font-size:11px;" onclick="this.select()">{{ command }}</textarea>
+{% endfor %}
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <p><input type="file" name="file" accept=".json,application/json" required>

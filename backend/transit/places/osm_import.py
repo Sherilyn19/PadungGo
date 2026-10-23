@@ -91,9 +91,22 @@ def overpass_query(city: str | None = None) -> str:
     )
 
 
-def download_url(city: str) -> str:
-    """A link that downloads one city's data in a browser (for the file fallback)."""
-    return f"{OVERPASS_URL}?data={urllib.parse.quote(overpass_query(city))}"
+def powershell_download_command(city: str) -> str:
+    """A Windows PowerShell command that saves one city's data to a .json file.
+
+    Browsers cannot do this: the Overpass server answers 406 to browser
+    identities, so the command sends this app's own User-Agent instead.
+    """
+    query = overpass_query(city)  # contains no single quotes, safe inside '...'
+    filename = city.lower().replace(" ", "-") + ".json"
+    return (
+        f"$q = '{query}'\n"
+        f"Invoke-WebRequest -UseBasicParsing -Method Post -TimeoutSec 150 -Uri '{OVERPASS_URL}' "
+        f"-UserAgent '{USER_AGENT}' -Headers @{{Accept='application/json'}} "
+        "-ContentType 'application/x-www-form-urlencoded' "
+        "-Body ('data=' + [uri]::EscapeDataString($q)) "
+        f"-OutFile '{filename}'"
+    )
 
 
 class OSMImportError(Exception):
