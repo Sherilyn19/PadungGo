@@ -65,23 +65,37 @@ The GTFS importer can create fresh copies of routes (active, not_flagged)
 under a different source title, which would undo these decisions. No re-import
 is authorized; review this list before any future import.
 
-## Mandaue corrections (accepted, not yet applied to route paths)
+## Mandaue corrections
 
 Classmate reports, latest first:
-- "20B ug 21B same rana. Ibabao Mandaue to Ayala." — accepted as an
-  Ibabao–Ayala service with no Carbon continuation. The same endpoints do not
-  prove identical streets or stops. No active 20B record is stored.
-- 21A, 21D, 22A, 22D: from Ibabao via SM Cebu; they stop around Cathedral
-  while the signboard says Manalili.
-- Mandaue services no longer originate at Ouano; they now start at Ibabao,
-  with routes changed.
-- 21F, 21G, 22G: very rare; paths have changed.
+- "20B ug 21B same rana. Ibabao Mandaue to Ayala." Accepted as an Ibabao–Ayala
+  service with no Carbon continuation. No active 20B record is stored.
+- 21A, 21D, 22A, 22D: from Ibabao via SM Cebu; they stop at the Cathedral and the
+  placard says Manalili.
+- Mandaue services no longer start at Ouano; they now start at Ibabao.
+- 21F, 21G, 22G: very rare; paths have changed (no endpoints given).
 
-Stored records still show Ouano origins and Carbon endpoints for several of
-these routes. Correct ordered stops, terminals and geometry only where stored
-geometry supports it, as exact, previewed changes; otherwise record the missing
-boarding/alighting location. Do not bulk-rename Ouano records or change only
-route names.
+What the stored data (Admin export, 2026-10-23) shows:
+- 21x ("Ibabao") and 22x ("Ouano") patterns start at the same stop, Cebu North
+  Road, and mostly end at M. Logarta Avenue, about 3 km from Ibabao-Estancia.
+  No stored stop is at Ibabao.
+- All reach the Carbon area. Kamagong Street / J. Solon Drive is about 30 m from
+  the Cebu Metropolitan Cathedral bus stop as mapped in OpenStreetMap.
+- OpenStreetMap contributors map route 22A as Ouano to Cathedral and 22D as
+  Ibabao–Manalili–Cebu City. This agrees with the reports but is not
+  verification of current service.
+
+Applied with the Admin action "Switch stops off or on along a stretch" (preview
+first, reversible, only the boarding/getting-off switches change; distances,
+segments and transfers stay): 21A, 22A, 21D, 22D keep Kamagong Street /
+J. Solon Drive as the last Carbon-side stop and switch off the stops after it
+up to M. J. Cuenco Avenue & Osmena Boulevard. Set Signboard to "Manalili" on
+those four patterns.
+
+Still missing (no geometry invented):
+- The Ibabao terminal and the road from Cebu North Road to Ibabao-Estancia.
+- The Ayala to Mandaue return for 21B; the stored return never passes Ayala.
+- Endpoints for 21F, 21G, 22G.
 
 ## Missing route data
 

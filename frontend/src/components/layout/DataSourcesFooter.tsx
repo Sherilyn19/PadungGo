@@ -6,21 +6,21 @@ const SOURCES = [
     icon: BusFront,
     tone: 'bg-moss-50 text-moss-800 border-moss-200',
     title: 'Routes and stops',
-    text: 'Cebu DOTC route data (2014–2017 archive), via Transitland. Routes may have changed since.',
+    text: 'Cebu DOTC jeepney routes and stops, shared through Transitland.',
     link: { text: 'View data', url: 'https://www.transit.land/feeds/f-wcb4-cebu~dotc' },
   },
   {
     icon: Coins,
     tone: 'bg-caution-50 text-caution border-cream-line',
     title: 'Fare estimates',
-    text: 'LTFRB jeepney fare guide, effective September 28, 2026.',
+    text: 'The LTFRB jeepney fare guide.',
     link: { text: 'LTFRB fares', url: 'https://ltfrb.gov.ph/fare-rates/' },
   },
   {
     icon: MessageCircleHeart,
     tone: 'bg-coral-50 text-coral-600 border-coral-200',
     title: 'Route updates',
-    text: 'Scarce and stopped routes come from Cebu commuters’ reports (October 2026).',
+    text: 'Scarce and stopped routes come from Cebu commuters’ reports.',
   },
 ]
 

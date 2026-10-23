@@ -3,17 +3,20 @@ from __future__ import annotations
 
 import csv
 import zipfile
+from dataclasses import dataclass
 
 from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
 
+from .planner.loader import invalidate_network_cache
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
     CITY_NAMES,
@@ -219,6 +222,80 @@ class RouteSegmentInline(admin.TabularInline):
         return obj.to_occurrence.sequence
 
 
+class StopStretchForm(forms.Form):
+    keep_stop = forms.CharField(
+        label="Last stop to keep", max_length=200,
+        initial="Kamagong Street / J. Solon Drive",
+        help_text="Exact stop name. The first time the route reaches it counts.",
+    )
+    last_stop = forms.CharField(
+        label="Last stop to switch off", max_length=200,
+        initial="M. J. Cuenco Avenue & Osmena Boulevard",
+        help_text="Exact stop name, found after the kept stop. Every stop in between is included.",
+    )
+    mode = forms.ChoiceField(
+        label="What to do",
+        choices=[("off", "Switch off boarding and getting off"), ("on", "Switch them back on")],
+        initial="off", widget=forms.RadioSelect,
+    )
+
+
+@dataclass
+class StretchPlan:
+    pattern: RoutePattern
+    stops: list
+    problem: str = ""
+
+
+def plan_stretch(pattern: RoutePattern, keep_stop: str, last_stop: str) -> StretchPlan:
+    """The stops after `keep_stop` up to and including `last_stop` (first matches only)."""
+    stops = list(pattern.pattern_stops.select_related("stop").order_by("sequence"))
+    names = [occurrence.stop.name.casefold() for occurrence in stops]
+    keep, last = keep_stop.strip().casefold(), last_stop.strip().casefold()
+    if keep not in names:
+        return StretchPlan(pattern, [], f"No stop named \u201c{keep_stop.strip()}\u201d on this route.")
+    keep_at = names.index(keep)
+    if last not in names[keep_at + 1:]:
+        return StretchPlan(pattern, [], f"\u201c{last_stop.strip()}\u201d does not come after the kept stop.")
+    last_at = names.index(last, keep_at + 1)
+    return StretchPlan(pattern, stops[keep_at + 1:last_at + 1])
+
+
+def apply_stretch(plans: list, switch_on: bool) -> int:
+    """Flip only the boarding/getting-off switches. Distances, segments and transfers stay as they are."""
+    ids = [occurrence.pk for plan in plans for occurrence in plan.stops]
+    with transaction.atomic():
+        PatternStop.objects.filter(pk__in=ids).update(can_board=switch_on, can_alight=switch_on)
+        invalidate_network_cache()  # QuerySet.update() sends no signals
+    return len(ids)
+
+
+@admin.action(description="Switch stops off or on along a stretch (preview first)", permissions=["change"])
+def adjust_stop_stretch(modeladmin, request, queryset):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    step = request.POST.get("step", "")
+    form = StopStretchForm(request.POST if step else None)
+    patterns = list(queryset.select_related("route").order_by("route__code", "variant_key"))
+    plans = None
+    if step in ("preview", "apply") and form.is_valid():
+        data = form.cleaned_data
+        plans = [plan_stretch(p, data["keep_stop"], data["last_stop"]) for p in patterns]
+        if step == "apply" and not any(plan.problem for plan in plans):
+            count = apply_stretch(plans, data["mode"] == "on")
+            state = "on" if data["mode"] == "on" else "off"
+            modeladmin.message_user(request, f"Done. Boarding and getting off switched {state} for {count} stops "
+                                             f"on {len(plans)} routes.")
+            return None
+    context = {
+        **modeladmin.admin_site.each_context(request), "title": "Switch stops off or on",
+        "form": form, "plans": plans, "can_apply": bool(plans) and not any(p.problem for p in plans),
+        "selected": [str(p.pk) for p in patterns], "action_name": "adjust_stop_stretch",
+        "patterns": patterns, "opts": modeladmin.model._meta,
+    }
+    return TemplateResponse(request, "admin/transit/stop_stretch.html", context)
+
+
 # Spreadsheet apps run cells starting with these characters as formulas.
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
@@ -293,7 +370,7 @@ class RoutePatternAdmin(admin.ModelAdmin):
     list_filter = ("direction", "status", "route__vehicle_class")
     search_fields = ("route__code", "signboard", "variant_key")
     list_select_related = ("route",)
-    actions = [export_ordered_stops]
+    actions = [export_ordered_stops, adjust_stop_stretch]
     inlines = [PatternStopInline, RouteSegmentInline]
 
 

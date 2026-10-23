@@ -162,13 +162,14 @@ def test_powershell_commands_are_safe_and_identify_the_app():
         assert "'" not in osm_import.overpass_query(city)  # cannot break out of the quoted string
         assert osm_import.USER_AGENT in command
         assert f"^({city})$" in command
-        assert command.rstrip().endswith(f"-OutFile '{city.lower().replace(' ', '-')}.json'")
+        assert command.rstrip().endswith(f"-o '{city.lower().replace(' ', '-')}.json'")
+        assert "curl.exe" in command and "Invoke-WebRequest" not in command
 
 
 def test_admin_page_offers_city_choice_and_powershell_commands(staff):
     page = staff.get("/admin/transit/location/import-osm/").content.decode()
-    assert "Invoke-WebRequest" in page
-    assert "-OutFile &#x27;lapu-lapu.json&#x27;" in page or "-OutFile 'lapu-lapu.json'" in page
+    assert "curl.exe" in page
+    assert "-o &#x27;lapu-lapu.json&#x27;" in page or "-o 'lapu-lapu.json'" in page
     assert "<a href=\"https://overpass" not in page  # no dead browser links
 
 

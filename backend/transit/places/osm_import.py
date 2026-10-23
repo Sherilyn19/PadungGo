@@ -95,17 +95,16 @@ def powershell_download_command(city: str) -> str:
     """A Windows PowerShell command that saves one city's data to a .json file.
 
     Browsers cannot do this: the Overpass server answers 406 to browser
-    identities, so the command sends this app's own User-Agent instead.
+    identities, so the command sends this app's own User-Agent. It uses
+    Windows' built-in curl.exe, which avoids .NET's old secure-connection
+    settings that fail on some PCs.
     """
     query = overpass_query(city)  # contains no single quotes, safe inside '...'
     filename = city.lower().replace(" ", "-") + ".json"
     return (
-        f"$q = '{query}'\n"
-        f"Invoke-WebRequest -UseBasicParsing -Method Post -TimeoutSec 150 -Uri '{OVERPASS_URL}' "
-        f"-UserAgent '{USER_AGENT}' -Headers @{{Accept='application/json'}} "
-        "-ContentType 'application/x-www-form-urlencoded' "
-        "-Body ('data=' + [uri]::EscapeDataString($q)) "
-        f"-OutFile '{filename}'"
+        f"Set-Content -Path query.txt -Value '{query}' -Encoding ASCII\n"
+        f"curl.exe -sS --fail --max-time 150 -A '{USER_AGENT}' -H 'Accept: application/json' "
+        f"--data-urlencode 'data@query.txt' '{OVERPASS_URL}' -o '{filename}'"
     )
 
 

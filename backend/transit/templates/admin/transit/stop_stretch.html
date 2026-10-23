@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Switch stops off or on</h1>
+<p>Only the boarding and getting-off switches change. Distances, the road path and transfers are not touched,
+and nothing is deleted. You can switch the same stops back on here later.</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="{{ action_name }}">
+  {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
+  <table>{{ form.as_table }}</table>
+  <p>Routes selected: {% for p in patterns %}<strong>{{ p.route.code }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  <p><button type="submit" name="step" value="preview" class="default">Show preview</button></p>
+</form>
+
+{% if plans %}
+  <h2>Preview</h2>
+  {% for plan in plans %}
+    <h3>{{ plan.pattern.route.code }} &mdash; {{ plan.pattern.route.name }}</h3>
+    {% if plan.problem %}
+      <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ plan.problem }}</p>
+    {% else %}
+      <table>
+        <thead><tr><th>#</th><th>Stop</th><th>Location</th><th>Boarding</th><th>Getting off</th></tr></thead>
+        <tbody>
+        {% for o in plan.stops %}
+          <tr><td>{{ o.sequence }}</td><td>{{ o.stop.name }}</td><td>{{ o.stop.latitude|floatformat:5 }}, {{ o.stop.longitude|floatformat:5 }}</td>
+              <td>{{ o.can_board|yesno:"on,off" }}</td><td>{{ o.can_alight|yesno:"on,off" }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endfor %}
+  {% if can_apply %}
+    <form method="post" style="margin-top:16px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{{ action_name }}">
+      {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
+      <input type="hidden" name="keep_stop" value="{{ form.cleaned_data.keep_stop }}">
+      <input type="hidden" name="last_stop" value="{{ form.cleaned_data.last_stop }}">
+      <input type="hidden" name="mode" value="{{ form.cleaned_data.mode }}">
+      <button type="submit" name="step" value="apply" class="default">Apply this change</button>
+    </form>
+  {% else %}
+    <p>Fix the problems above (or remove those routes from your selection) before applying.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

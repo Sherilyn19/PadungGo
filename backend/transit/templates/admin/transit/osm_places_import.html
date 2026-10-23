@@ -32,11 +32,11 @@ The app retries by itself if the free OpenStreetMap server is busy.</p>
 
 <h2>Option 2: if option 1 keeps failing</h2>
 <p>Download the data on your own computer, then upload the file here. A web browser cannot
-do the download (the OpenStreetMap server refuses browsers), so use Windows PowerShell:</p>
+do the download (the OpenStreetMap server refuses browsers), so use Windows PowerShell (Windows 10 or 11):</p>
 <ol>
   <li>Open PowerShell and run <code>cd $HOME\Downloads</code>.</li>
-  <li>Copy and paste a city's command below, press Enter, and wait up to two minutes.
-      If it shows a 502 or 504 error, just run it again.</li>
+  <li>Copy and paste a city's two-line command below, press Enter, and wait up to two minutes.
+      If it shows an error such as 502 or 504, just run it again.</li>
   <li>It saves a <code>.json</code> file in that folder. Choose it below and press the button.</li>
 </ol>
 {% for name, command in download_commands %}
