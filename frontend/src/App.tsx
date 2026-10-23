@@ -2,6 +2,7 @@ import { ArrowRight, MousePointerClick, PanelLeftOpen, PanelRightOpen, X } from 
 import { useCallback, useRef, useState } from 'react'
 import { ApiError, planJourney, type JourneyOption, type LatLng, type Place, type PlanResponse, type SortBy } from './api'
 import BottomSheet, { type SheetSnap } from './components/layout/BottomSheet'
+import DataSourcesFooter from './components/layout/DataSourcesFooter'
 import PanelHeader from './components/layout/PanelHeader'
 import ResizablePanel from './components/layout/ResizablePanel'
 import MapView from './components/map/MapView'
@@ -198,6 +199,7 @@ export default function App() {
           rerun(sortBy, 1)
         }}
       />
+      <DataSourcesFooter />
     </div>
   )
 

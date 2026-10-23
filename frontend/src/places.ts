@@ -1,17 +1,11 @@
 // Labels for chosen places. A label never changes the coordinates used for
 // planning: GPS and map points keep their exact values whatever address is found.
-import type { AddressResponse, Attribution, LatLng, Place, PlaceSuggestion, SuggestionsResponse } from './api'
+// Provider credits are shown once, in the map's (i) credits panel.
+import type { AddressResponse, LatLng, Place, PlaceSuggestion, SuggestionsResponse } from './api'
 
 export const GPS_PENDING_NAME = 'My location'
 export const PIN_PENDING_NAME = 'Pinned on map'
 export const ADDRESS_UNAVAILABLE = 'Selected location — address unavailable'
-export const ADDRESS_PRIVACY_NOTE = 'To show an address, PadungGo sends these coordinates to Geoapify.'
-
-const PROVIDER_ATTRIBUTION: Attribution = { text: 'Powered by Geoapify', url: 'https://www.geoapify.com/' }
-const OSM_ATTRIBUTION: Attribution = {
-  text: '© OpenStreetMap contributors',
-  url: 'https://www.openstreetmap.org/copyright',
-}
 
 export function pendingPoint(point: LatLng, source: 'gps' | 'map'): Place {
   return {
@@ -35,9 +29,9 @@ export function samePoint(a: LatLng, b: LatLng): boolean {
 export function withAddress(place: Place, response: AddressResponse | null): Place {
   const label = response?.status === 'resolved' ? response.label?.trim() : ''
   if (label) {
-    return { ...place, name: label, addressStatus: 'resolved', attribution: response?.attribution ?? [] }
+    return { ...place, name: label, addressStatus: 'resolved' }
   }
-  return { ...place, name: ADDRESS_UNAVAILABLE, addressStatus: 'unavailable', attribution: undefined }
+  return { ...place, name: ADDRESS_UNAVAILABLE, addressStatus: 'unavailable' }
 }
 
 /**
@@ -58,20 +52,11 @@ export function placeFromSuggestion(s: PlaceSuggestion): Place {
     latitude: s.latitude,
     longitude: s.longitude,
     source: 'provider',
-    attribution: [PROVIDER_ATTRIBUTION, s.data_attribution ?? OSM_ATTRIBUTION],
   }
 }
 
 export function suggestionKey(s: PlaceSuggestion): string {
   return s.location_id ?? `${s.source}:${s.latitude},${s.longitude}:${s.name}`
-}
-
-/** Credits to show under a suggestion list that includes provider results. */
-export function suggestionAttribution(results: PlaceSuggestion[]): Attribution[] {
-  const provider = results.filter((r) => r.source === 'geoapify')
-  if (provider.length === 0) return []
-  const credits = [PROVIDER_ATTRIBUTION, ...provider.map((r) => r.data_attribution ?? OSM_ATTRIBUTION)]
-  return credits.filter((c, i) => credits.findIndex((o) => o.text === c.text) === i)
 }
 
 // Remembers recent suggestion lists so retyping or deleting a letter does not

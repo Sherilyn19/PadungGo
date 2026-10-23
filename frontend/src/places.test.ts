@@ -9,7 +9,6 @@ import {
   pendingPoint,
   placeFromSuggestion,
   rememberSuggestions,
-  suggestionAttribution,
 } from './places'
 
 // Synthetic test-only coordinates.
@@ -101,16 +100,8 @@ describe('suggestions', () => {
     const place = placeFromSuggestion(mapResult)
     expect(place.id).toBeUndefined()
     expect(place).toMatchObject({ name: 'Example Bakery, Colon Street, Cebu City', source: 'provider' })
-    expect(place.attribution?.map((a) => a.text)).toEqual(['Powered by Geoapify', '© OpenStreetMap contributors'])
   })
 
-  it('credits the provider only when its results are shown', () => {
-    expect(suggestionAttribution([curated])).toEqual([])
-    expect(suggestionAttribution([curated, mapResult, mapResult]).map((a) => a.text)).toEqual([
-      'Powered by Geoapify',
-      '© OpenStreetMap contributors',
-    ])
-  })
 
   it('reuses results regardless of case and skips temporary failures', () => {
     const ok: SuggestionsResponse = { results: [curated], provider: { name: 'geoapify', status: 'ok', attribution: [] } }

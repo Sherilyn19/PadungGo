@@ -28,7 +28,6 @@ export interface Place extends LatLng {
   name: string
   source: PlaceSource
   addressStatus?: AddressStatus
-  attribution?: Attribution[]
 }
 
 export interface PlaceSuggestion extends LatLng {

@@ -446,27 +446,6 @@ body {
 
 /* ---------- MapLibre restyling ---------- */
 
-/* Required OSM/OpenMapTiles credit stays visible but compact. It starts
-   expanded and collapses to the (i) button after the first map drag. */
-.maplibregl-ctrl-attrib {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  color: var(--color-ink-muted);
-}
-.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact {
-  margin: 0 8px 8px 0;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-ui);
-  background: rgb(255 255 255 / 0.92);
-}
-.maplibregl-ctrl-attrib a {
-  color: var(--color-brand-700);
-}
-.maplibregl-ctrl-bottom-right {
-  bottom: var(--map-bottom-inset, 0px);
-  transition: bottom 250ms ease;
-}
-
 .maplibregl-popup-content {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-ui);
