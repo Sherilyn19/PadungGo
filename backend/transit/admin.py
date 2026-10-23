@@ -15,7 +15,13 @@ from django.template.response import TemplateResponse
 from django.urls import path
 
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
-from .places.osm_import import OSMImportError, import_osm_places
+from .places.osm_import import (
+    CITY_NAMES,
+    OSMImportError,
+    download_url,
+    import_osm_file,
+    import_osm_places,
+)
 from .models.enums import VehicleClass
 
 from .models import (
@@ -110,6 +116,15 @@ class AreaAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
+def _osm_report_text(result) -> str:
+    cities = ", ".join(f"{city}: {count}" for city, count in sorted(result.by_city.items()))
+    timing = f"Saved in {result.save_seconds:.1f}s"
+    if result.download_seconds is not None:
+        timing = f"Downloaded in {result.download_seconds:.0f}s. {timing}"
+    return (f"Done. {result.created} added, {result.updated} updated, "
+            f"{result.unchanged} unchanged ({cities}). {timing}.")
+
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ("name", "aliases", "kind", "area", "status", "latitude", "longitude")
@@ -126,16 +141,20 @@ class LocationAdmin(admin.ModelAdmin):
         if not request.user.is_superuser:
             raise PermissionDenied
         report = error = None
+        chosen_city = request.POST.get("city") if request.POST.get("city") in CITY_NAMES else CITY_NAMES[0]
         if request.method == "POST":
             try:
-                result = import_osm_places()
-                cities = ", ".join(f"{c}: {n}" for c, n in sorted(result.by_city.items()))
-                report = (f"Done. {result.created} added, {result.updated} updated, "
-                          f"{result.unchanged} unchanged ({cities}).")
+                if "file" in request.FILES:
+                    result = import_osm_file(request.FILES["file"].read())
+                else:
+                    result = import_osm_places(chosen_city)
+                report = _osm_report_text(result)
             except OSMImportError as exc:
                 error = str(exc)
-        context = {**self.admin_site.each_context(request), "report": report,
-                   "error": error, "title": "Import places from OpenStreetMap"}
+        context = {**self.admin_site.each_context(request), "report": report, "error": error,
+                   "cities": CITY_NAMES, "chosen_city": chosen_city,
+                   "download_links": [(name, download_url(name)) for name in CITY_NAMES],
+                   "title": "Import places from OpenStreetMap"}
         return TemplateResponse(request, "admin/transit/osm_places_import.html", context)
 
 
