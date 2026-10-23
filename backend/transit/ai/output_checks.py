@@ -41,9 +41,20 @@ _DURATION = re.compile(
     r"(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*\d+(?:\.\d+)?)?[\s-]*(minutes?|mins?|hours?|hrs?)\b", _FLAGS)
 _DISTANCE = re.compile(
     r"(\d+(?:\.\d+)?)\s*(km|kilomet(?:er|re)s?|met(?:er|re)s?|m)\b", _FLAGS)
+_UNIT = r"minutes?|mins?|hours?|hrs?|pesos?|kilomet(?:er|re)s?|met(?:er|re)s?"
+_NUMBER_WORDS = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+    "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+    "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
+    "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+}
+_WORD = "|".join(_NUMBER_WORDS)
+# "eight minutes", "twenty-one minutes", "one hundred pesos"
 _SPELLED_QUANTITY = re.compile(
-    r"\b(?:one|two|three|four|five|six|seven|eight|nine|ten|fifteen|twenty|thirty|forty|fifty|hundred)"
-    r"\s+(?:minutes?|mins?|hours?|pesos?|kilomet(?:er|re)s?|met(?:er|re)s?)\b", _FLAGS)
+    rf"\b((?:(?:{_WORD}|hundred)(?:[\s-]+|\b))+)\s*({_UNIT})\b", _FLAGS)
+# "an hour", "a minute"
+_ONE_UNIT = re.compile(r"\ban?\s+(hour|minute)\b", _FLAGS)
+_VAGUE_TIME = re.compile(r"\b(?:half an? hour|quarter of an hour|couple of (?:minutes|hours))\b", _FLAGS)
 _LIST_MARKER = re.compile(r"^\s*\d+[.)]\s", re.M)
 _ROUTE_CODE_LIKE = re.compile(r"(?<![A-Za-z0-9])\d{1,2}[A-Z]{1,2}(?![A-Za-z0-9])")
 # "not field-verified", "has not yet been verified", "no verified schedule", "unverified"
@@ -140,6 +151,22 @@ def _without_known_names(text: str, facts: TripFacts) -> str:
     return text
 
 
+def _number_from_words(words: str) -> int:
+    total = 0
+    for word in re.split(r"[\s-]+", words.casefold().strip()):
+        if word == "hundred":
+            total = max(total, 1) * 100
+        elif word in _NUMBER_WORDS:
+            total += _NUMBER_WORDS[word]
+    return total
+
+
+def _with_digits(text: str) -> str:
+    """Spell out quantities as digits so they are checked like any other number."""
+    text = _SPELLED_QUANTITY.sub(lambda m: f" {_number_from_words(m.group(1))} {m.group(2)} ", text)
+    return _ONE_UNIT.sub(lambda m: f" 1 {m.group(1)} ", text)
+
+
 def _decimal(text: str) -> Decimal:
     return Decimal(text.replace(",", ""))
 
@@ -149,6 +176,9 @@ def _number_problem(rest: str, facts: TripFacts) -> str | None:
     # Real codes are already blanked out, so any code-shaped token left is invented.
     if _ROUTE_CODE_LIKE.search(rest):
         return "unknown_route_code"
+    if _VAGUE_TIME.search(rest):
+        return "invented_time"
+    rest = _with_digits(rest)
     allowed_price = _decimal(facts.fare_text[1:]) if facts.fare_text else None
     for match in _MONEY.finditer(rest):
         if allowed_price is None:
@@ -173,8 +203,6 @@ def _number_problem(rest: str, facts: TripFacts) -> str | None:
             return "invented_distance"
     rest = _DISTANCE.sub(" ", rest)
 
-    if _SPELLED_QUANTITY.search(rest):
-        return "invented_quantity"
     # Only the number of rides or transfers (or a list marker) may remain as a digit.
     allowed = {str(len(facts.route_codes)), str(facts.transfers)}
     leftover = re.findall(r"\d+", _LIST_MARKER.sub(" ", rest))

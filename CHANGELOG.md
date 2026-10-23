@@ -4,6 +4,13 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Fix: "Explain this trip" rejected true quantities written as words ("eight
+  minutes"), which the prompt itself asks for. Spelled-out numbers are now
+  converted to digits and checked against the planner's facts like any other
+  number, so true values pass and invented ones ("forty minutes", "an hour",
+  "half an hour") are still rejected. Found from the failed-check code on the
+  live API (`invented_quantity`).
+
 - Fix: "Explain this trip" no longer rejects ordinary wording. Accepted now:
   "10-minute ride", "1 transfer" (the trip's own transfer count), "->" arrows,
   "no guarantee", "has not yet been verified", and more ways of saying a fare or
