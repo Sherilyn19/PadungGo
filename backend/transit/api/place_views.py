@@ -16,14 +16,9 @@ from transit.places.geoapify import reverse_address
 from transit.places.suggestions import place_suggestions
 
 from .errors import error_response
+from .throttles import PlacesRateThrottle
 
 MAX_QUERY_LENGTH = 100
-
-
-class PlacesRateThrottle(AnonRateThrottle):
-    """Per-client limit for endpoints that may call the paid-quota provider."""
-
-    scope = "places"
 
 
 class PointSerializer(serializers.Serializer):
