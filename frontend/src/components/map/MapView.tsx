@@ -24,7 +24,6 @@ export interface MapInsets {
 }
 
 interface Props {
-  onReady: () => void
   origin: Place | null
   destination: Place | null
   option: JourneyOption | null
@@ -115,11 +114,9 @@ function clearMarkers(list: PlacedMarker[]) {
   list.length = 0
 }
 
-export default function MapView({ origin, destination, option, onMapClick, insets, onReady }: Props) {
+export default function MapView({ origin, destination, option, onMapClick, insets }: Props) {
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState(false)
-  const onReadyRef = useRef(onReady)
-  onReadyRef.current = onReady
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<MLMap | null>(null)
   const endpointMarkers = useRef<PlacedMarker[]>([])
@@ -144,7 +141,6 @@ export default function MapView({ origin, destination, option, onMapClick, inset
       })
     } catch {
       setMapError(true)
-      onReadyRef.current()
       return
     }
     m.on('error', () => setMapError(true))
@@ -160,7 +156,6 @@ export default function MapView({ origin, destination, option, onMapClick, inset
     m.on('load', () => {
       setMapReady(true)
       setMapError(false)
-      onReadyRef.current()
       m.addSource('journey', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addLayer({
         id: 'journey-walk',

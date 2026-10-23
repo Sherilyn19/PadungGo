@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
-// The map controls readiness; a network stall must not lock the trip planner.
+const STARTUP_SCREEN_DURATION_MS = 5000
+
+// Show the welcome screen once per page mount, independent of map/network speed.
 export function useStartupReadiness() {
   const [ready, setReady] = useState(false)
-  const markReady = useCallback(() => setReady(true), [])
   useEffect(() => {
-    if (ready) return
-    const timeout = window.setTimeout(markReady, 10000)
+    const timeout = window.setTimeout(() => setReady(true), STARTUP_SCREEN_DURATION_MS)
     return () => window.clearTimeout(timeout)
-  }, [ready, markReady])
-  return { ready, markReady }
+  }, [])
+  return { ready }
 }

@@ -1,5 +1,6 @@
 .map-canvas-entrance { opacity: 0; transition: opacity 900ms ease-out; }
 .map-canvas-entrance--ready { opacity: 1; }
+[data-startup='loading'] .map-canvas-entrance { opacity: 0; }
 .map-loading-notice {
   position: absolute;
   top: 50%;

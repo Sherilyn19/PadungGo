@@ -39,7 +39,7 @@ const WIDE_QUERY = '(min-width: 1100px)'
 
 export default function App() {
   const motionRoot = useInteractionMotion()
-  const { ready: startupReady, markReady } = useStartupReadiness()
+  const { ready: startupReady } = useStartupReadiness()
   const hasPanels = useMediaQuery(PANELS_QUERY)
   const isWide = useMediaQuery(WIDE_QUERY)
   const main = useResizablePanel({ storageKey: 'padunggo.sidebar', min: 320, max: 560, defaultWidth: 380, persistCollapsed: true })
@@ -251,7 +251,6 @@ export default function App() {
 
       <main className="relative h-full min-w-0 flex-1">
         <MapView
-          onReady={markReady}
           origin={origin}
           destination={destination}
           option={selected}
