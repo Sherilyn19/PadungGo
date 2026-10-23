@@ -20,7 +20,6 @@ const CREDITS = [
       { text: 'Powered by Geoapify', url: 'https://www.geoapify.com/' },
       { text: '© OpenStreetMap contributors', url: 'https://www.openstreetmap.org/copyright' },
     ],
-    note: 'When you use your location or pin the map, those coordinates are sent to Geoapify to find the address.',
   },
 ]
 
@@ -66,7 +65,6 @@ export default function MapCredits({ open, onOpenChange }: Props) {
                       </a>
                     </span>
                   ))}
-                  {group.note && <span className="mt-0.5 block text-ink-soft">{group.note}</span>}
                 </dd>
               </div>
             ))}
