@@ -197,7 +197,7 @@ def test_approximate_fare_must_sound_approximate():
     ("Take 17D from Stop One to Stop Four. It takes 40 minutes. The fare is ₱13.00. The wait is unknown.", "invented_time"),
     ("Take 17D from Stop One to Stop Four, after 5 stops. The fare is ₱13.00. The wait is unknown.", "invented_number"),
     ("Take 17D from Stop One to Stop Four. It is 3 km. The fare is ₱13.00. The wait is unknown.", "invented_distance"),
-    ("Take 17D from Stop One to Stop Four. It takes ten minutes. The fare is ₱13.00. The wait is unknown.", "invented_quantity"),
+    ("Take 17D from Stop One to Stop Four. It takes ten minutes. The fare is ₱13.00. The wait is unknown.", "invented_time"),
     ("Take 17D from Stop One to Stop Four. It runs frequently. The fare is ₱13.00. The wait is unknown.", "frequency_claim"),
     ("Take 17D from Stop One to Stop Four. It runs all day. The fare is ₱13.00. The wait is unknown.", "operating_hours_claim"),
     ("Take 17D from Stop One to Stop Four. It is the cheapest way. The fare is ₱13.00. The wait is unknown.", "ranking_claim"),
@@ -330,3 +330,29 @@ def test_do_not_worry_does_not_hide_a_verification_claim():
     text = ("Do not worry, this is a verified route from Stop One to Stop Four with 17D. The data is not field-verified. "
             "The fare is unknown. The wait is unknown.")
     assert check(text, opt) == "verification_claim"
+
+
+# --- Numbers written as words (the prompt asks models to spell numbers out) ---
+
+
+@pytest.mark.parametrize("sentence", [
+    "It takes about fifteen minutes.",          # the direct trip's real ride time
+    "The fare is thirteen pesos.",              # the real fare
+])
+def test_true_quantities_written_as_words_are_accepted(sentence):
+    text = f"Board 17D at Stop One and get off at Stop Four. {sentence} Waiting time is unknown."
+    assert check(text, option()) is None
+
+
+def test_true_transfer_quantities_written_as_words_are_accepted():
+    text = TRANSFER_BASE + " Walk sixty meters. It takes about ten minutes on 17D and eight minutes on 42D." + HISTORIC_TAIL
+    assert check(text, option(transfer=True, historic=True, fare=False)) is None
+
+
+@pytest.mark.parametrize("sentence", [
+    "It takes twenty-one minutes.", "It takes forty minutes.", "It takes an hour.", "It takes a minute.",
+    "It takes half an hour.", "It takes a couple of minutes.", "The fare is twenty pesos.", "Walk two hundred meters.",
+])
+def test_untrue_quantities_written_as_words_are_rejected(sentence):
+    text = f"Board 17D at Stop One and get off at Stop Four. {sentence} The fare is ₱13.00. Waiting time is unknown."
+    assert check(text, option()) in ("invented_time", "wrong_fare", "invented_fare", "invented_distance")
