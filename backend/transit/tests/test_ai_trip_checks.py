@@ -356,3 +356,25 @@ def test_true_transfer_quantities_written_as_words_are_accepted():
 def test_untrue_quantities_written_as_words_are_rejected(sentence):
     text = f"Board 17D at Stop One and get off at Stop Four. {sentence} The fare is ₱13.00. Waiting time is unknown."
     assert check(text, option()) in ("invented_time", "wrong_fare", "invented_fare", "invented_distance")
+
+
+# --- Look-alike characters a real model writes (found on the live API) -------
+
+
+@pytest.mark.parametrize("dash", ["-", "\u2010", "\u2011", "\u2013", "\u2014"])
+def test_any_dash_in_not_field_verified_is_accepted(dash):
+    text = (TRANSFER_BASE + " The fare is unknown, so ask the driver. Waiting time is unknown. "
+            f"This route data is historic and not field{dash}verified.")
+    assert check(text, option(transfer=True, historic=True, fare=False)) is None
+
+
+def test_special_spaces_and_zero_width_characters_do_not_hide_words():
+    text = ("Board 17D at Stop One, get off at Stop Four. It takes about 15\u202fminutes. "
+            "The fare is\u00a0\u20b113.00. Wait\u200bing time is unknown.")
+    assert check(text, option()) is None
+
+
+def test_a_verification_claim_is_still_rejected_whatever_the_dash():
+    text = ("Board 17D at Stop One, get off at Stop Four on this field\u2011verified route. The data is not field\u2011verified. "
+            "The fare is unknown. The wait is unknown.")
+    assert check(text, option(historic=True, fare=False)) == "verification_claim"

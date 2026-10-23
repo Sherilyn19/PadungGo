@@ -80,9 +80,20 @@ _CURRENT_OPERATION = re.compile(
     r"|\b(?:is|are)\s+(?:running|operating)\b", _FLAGS)
 
 
+# Models often write look-alike characters: a non-breaking hyphen in "field‑verified",
+# or a narrow no-break space in "13 minutes". Map them to plain ones so the checks see
+# the same words a reader does.
+_LOOK_ALIKES = str.maketrans({
+    **{ord(c): "-" for c in "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"},
+    **{ord(c): " " for c in "\u00a0\u2007\u2009\u200a\u202f\u2002\u2003"},
+    ord("\u200b"): None, ord("\u2060"): None, ord("\ufeff"): None,   # zero-width characters
+    ord("\u2019"): "'", ord("\u2018"): "'",
+})
+
+
 def clean_explanation(raw: str) -> str:
-    """Tidy harmless formatting (bold markers, stray spaces) before checking."""
-    text = raw.replace("**", "").replace("__", "")
+    """Tidy harmless formatting (bold markers, look-alike characters, stray spaces) before checking."""
+    text = raw.translate(_LOOK_ALIKES).replace("**", "").replace("__", "")
     lines = [" ".join(line.split()) for line in text.strip().splitlines()]
     return "\n".join(line for line in lines if line)
 
