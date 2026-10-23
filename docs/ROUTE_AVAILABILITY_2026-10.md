@@ -1,83 +1,116 @@
 # Route availability decisions — October 2026
 
-These are product decisions based on Sherilyn's and classmates' commuting
-reports. Treat those reports as reliable observations, not official
-regulatory confirmation. Historical references do not establish current
-frequency or complete route geometry.
+These are product decisions based on Sherilyn's (the owner's) and classmates'
+commuting reports. Treat those reports as reliable observations, not official
+regulatory notices. Historical references do not establish current frequency
+or complete route geometry. Later reports supersede earlier conflicting ones.
 
 ## Scarce
 
-Keep these routes available with the badge "Scarce":
-01B, 14B, 12K, and 22G.
+Shown with the badge "Scarce" (list explanation "Scarce: Few jeepneys",
+tooltip "Few jeepneys"): **01B, 14B, 12K, 21F, 21G, 22G**.
 
-Source: owner/classmate commuting reports. The Mandaue classmate reported
-seeing 22G only rarely. No measured frequency or waiting time is available.
+| Route | Basis (commuting reports) |
+|---|---|
+| 01B | Classmate: operates only very occasionally. |
+| 14B | Owner: not seen for roughly five years; owner kept it as Scarce rather than excluded. |
+| 12K | Owner-approved as scarce. |
+| 21F, 21G, 22G | Mandaue classmate: very rare; paths have changed (see Mandaue section). |
 
-Journeys containing a scarce ride follow ordinary journeys. Preserve the
-selected sorting within each group, before applying the result limit.
+No measured frequency or waiting time is available, so none is shown.
+Journeys containing a scarce ride follow ordinary journeys; the selected
+sorting is preserved within each group, before the result limit.
 "not_flagged" means no scarcity report is recorded, not verified frequent service.
 
-## Excluded from suggestions
+## Excluded from suggestions (Route.active = False)
 
-- 07C, 07E, 12N: classmates reported that these services no longer operate.
-- 42D: excluded as Sherilyn's precautionary product decision.
+| Route | Basis |
+|---|---|
+| 03C, 03D | Owner explicitly approved exclusion after an ambiguous 03-series report. |
+| 03G, 03K | Latest classmate report: inactive (supersedes an earlier positive implication about 03K). |
+| 07C | Classmates: no longer operates. |
+| 07E | Classmate: "07E kay wala na ang operate." |
+| 12N | Excluded based on classmate reports. |
+| 42D | Owner's precautionary product decision. |
 
-Mango Jeep announced withdrawal of its own 42D service and explicitly
-said another operator continued serving that route. This is not evidence
-of a confirmed route-wide shutdown.
+42D: Mango Jeep announced withdrawal of **its own** 42D service and said
+another operator continued serving the route
+([announcement](https://www.facebook.com/InsideCebuPH/posts/990300283523385/)).
+This is not evidence of a confirmed route-wide shutdown.
 
-Supplied announcement:
-https://www.facebook.com/InsideCebuPH/posts/990300283523385/
-
-Preserve excluded route records, patterns, stops, fares, and evidence.
-Use active=False on confirmed exact records; do not delete records.
-Verify 07E's stored identity before any Admin change.
+Excluded records keep their patterns, stops, fares and evidence; nothing is deleted.
 
 ## Unchanged
 
-Leave 14D, 17B, 17D, and 12L unchanged.
+14D, 17B, 17D and 12L: the owner reports these are not scarce. 03L received a
+positive operating report but has no stored record (see Missing route data).
 
-Do not infer scarcity or closure from a missing webpage, directory omission,
+Do not infer scarcity or closure from a missing webpage, a directory omission,
 or replacement of traditional vehicles with modern vehicles.
 
-## Record identity and deployment
+## Application status (checked 2026-10-23 through the public API)
 
-Apply decisions to exact Route UUIDs after checking duplicates and patterns.
-Route codes are not unique. Do not hardcode route codes or UUIDs in planner logic.
+- Exclusions: none of 03C, 03D, 03G, 03K, 07C, 07E, 12N, 42D appears among
+  the 90 active routes.
+- Scarcity: live journey plans returned `service_availability: "scarce"` for
+  rides on all six scarce routes, with those journeys grouped last.
+- 07E had no active record before the changes. Whether an inactive 07E record
+  exists or it was never imported is not yet established; do not create one
+  merely to disable it.
+- 03K's record UUID was not captured.
 
-The screenshots show stored records, not confirmation of current operations.
-Imported vehicle and operator labels do not independently verify actual fleets
-or operators. Keep scarcity provenance separate from route-path evidence.
+Route codes are not unique; decisions are applied to exact Route records.
+The planner does not hardcode route codes or UUIDs.
 
-This document records intended decisions; it does not confirm that production
-Admin flags have been applied. Check how a future re-import affects manual flags
-before importing again.
+### Re-import risk
+
+The GTFS importer can create fresh copies of routes (active, not_flagged)
+under a different source title, which would undo these decisions. No re-import
+is authorized; review this list before any future import.
+
+## Mandaue corrections (accepted, not yet applied to route paths)
+
+Classmate reports, latest first:
+- "20B ug 21B same rana. Ibabao Mandaue to Ayala." — accepted as an
+  Ibabao–Ayala service with no Carbon continuation. The same endpoints do not
+  prove identical streets or stops. No active 20B record is stored.
+- 21A, 21D, 22A, 22D: from Ibabao via SM Cebu; they stop around Cathedral
+  while the signboard says Manalili.
+- Mandaue services no longer originate at Ouano; they now start at Ibabao,
+  with routes changed.
+- 21F, 21G, 22G: very rare; paths have changed.
+
+Stored records still show Ouano origins and Carbon endpoints for several of
+these routes. Correct ordered stops, terminals and geometry only where stored
+geometry supports it, as exact, previewed changes; otherwise record the missing
+boarding/alighting location. Do not bulk-rename Ouano records or change only
+route names.
 
 ## Missing route data
 
-- 42E: the supplied Mango Jeep announcement describes continuing service.
-  Keep separate from 42D; never rename 42D or copy its path.
-- 03L: historical/directory references identify Mabolo–Carbon; current service
-  and usable route data remain to be established.
-- 15: owner observed operating on October 23, 2026 (Asia/Manila).
-- 15A: owner observed operating on October 23, 2026 (Asia/Manila).
+| Candidate | Evidence | Status |
+|---|---|---|
+| 42E | Continuing service implied by the Mango Jeep announcement above. | Needs its own path; never rename 42D or copy its path. |
+| 03L | Positive operating report; historical references: Mabolo–Carbon. | No stored record or path. |
+| 15, 15A | Owner saw both operating on 2026-10-23 (Asia/Manila). | No stored records; do not assume a shared path. |
+| 04B | Owner: not seen for about five years. | Not in the stored dataset; do not invent a record. |
+| 04M | Requested as missing. | Unresolved. |
+| 11F, 11G | Listed in a supplied document screenshot (11F Inayawan–SM–Ayala via Leon Kilat; 11G Inayawan/Laray–Colon). | Research leads only. |
+| 02E | Report: operates via E-Mall toward Plaza; Pier continuation uncertain ("ata"). | Stored record exists; path not reconciled. |
 
-For each addition, establish exact identity, endpoints, supported directions,
-ordered boarding/alighting stops, sourced geometry, and distance provenance.
-Record operator and vehicle details only where supported. Do not assume 15
-and 15A share a path. Names and sightings alone do not establish routable paths.
+Each addition needs exact identity, endpoints, directions, ordered
+boarding/alighting stops, sourced geometry and distance provenance. Names and
+sightings alone do not provide routable paths.
 
-These additions remain pending and do not block scarcity/exclusion work.
+Other routes raised in earlier investigation requests remain unresolved and
+unflagged. Earlier broad claims about 21A/22A, 06B, 02B, cross-bridge
+services, 12G, 01K and 03Q being phased out or scarce were not established.
 
-## Mandaue corrections: separate pending data work
+## References
 
-A Mandaue classmate reported:
-- 21A and 22D terminate around Cathedral/Manalili rather than Carbon.
-- The B service reaches Ayala rather than continuing to Carbon; the reported
-  code was uncertain between 20B and 21B.
-- Former Ouano services now originate at Ibabao.
-
-Preserve these reports without bulk-renaming records or guessing geometry.
-Resolve exact route identities, terminals, directions, and ordered stops
-before changing planning paths. Later supplied summaries conflict about
-21B continuing beyond Ayala, so that detail remains unresolved.
+Historical/background sources (not current-operation confirmation):
+- [OpenStreetMap: Public transportation in Metro Cebu](https://wiki.openstreetmap.org/wiki/Public_transportation_in_Metro_Cebu)
+- [The Freeman (2023): BRT Phase 1 to affect 22 PUV routes](https://www.philstar.com/the-freeman/cebu-news/2023/03/24/2254048/brt-phase-1-affect-22-public-utility-vehicle-routes-)
+- [The Freeman (2021): Modern jeeps on Talisay–IT Park route](https://www.philstar.com/the-freeman/cebu-news/2021/12/13/2147627/modern-jeeps-play-talisay-it-park-route/amp)
+- [Cebu Daily News: Talisay e-jeep operator cuts trips](https://cebudailynews.inquirer.net/714106/e-jeep-operator-in-talisay-cuts-down-trips-as-oil-prices-soar)
+- CommuteTour directory pages for [12G](https://ph.commutetour.com/ph/routes/cebu-routes/cebu-jeep/12g/) and [03Q](https://ph.commutetour.com/ph/routes/cebu-routes/cebu-jeep/03Q/)
