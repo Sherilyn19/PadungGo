@@ -4,6 +4,13 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Fix: "Explain this trip" rejected real trips whose stops have no name in the
+  imported feed ("Unnamed stop (feed id …)"), because the answer had to repeat
+  that placeholder. Such stops are now described as "the stop shown on the map"
+  (like the app screen), and same-stop transfers are flagged. Found by testing the
+  live API. Rejection reasons are now logged at WARNING so they appear in
+  Render's logs (reason code only, never trip or model text).
+
 - "Explain this trip" (AI): a button in Trip details asks `openai/gpt-oss-20b`
   (OpenAI, Apache 2.0 open weights, hosted by GroqCloud) for a short plain-English
   explanation of the selected trip. New endpoint `POST /api/v1/journeys/explain`;

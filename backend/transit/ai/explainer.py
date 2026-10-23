@@ -22,7 +22,7 @@ from .trip_facts import TripFacts, build_trip_facts
 logger = logging.getLogger(__name__)
 
 # Change this when the prompt changes, so old cached answers are not reused.
-PROMPT_VERSION = "1"
+PROMPT_VERSION = "2"
 MAX_ATTEMPTS = 2
 
 SYSTEM_PROMPT = """You rewrite one pre-computed jeepney trip in Metro Cebu as a short, friendly explanation for a commuter.
@@ -33,6 +33,7 @@ Rules:
 - Plain English, 60 to 110 words, no markdown, no bullet symbols, no links.
 - Go in travel order: where to board each jeepney, its route code, where to get off, and any transfer walk.
 - Copy every route code and stop name exactly as written in the data.
+- A stop named "the stop shown on the map" has no known name: call it that, never invent a name. If a transfer has same_stop true, say to stay at that stop and wait for the next jeepney.
 - Say the fare only if the data has a fare total, using exactly that amount. If the fare is not known, say the fare is unknown and the commuter should ask the driver. Never estimate a fare.
 - Always say the waiting time is unknown.
 - If data_status is historic_not_field_verified, say the route data is historic and not field-verified, so the commuter should confirm the jeepney still runs before travelling.
@@ -98,6 +99,7 @@ def explain_trip(option: dict) -> Explanation:
         if problem is None:
             cache.set(key, text, settings.AI["CACHE_SECONDS"])
             return Explanation("ok", text, facts.notices, model=model)
-        # Only the reason code is logged, never the model's text.
-        logger.info("AI explanation rejected by output check: %s", problem)
+        # Only the reason code is logged, never the model's text. WARNING level
+        # so it shows in Render's logs, which hide INFO by default.
+        logger.warning("AI explanation rejected by output check: %s", problem)
     return _unavailable("invalid_output")
