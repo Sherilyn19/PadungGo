@@ -9,7 +9,6 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status as http_status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
 
 from transit.models import Location, NetworkDataVersion, Route, RoutePattern
 from transit.planner import PlanRequest, plan_journeys
@@ -23,7 +22,7 @@ from .errors import error_response
 from .geometry import attach_ride_geometry
 from .query_params import _paginate, _parse_uuid_param
 from .serializers import PlanRequestSerializer
-from .throttles import PlanRateThrottle
+from .throttles import GeneralRateThrottle, PlanRateThrottle
 
 
 def _planner_config() -> dict:
@@ -177,7 +176,7 @@ def route_detail(request, route_id: str):
 
 @api_view(["POST"])
 # Keep the general per-visitor limit too: this decorator replaces the defaults.
-@throttle_classes([AnonRateThrottle, PlanRateThrottle])
+@throttle_classes([GeneralRateThrottle, PlanRateThrottle])
 def plan_journey(request):
     """Plan journeys (and, by swapping endpoints in a second call, returns)."""
     serializer = PlanRequestSerializer(data=request.data)

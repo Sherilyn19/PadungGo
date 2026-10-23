@@ -195,11 +195,17 @@ GTFS_MAX_UNCOMPRESSED_BYTES = (
 
 # --- DRF -------------------------------------------------------------------
 
+# How many proxies append to X-Forwarded-For, used to find the real visitor for
+# rate limits (see transit/api/throttles.py). Render's chain is Cloudflare then
+# Render's own proxy, so the visitor is the 2nd entry from the right. Elsewhere
+# (local runs) no proxy is trusted. Set DRF_NUM_PROXIES to override, e.g. 0.
+TRUSTED_PROXY_HOPS = int(os.environ.get("DRF_NUM_PROXIES") or (2 if _RENDER_HOST else 0))
+
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
+        "transit.api.throttles.GeneralRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": os.environ.get("DRF_ANON_THROTTLE", "120/min"),
