@@ -4,6 +4,10 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Trip planning is now limited per visitor (30 searches a minute, adjustable with
+  DRF_PLAN_THROTTLE). The old setting was attached to the wrong object and never
+  applied. Over the limit, the app answers 429 with a plain message and Retry-After.
+
 - Smarter place search (migration 0007). Suggestions start from the first
   letter, match word beginnings and automatically worked-out acronyms (e.g.
   usjr, cnu, mcia) without hardcoding any place. Admin can import named places

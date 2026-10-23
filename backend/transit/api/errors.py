@@ -45,6 +45,9 @@ def exception_handler(exc, context):
     elif isinstance(detail, list):
         message = "; ".join(str(d) for d in detail)
 
+    if response.status_code == 429:
+        # DRF's own wording ("Request was throttled. Expected available in N seconds.") is technical.
+        message = "You have searched a lot in a short time. Please wait a minute, then try again."
     retryable = response.status_code in (429, 503)
     new = error_response(code, message, http=response.status_code, fields=fields, retryable=retryable)
     if "Retry-After" in response.headers:
