@@ -525,7 +525,9 @@ Built by `transit/ai/trip_facts.py` from the matched planner option: data status
 route code, route name, board stop, get-off stop, `scarce_service`, known ride
 minutes, transfer walk with stop names and metres), the fare total only when the
 planner's total is complete (else `{"known": false}`), and `waiting_time:
-"unknown"`. It contains no coordinates, typed place names, database IDs or user
+"unknown"`. Imported placeholder stop names ("Unnamed stop (feed id 2939)") are
+replaced by "the stop shown on the map", as on screen, and a transfer between two
+rides at the same stop is flagged `same_stop: true`. It contains no coordinates, typed place names, database IDs or user
 identifiers.
 
 ### Output checks

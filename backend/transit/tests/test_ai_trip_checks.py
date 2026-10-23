@@ -250,3 +250,33 @@ def test_stop_names_with_digits_do_not_trip_the_route_code_detector():
     next(s for s in opt["segments"] if s["mode"] == "ride")["board_stop_name"] = "Barangay 3B Plaza"
     text = "Board 17D at Barangay 3B Plaza, get off at Stop Four. The fare is ₱13.00. The wait is unknown."
     assert check(text, opt) is None
+
+
+# --- Real-data cases found when testing against the live API ----------------
+
+
+def test_importer_placeholder_stop_names_are_not_sent_to_the_model():
+    opt = option(fare=False)
+    next(s for s in opt["segments"] if s["mode"] == "ride")["board_stop_name"] = "Unnamed stop (feed id 2939)"
+    facts = build_trip_facts(opt)
+    assert "2939" not in json.dumps(facts.prompt_facts)
+    assert facts.prompt_facts["steps"][1]["board_at"] == "the stop shown on the map"
+    assert "the stop shown on the map" not in facts.stop_names   # the answer need not repeat a generic label
+
+
+def test_answer_may_call_an_unnamed_stop_by_its_generic_label():
+    opt = option(fare=False)
+    next(s for s in opt["segments"] if s["mode"] == "ride")["board_stop_name"] = "Unnamed stop (feed id 2939)"
+    text = ("Board 17D at the stop shown on the map and get off at Stop Four. The fare is unknown, so ask the driver. "
+            "Waiting time is unknown.")
+    assert check(text, opt) is None
+
+
+def test_same_stop_transfer_is_flagged_for_the_model():
+    opt = option(transfer=True)
+    transfer = next(s for s in opt["segments"] if s["mode"] == "transfer_walk")
+    transfer["to_stop_id"] = transfer["from_stop_id"]
+    step = next(s for s in build_trip_facts(opt).prompt_facts["steps"] if s["action"] == "transfer_walk")
+    assert step["same_stop"] is True
+    assert next(s for s in build_trip_facts(option(transfer=True)).prompt_facts["steps"]
+                if s["action"] == "transfer_walk")["same_stop"] is False

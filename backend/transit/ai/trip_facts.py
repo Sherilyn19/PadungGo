@@ -21,6 +21,13 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 
 WAIT_NOTE = "Waiting time is unknown: no verified frequency data."
 
+# Imported feeds sometimes have no stop name and the importer writes a
+# placeholder such as "Unnamed stop (feed id 2939)". Like the app screen, the
+# model is told only that the stop has no known name, and its answer is not
+# required to repeat the placeholder.
+UNNAMED_STOP = "the stop shown on the map"
+_UNNAMED_PREFIX = re.compile(r"^unnamed stop", re.I)
+
 
 @dataclass(frozen=True)
 class TripFacts:
@@ -42,6 +49,12 @@ class TripFacts:
 def clean_name(value) -> str:
     text = _CONTROL_CHARS.sub(" ", str(value or ""))
     return " ".join(text.split())[:MAX_NAME_LENGTH]
+
+
+def stop_label(value) -> str:
+    """A stop name that is safe to put in a prompt; placeholders become UNNAMED_STOP."""
+    name = clean_name(value)
+    return UNNAMED_STOP if _UNNAMED_PREFIX.match(name) else name
 
 
 def format_pesos(centavos: int) -> str:
@@ -76,8 +89,8 @@ def _ride_step(number: int, ride: dict) -> dict:
         "action": "ride",
         "route_code": clean_name(ride["route_code"]),
         "route_name": clean_name(ride.get("route_name")),
-        "board_at": clean_name(ride["board_stop_name"]),
-        "get_off_at": clean_name(ride["alight_stop_name"]),
+        "board_at": stop_label(ride["board_stop_name"]),
+        "get_off_at": stop_label(ride["alight_stop_name"]),
         "scarce_service": ride.get("service_availability") == "scarce",
         "ride_minutes": _ride_minutes(ride.get("duration_seconds")),
     }
@@ -96,16 +109,19 @@ def _steps(segments: list[dict]) -> list[dict]:
             steps.append({
                 "step": number,
                 "action": "transfer_walk",
-                "from_stop": clean_name(before["alight_stop_name"]),
-                "to_stop": clean_name(after["board_stop_name"]),
+                "from_stop": stop_label(before["alight_stop_name"]),
+                "to_stop": stop_label(after["board_stop_name"]),
+                # The planner links a stop to itself when both rides use the same stop.
+                "same_stop": segment.get("from_stop_id") is not None
+                             and segment.get("from_stop_id") == segment.get("to_stop_id"),
                 "walk_metres": segment["distance_m"] if type(segment.get("distance_m")) is int else None,
             })
         elif index == 0:
             steps.append({"step": number, "action": "walk_to_first_stop",
-                          "stop": clean_name(segments[1]["board_stop_name"])})
+                          "stop": stop_label(segments[1]["board_stop_name"])})
         else:
             steps.append({"step": number, "action": "walk_to_destination",
-                          "from_stop": clean_name(segments[index - 1]["alight_stop_name"])})
+                          "from_stop": stop_label(segments[index - 1]["alight_stop_name"])})
     return steps
 
 
@@ -137,7 +153,7 @@ def build_trip_facts(option: dict) -> TripFacts:
     stop_names = []
     for step in steps:
         for key in ("stop", "board_at", "get_off_at", "from_stop", "to_stop"):
-            if step.get(key):
+            if step.get(key) and step[key] != UNNAMED_STOP:
                 stop_names.append(step[key])
 
     prompt_facts = {
