@@ -307,6 +307,14 @@ body {
     color: var(--color-brand-700);
   }
 
+  /* Few trips reported. Caution amber on cream is about 5.5:1 (WCAG AA). */
+  .badge-scarce {
+    border-color: var(--color-caution);
+    background: var(--color-caution-50);
+    color: var(--color-caution);
+  }
+
+
   /* Jeepney route code, styled like a signboard plate. Uses the sans face:
      in the pixel face 5/S and C/O look alike, and codes must be exact. */
   .route-plate {

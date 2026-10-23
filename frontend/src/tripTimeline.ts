@@ -1,7 +1,8 @@
 // Turns a journey option into a commuter-friendly trip: a short name for the
 // result card and an ordered timeline (start, walk, board, ride, get off,
 // transfer, arrive). Only facts from the API are used, in plain words.
-import type { JourneyOption, RideSegment, Segment, TransferSegment } from './api'
+import type { JourneyOption, PlanResponse, RideSegment, Segment, TransferSegment } from './api'
+
 import { formatDistance, formatDuration, titleCase } from './format'
 
 // Ride colours: PadungGo blue first, then moss green and muted coral from the
@@ -40,7 +41,9 @@ export interface TimelineStep {
   rideIndex?: number
   routeCode?: string
   routeName?: string
+  scarce?: boolean
 }
+
 
 export interface TripEndpoints {
   originName: string
@@ -50,6 +53,20 @@ export interface TripEndpoints {
 export function rides(option: JourneyOption): RideSegment[] {
   return option.segments.filter((s): s is RideSegment => s.mode === 'ride')
 }
+
+
+// Display only: the backend already decides eligibility and order. A missing
+// field (older backend) means "not flagged", never "frequent".
+export function isScarceRide(segment: RideSegment): boolean {
+  return segment.service_availability === 'scarce'
+}
+
+// Show the "listed last" note only when the backend says it grouped the trips
+// and at least one returned trip has a scarce ride.
+export function scarceTripsListedLast(plan: Pick<PlanResponse, 'journey_options' | 'ranking'>): boolean {
+  return plan.ranking.scarce_last === true && plan.journey_options.some((option) => option.has_scarce_ride === true)
+}
+
 
 // GTFS stops without a name are imported as "Unnamed stop (feed id …)". The ID
 // means nothing to commuters, so point them at the map marker instead.
@@ -125,7 +142,8 @@ function rideStats(segment: RideSegment): string | undefined {
 }
 
 function rideSteps(segment: RideSegment, rideIndex: number): TimelineStep[] {
-  const shared = { rideIndex, routeCode: segment.route_code }
+    const shared = { rideIndex, routeCode: segment.route_code, scarce: isScarceRide(segment) }
+
   return [
     {
       ...shared,
@@ -171,7 +189,7 @@ export function buildTimeline(option: JourneyOption, endpoints: TripEndpoints): 
 // coloured block with walks and transfers between them.
 export type TimelineBlock =
   | { type: 'step'; step: TimelineStep }
-  | { type: 'ride'; rideIndex: number; routeCode: string; routeName?: string; steps: TimelineStep[] }
+  | { type: 'ride'; rideIndex: number; routeCode: string; routeName?: string; scarce: boolean; steps: TimelineStep[] }
 
 export function groupTimeline(steps: TimelineStep[]): TimelineBlock[] {
   const blocks: TimelineBlock[] = []
@@ -184,7 +202,8 @@ export function groupTimeline(steps: TimelineStep[]): TimelineBlock[] {
         type: 'ride',
         rideIndex: step.rideIndex,
         routeCode: step.routeCode ?? '',
-        routeName: step.routeName,
+                routeName: step.routeName,
+        scarce: step.scarce ?? false,
         steps: [step],
       })
   }

@@ -95,6 +95,10 @@ export interface RideSegment extends BaseSegment {
   fare: FareAmount
   // Missing on backends deployed before guide estimates existed.
   guide_fare_estimate?: GuideFareEstimate | null
+  // "scarce": commuters report few trips. "not_flagged" (or missing, on older
+  // backends) only means no report is recorded, not that service is frequent.
+  service_availability?: 'scarce' | 'not_flagged'
+
 }
 
 export type Segment = WalkSegment | TransferSegment | RideSegment
@@ -102,7 +106,10 @@ export type Segment = WalkSegment | TransferSegment | RideSegment
 export interface JourneyOption {
   id: string
   transfers: number
+  // True when any ride is scarce. Missing on older backends (treat as false).
+  has_scarce_ride?: boolean
   labels: string[]
+
   segments: Segment[]
   fare: {
     currency: string
@@ -135,7 +142,10 @@ export interface PlanResponse {
   // Manila calendar date ("YYYY-MM-DD") of the last route-data change.
   // Missing on older backends; null when the server has no record.
   data_updated_on?: string | null
-  ranking: { requested: string; applied: string; warning: string | null }
+  // scarce_last: the backend lists trips with a scarce ride after the others,
+  // before applying the limit. Missing on older backends (treat as false).
+  ranking: { requested: string; applied: string; warning: string | null; scarce_last?: boolean }
+
   warnings: string[]
 }
 

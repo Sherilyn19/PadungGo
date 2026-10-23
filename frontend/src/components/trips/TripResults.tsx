@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { JourneyOption, PlanResponse } from '../../api'
 import type { FareDisplay } from '../../fareDisplay'
 import { explainRanking, explainReason } from '../../format'
+import { scarceTripsListedLast } from '../../tripTimeline'
 import TripCard from './TripCard'
 
 // Cards shown before "Show more". All results are already loaded; this only
@@ -126,6 +127,12 @@ function TripList({ plan, selectedId, onSelect, fareFor }: Pick<Props, 'selected
   return (
     <div className="space-y-2">
       {ranking && <p className="px-1 text-xs text-ink-muted">{ranking}</p>}
+      {scarceTripsListedLast(plan) && (
+        <p className="px-1 text-xs text-ink-muted">
+          Trips with a <strong className="font-semibold text-caution">Scarce</strong> ride are listed last. Commuters
+          report few trips on those routes, so you may wait longer.
+        </p>
+      )}
       <ol className="space-y-2" aria-label="Trips">
         {options.slice(0, visible).map((option, index) => (
           <TripCard key={option.id} option={option} index={index} selected={option.id === selectedId} fare={fareFor(option)} onSelect={onSelect} />

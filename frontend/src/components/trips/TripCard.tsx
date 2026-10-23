@@ -35,7 +35,7 @@ function TripCard({ option, index, selected, fare, onSelect }: Props) {
       >
         {selected && <span className="absolute inset-y-0 left-0 w-[3px] rounded-l-[3px] bg-brand-500" aria-hidden="true" />}
         <span className="min-w-0 flex-1">
-          <RidePlates codes={rides(option).map((r) => r.route_code)} />
+                    <RidePlates rides={rides(option)} />
           <span className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[15px] leading-snug font-semibold text-ink">
             <span className="break-words">{name.from}</span>
             <ArrowRight size={15} className="shrink-0 text-brand-500" aria-label="to" />
