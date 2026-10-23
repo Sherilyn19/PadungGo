@@ -73,10 +73,15 @@ def _pattern_detail(pattern: RoutePattern) -> dict:
 @throttle_classes([])
 def health(request):
     """Minimal service status. No secrets or connection strings."""
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
     return Response({
         "status": "ok",
         "service": "padunggo-backend",
         "spatial_mode": "postgis" if getattr(settings, "GIS_ENABLED", False) else "lite",
+        # For checking rate-limit setup on a new host: how many addresses arrived in
+        # X-Forwarded-For and how many proxies are trusted. Counts only, no addresses.
+        "forwarded_chain_length": len([part for part in forwarded.split(",") if part.strip()]),
+        "trusted_proxy_hops": settings.TRUSTED_PROXY_HOPS,
     })
 
 
