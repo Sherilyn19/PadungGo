@@ -35,11 +35,11 @@ function markerStyle(step: TimelineStep): { className: string; style?: CSSProper
     case 'board':
       return { className: `${base} rounded-full border-white text-white shadow-[0_0_0_1px_rgb(0_0_0/0.15)]`, style: { backgroundColor: color } }
     case 'ride':
-      return { className: `${base} rounded-[6px] bg-white`, style: { borderColor: color, color } }
+      return { className: `${base} rounded-md bg-white`, style: { borderColor: color, color } }
     case 'alight':
       return { className: `${base} rounded-full bg-white`, style: { borderColor: color, color } }
     case 'transfer':
-      return { className: `${base} rounded-[6px] border-white bg-brand-950 text-white shadow-[0_0_0_1px_rgb(6_47_87/0.4)]` }
+      return { className: `${base} rounded-md border-white bg-brand-950 text-white shadow-[0_0_0_1px_rgb(6_47_87/0.4)]` }
     case 'arrive':
       return { className: `${base} rounded-full border-white bg-alert text-white shadow-[0_0_0_1px_rgb(232_17_35/0.4)]` }
   }
@@ -55,10 +55,10 @@ function Row({ step, index, line }: { step: TimelineStep; index: number; line: '
   return (
     <li className="timeline-step relative flex gap-3 pb-4 last:pb-0" style={{ '--i': index } as CSSProperties}>
       {line === 'solid' && (
-        <span className="timeline-connector absolute top-8 -bottom-px left-[14px] w-1 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+        <span className="timeline-connector absolute top-8 -bottom-px left-3.5 w-1 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
       )}
       {line === 'dotted' && (
-        <span className="timeline-connector absolute top-9 bottom-1 left-[15px] w-0 border-l-2 border-dotted border-line-strong" aria-hidden="true" />
+        <span className="timeline-connector absolute top-9 bottom-1 left-3.75 w-0 border-l-2 border-dotted border-line-strong" aria-hidden="true" />
       )}
       <span className={marker.className} style={marker.style} aria-hidden="true">
         <Icon size={16} strokeWidth={2.25} />
@@ -67,7 +67,7 @@ function Row({ step, index, line }: { step: TimelineStep; index: number; line: '
         <p className={`font-pixel text-[11px] font-semibold tracking-[0.08em] uppercase ${labelColor}`} style={color ? { color } : undefined}>
           {label}
         </p>
-        <p className="text-sm leading-snug font-semibold break-words text-ink">{step.title}</p>
+        <p className="text-sm leading-snug font-semibold wrap-break-word text-ink">{step.title}</p>
         {step.detail && <p className="mt-0.5 text-[13px] text-ink-muted">{step.detail}</p>}
       </div>
     </li>
@@ -95,10 +95,10 @@ export default function TripTimeline({ steps, rideFooter }: Props) {
         return (
           <li key={b} className="relative pb-4">
             {!isLast && (
-              <span className="absolute -bottom-0 left-[15px] h-4 border-l-2 border-dotted border-line-strong" aria-hidden="true" />
+              <span className="absolute bottom-0 left-3.75 h-4 border-l-2 border-dotted border-line-strong" aria-hidden="true" />
             )}
             <div
-              className="timeline-step -ml-2 rounded-[6px] py-2.5 pr-2.5 pl-2"
+              className="timeline-step -ml-2 rounded-md py-2.5 pr-2.5 pl-2"
               style={{ backgroundColor: rideSoftColor(block.rideIndex), boxShadow: `inset 3px 0 0 ${color}`, '--i': index } as CSSProperties}
             >
               <div className="mb-2 ml-11 flex flex-wrap items-center gap-2">

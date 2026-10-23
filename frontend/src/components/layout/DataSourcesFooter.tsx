@@ -26,9 +26,9 @@ const SOURCES = [
 
 export default function DataSourcesFooter() {
   return (
-    <footer className="rounded-[6px] border border-cream-line bg-cream p-3">
+    <footer className="rounded-md border border-cream-line bg-cream p-3">
       <details>
-        <summary className="section-label cursor-pointer rounded text-[11px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-700">
+        <summary className="section-label cursor-pointer rounded text-[11px] text-ink focus-visible:outline-2 focus-visible:outline-brand-700">
           Where our jeepney info comes from
         </summary>
 

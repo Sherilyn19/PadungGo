@@ -39,7 +39,7 @@ export default function MapCredits({ open, onOpenChange }: Props) {
         <section
           id={panelId}
           aria-label="Map and data credits"
-          className="fade-up w-64 max-w-[calc(100vw-1rem)] rounded-[6px] border border-cream-line bg-cream p-2.5 text-[11px] leading-snug text-ink-muted shadow-[0_4px_12px_rgb(6_47_87/0.16)]"
+          className="fade-up w-64 max-w-[calc(100vw-1rem)] rounded-md border border-cream-line bg-cream p-2.5 text-[11px] leading-snug text-ink-muted shadow-[0_4px_12px_rgb(6_47_87/0.16)]"
         >
           <div className="mb-1.5 flex items-center justify-between">
             <h2 className="section-label text-[11px]">Credits</h2>
