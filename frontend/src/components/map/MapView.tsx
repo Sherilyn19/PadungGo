@@ -153,6 +153,15 @@ export default function MapView({ origin, destination, option, onMapClick, inset
         layout: { 'line-cap': 'round' },
         paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': [0.5, 2], 'line-opacity': 0.9 },
       })
+      // A static, route-colored halo shares the journey source: no animation loop.
+      m.addLayer({
+        id: 'journey-ride-aura',
+        type: 'line',
+        source: 'journey',
+        filter: ['==', ['get', 'kind'], 'ride'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 22, 'line-blur': 9, 'line-opacity': 0.38 },
+      })
       // White casing under the ride line keeps it crisp over busy streets.
       m.addLayer({
         id: 'journey-ride-casing',

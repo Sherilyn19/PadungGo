@@ -27,7 +27,7 @@ function TripCard({ option, index, selected, fare, onSelect }: Props) {
         onClick={() => onSelect(option.id)}
         aria-current={selected ? 'true' : undefined}
         aria-controls="trip-details"
-        className={`focus-ring group relative flex w-full items-center gap-3 rounded-[4px] border bg-white p-3 text-left transition-[border-color,box-shadow,transform] duration-200 ${
+        className={`trip-card focus-ring group relative flex w-full items-center gap-3 rounded-[4px] border bg-white p-3 text-left transition-[border-color,box-shadow,transform] duration-200 ${
           selected
             ? 'border-brand-500 shadow-[0_3px_10px_rgb(6_47_87/0.12)]'
             : 'border-line hover:-translate-y-px hover:border-brand-300 hover:shadow-[0_3px_10px_rgb(6_47_87/0.10)] active:translate-y-0'

@@ -29,15 +29,15 @@ function markerStyle(step: TimelineStep): { className: string; style?: CSSProper
   const color = step.rideIndex !== undefined ? rideColor(step.rideIndex) : undefined
   switch (step.kind) {
     case 'start':
-      return { className: `${base} rounded-full border-brand-500 bg-white text-brand-600` }
+      return { className: `${base} rounded-full border-brand-500 bg-brand-600 text-white` }
     case 'walk':
       return { className: `${base} rounded-full border-dashed border-line-strong bg-white text-ink-muted` }
     case 'board':
       return { className: `${base} rounded-full border-white text-white shadow-[0_0_0_1px_rgb(0_0_0/0.15)]`, style: { backgroundColor: color } }
     case 'ride':
-      return { className: `${base} rounded-md bg-white`, style: { borderColor: color, color } }
+      return { className: `${base} rounded-md text-white`, style: { borderColor: color, backgroundColor: color } }
     case 'alight':
-      return { className: `${base} rounded-full bg-white`, style: { borderColor: color, color } }
+      return { className: `${base} rounded-full text-white`, style: { borderColor: color, backgroundColor: color } }
     case 'transfer':
       return { className: `${base} rounded-md border-white bg-brand-950 text-white shadow-[0_0_0_1px_rgb(6_47_87/0.4)]` }
     case 'arrive':

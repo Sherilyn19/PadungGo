@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { BusFront, ChevronRight, Hourglass } from 'lucide-react'
 import type { RideSegment } from '../../api'
 import { isScarceRide, rideColor } from '../../tripTimeline'
@@ -7,7 +8,7 @@ export default function RidePlate({ code, rideIndex, size = 'md' }: { code: stri
   return (
     <span
       className={`route-plate ${size === 'lg' ? 'h-7 px-2 text-[15px]' : ''}`}
-      style={{ backgroundColor: rideColor(rideIndex) }}
+      style={{ backgroundColor: rideColor(rideIndex), '--route-glow': rideColor(rideIndex) } as CSSProperties}
     >
       <BusFront size={size === 'lg' ? 15 : 13} aria-hidden="true" />
       {code}

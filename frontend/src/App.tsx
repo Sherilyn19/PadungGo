@@ -13,6 +13,7 @@ import { tripFareDisplay } from './fareEstimates'
 import { pendingPoint } from './places'
 import { tripFareFor, useFareChoices, vehicleChoicesFor } from './hooks/useFareChoices'
 import { useAddressLabel } from './hooks/useAddressLabel'
+import { useInteractionMotion } from './hooks/useInteractionMotion'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import { useResizablePanel } from './hooks/useResizablePanel'
 import { rides, tripName } from './tripTimeline'
@@ -35,6 +36,7 @@ const PANELS_QUERY = '(min-width: 768px)'
 const WIDE_QUERY = '(min-width: 1100px)'
 
 export default function App() {
+  const motionRoot = useInteractionMotion()
   const hasPanels = useMediaQuery(PANELS_QUERY)
   const isWide = useMediaQuery(WIDE_QUERY)
   const main = useResizablePanel({ storageKey: 'padunggo.sidebar', min: 320, max: 560, defaultWidth: 380, persistCollapsed: true })
@@ -167,7 +169,7 @@ export default function App() {
   )
 
   const searchAndResults = (
-    <div className="space-y-3 p-3">
+    <div className="planner-entrance space-y-3 p-3">
       <SearchForm
         origin={origin}
         destination={destination}
@@ -232,7 +234,7 @@ export default function App() {
   const mapLeftInset = hasPanels && !isWide && detailsOpen && selected && main.collapsed ? main.width : 0
 
   return (
-    <div className="relative flex h-full overflow-hidden bg-surface text-ink">
+    <div ref={motionRoot} className="app-entrance relative flex h-full overflow-hidden bg-surface text-ink">
       {hasPanels ? (
         <ResizablePanel id="trip-panel" label="Trip planner" panel={main} className={mainVisible ? 'border-r border-brand-900/20' : ''}>
           <PanelHeader onCollapse={main.toggleCollapsed} />
