@@ -1,17 +1,18 @@
 import { ArrowDownToDot, ArrowRightLeft, BusFront, CircleDot, Flag, Minus, Plus, Scan, type LucideIcon } from 'lucide-react'
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl'
-import { createElement, useCallback, useEffect, useRef } from 'react'
+import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { JourneyOption, LatLng, Place } from '../../api'
 import { rideColor } from '../../tripTimeline'
+import MapCredits from './MapCredits'
 import { tripMarkers, type TripMarkerKind } from './tripMarkers'
 
-// OpenFreeMap: free OpenStreetMap-based tiles, no API key. Its style supplies
-// the required OpenFreeMap / OpenMapTiles / OpenStreetMap credit, shown by the
-// compact attribution control in the bottom-right corner.
+// OpenFreeMap: free OpenStreetMap-based tiles, no API key. Its required
+// OpenFreeMap / OpenMapTiles / OpenStreetMap credit is listed in MapCredits.
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 const CEBU_CENTER: [number, number] = [123.9, 10.31]
 const WALK_COLOR = '#6f7c89'
+const CREDITS_VISIBLE_MS = 5000
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -122,6 +123,7 @@ export default function MapView({ origin, destination, option, onMapClick, inset
   const insetsRef = useRef(insets)
   insetsRef.current = insets
   const fitTarget = useRef<[number, number][]>([])
+  const [creditsOpen, setCreditsOpen] = useState(true)
 
   useEffect(() => {
     if (!container.current) return
@@ -132,9 +134,15 @@ export default function MapView({ origin, destination, option, onMapClick, inset
       zoom: 12.5,
       attributionControl: false,
     })
-    // Compact: starts expanded so the credit is seen, then folds into an (i)
-    // button after the first drag (allowed by the OSMF attribution guidelines).
-    m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
+    // Credits show at start, then fold into the (i) button on first interaction.
+    // Only the user's own drag/zoom counts; the map also moves itself on load.
+    const foldOnUserMove = (e: { originalEvent?: unknown }) => {
+      if (!e.originalEvent) return
+      setCreditsOpen(false)
+      m.off('movestart', foldOnUserMove)
+    }
+    m.on('movestart', foldOnUserMove)
+    m.once('click', () => setCreditsOpen(false))
     m.on('load', () => {
       m.addSource('journey', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addLayer({
@@ -259,6 +267,12 @@ export default function MapView({ origin, destination, option, onMapClick, inset
     else m.once('idle', apply)
   }, [option, origin, destination, fit])
 
+  // Also fold the credits after five seconds, as the OSM guideline allows.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCreditsOpen(false), CREDITS_VISIBLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   const overlayLimit = Math.round(window.innerHeight * 0.55)
   const control =
     'focus-ring flex h-9 w-9 items-center justify-center bg-white text-brand-600 transition-colors hover:bg-brand-50 active:bg-brand-100'
@@ -271,7 +285,7 @@ export default function MapView({ origin, destination, option, onMapClick, inset
       {option && insets.bottom <= overlayLimit && (
         <div
           className="fade-up pointer-events-none absolute left-3 z-10 flex items-center gap-3 rounded-[4px] border border-line bg-white/95 px-2.5 py-1.5 text-[11px] text-ink-muted shadow-[0_2px_6px_rgb(6_47_87/0.12)] transition-[bottom] duration-300"
-          // Above the bottom sheet and clear of the attribution line on phones.
+          // Above the bottom sheet on phones.
           style={{ bottom: insets.bottom ? insets.bottom + 40 : 12 }}
         >
           <span className="flex items-center gap-1.5">
@@ -301,6 +315,7 @@ export default function MapView({ origin, destination, option, onMapClick, inset
           <Scan size={17} aria-hidden="true" />
         </button>
       </div>
+      <MapCredits open={creditsOpen} onOpenChange={setCreditsOpen} />
     </div>
   )
 }

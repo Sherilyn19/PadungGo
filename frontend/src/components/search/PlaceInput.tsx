@@ -1,14 +1,12 @@
 import { LoaderCircle, LocateFixed, MapPin, MousePointerClick, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { suggestPlaces, type Attribution, type Place, type PlaceSuggestion } from '../../api'
+import { suggestPlaces, type Place, type PlaceSuggestion } from '../../api'
 import {
-  ADDRESS_PRIVACY_NOTE,
   cachedSuggestions,
   formatCoordinates,
   pendingPoint,
   placeFromSuggestion,
   rememberSuggestions,
-  suggestionAttribution,
   suggestionKey,
 } from '../../places'
 
@@ -114,7 +112,7 @@ export default function PlaceInput({ label, placeholder, value, onChange, pickin
   }
 
   const listOpen = open && results.length > 0
-  const listCredits = suggestionAttribution(results)
+  const isPoint = value?.source === 'gps' || value?.source === 'map'
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!listOpen) return
@@ -146,6 +144,8 @@ export default function PlaceInput({ label, placeholder, value, onChange, pickin
             aria-activedescendant={listOpen && active >= 0 ? `${listId}-${active}` : undefined}
             autoComplete="off"
             className="field pr-8 pl-3"
+            // Exact point on hover, without cluttering the form.
+            title={isPoint && value ? `${value.name} (${formatCoordinates(value)})` : undefined}
             placeholder={placeholder}
             value={text}
             onChange={(e) => {
@@ -222,14 +222,13 @@ export default function PlaceInput({ label, placeholder, value, onChange, pickin
               </li>
             ))}
           </ul>
-          {listCredits.length > 0 && (
-            <p className="border-t border-brand-100 px-3 py-1 text-[11px] text-ink-soft" onMouseDown={(e) => e.preventDefault()}>
-              <Credits items={listCredits} />
-            </p>
-          )}
         </div>
       )}
-      <PointCaption place={value} />
+      {value?.addressStatus === 'pending' && (
+        <p className="mt-1 text-xs text-ink-muted" aria-live="polite">
+          Finding the address…
+        </p>
+      )}
       {status && (
         <p className="mt-1 text-xs text-ink-muted" aria-live="polite">
           {status}
@@ -243,47 +242,4 @@ function gpsErrorMessage(err: GeolocationPositionError): string {
   if (err.code === err.PERMISSION_DENIED) return 'Location permission was denied. Search or pick on the map instead.'
   if (err.code === err.TIMEOUT) return 'Finding your location took too long. Try again, or pick on the map.'
   return 'Your location is not available right now. Search or pick on the map instead.'
-}
-
-function Credits({ items }: { items: Attribution[] }) {
-  return (
-    <>
-      {items.map((c, i) => (
-        <span key={c.text}>
-          {i > 0 && ' · '}
-          {c.url ? (
-            <a href={c.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-brand-700">
-              {c.text}
-            </a>
-          ) : (
-            c.text
-          )}
-        </span>
-      ))}
-    </>
-  )
-}
-
-// Shows the exact coordinates of a GPS or map point, the lookup's privacy note,
-// and the credits required wherever a Geoapify result is shown.
-function PointCaption({ place }: { place: Place | null }) {
-  if (!place) return null
-  const isPoint = place.source === 'gps' || place.source === 'map'
-  if (!isPoint && !place.attribution?.length) return null
-  return (
-    <div className="mt-1 space-y-0.5 text-[11px] text-ink-soft" aria-live="polite">
-      {isPoint && (
-        <p>
-          {place.addressStatus === 'pending' ? 'Finding the address… ' : ''}
-          <span className="tabular-nums">{formatCoordinates(place)}</span>
-        </p>
-      )}
-      {isPoint && <p>{ADDRESS_PRIVACY_NOTE}</p>}
-      {place.attribution?.length ? (
-        <p>
-          <Credits items={place.attribution} />
-        </p>
-      ) : null}
-    </div>
-  )
 }
