@@ -1,24 +1,45 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 <h1>Import places from OpenStreetMap</h1>
-<p>Downloads named schools, hospitals, malls, landmarks, attractions, offices and
-terminals inside <strong>Cebu City, Mandaue and Lapu-Lapu</strong> from OpenStreetMap
-(one request to the free Overpass server; no key or cost) and makes them searchable,
-including by acronym.</p>
+<p>Makes named schools, hospitals, malls, landmarks, attractions, offices and terminals
+searchable (including by acronym) for <strong>Cebu City, Mandaue and Lapu-Lapu</strong>.
+Free; no key.</p>
 <ul>
   <li>Places are stored as <strong>documented</strong> locations. They are not route or stop evidence.</li>
-  <li>Running it again updates the same records; it never changes hand-made or GTFS locations, routes or fares.</li>
+  <li>Running it again updates the same places. It never changes your own locations, GTFS stops, routes, fares or availability flags.</li>
   <li>Data © OpenStreetMap contributors, ODbL 1.0.</li>
-  <li>It can take one to three minutes. Press the button once.</li>
 </ul>
+
 {% if report %}
-  <p style="padding:8px;background:#e6f4ea;border:1px solid #9ad1a8;">{{ report }}</p>
+  <p role="status" style="padding:10px 12px;background:#e6f4ea;color:#14351f;border:1px solid #7fbf8f;border-radius:4px;font-weight:600;">{{ report }}</p>
 {% endif %}
 {% if error %}
-  <p style="padding:8px;background:#fdecea;border:1px solid #f5b7b1;">{{ error }}</p>
+  <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ error }}</p>
 {% endif %}
+
+<h2>Option 1: download from OpenStreetMap</h2>
+<p>Pick one city at a time. Each takes about 30–60 seconds; press the button once and wait.
+The app retries by itself if the free OpenStreetMap server is busy.</p>
 <form method="post">
   {% csrf_token %}
-  <p><input type="submit" value="Import places" class="default"></p>
+  <p>
+    <select name="city">
+      {% for name in cities %}<option value="{{ name }}"{% if name == chosen_city %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <input type="submit" value="Import this city" class="default">
+  </p>
+</form>
+
+<h2>Option 2: if option 1 keeps failing</h2>
+<ol>
+  <li>Open a link below in a new tab. Wait about a minute until a page of text appears.</li>
+  <li>Save it: press Ctrl+S and keep the name ending in <code>.json</code> (or right-click, Save as).</li>
+  <li>Choose that file here and press the button.</li>
+</ol>
+<p>{% for name, link in download_links %}<a href="{{ link }}" target="_blank" rel="noopener noreferrer">Download {{ name }} data</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <p><input type="file" name="file" accept=".json,application/json" required>
+  <input type="submit" value="Import this file" class="default"></p>
 </form>
 {% endblock %}
