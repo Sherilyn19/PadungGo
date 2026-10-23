@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import type { AddressResponse, PlaceSuggestion, SuggestionsResponse } from './api'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { suggestPlaces, type AddressResponse, type PlaceSuggestion, type SuggestionsResponse } from './api'
 import {
   ADDRESS_UNAVAILABLE,
   cachedSuggestions,
@@ -73,7 +73,26 @@ const mapResult: PlaceSuggestion = {
 }
 
 describe('suggestions', () => {
-  afterEach(clearSuggestionCache)
+  afterEach(() => {
+    clearSuggestionCache()
+    vi.unstubAllGlobals()
+  })
+
+  it('falls back to the older locations endpoint while the backend is not yet updated', async () => {
+    const json = (status: number, body: unknown) =>
+      new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(404, { error: { code: 'not_found', message: 'Not found.' } }))
+      .mockResolvedValueOnce(json(200, { results: [
+        { id: 'loc-1', name: 'Fuente Osmeña', kind: 'place', area: null, status: 'documented', latitude: 10.31, longitude: 123.89 },
+      ] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const data = await suggestPlaces('osmena')
+
+    expect(fetchMock.mock.calls[1][0]).toContain('/locations?q=osmena')
+    expect(data.results[0]).toMatchObject({ source: 'padunggo', location_id: 'loc-1', name: 'Fuente Osmeña' })
+  })
 
   it('plans PadungGo locations by id and map results by coordinates', () => {
     expect(placeFromSuggestion(curated)).toEqual({

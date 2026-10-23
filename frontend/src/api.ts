@@ -257,8 +257,30 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
   return body as T
 }
 
-export function suggestPlaces(q: string, signal?: AbortSignal): Promise<SuggestionsResponse> {
-  return request(`/places/suggestions?q=${encodeURIComponent(q)}`, undefined, signal)
+interface LegacyLocation extends LatLng {
+  id: string
+  name: string
+  kind: string
+  area: string | null
+  status: string
+}
+
+export async function suggestPlaces(q: string, signal?: AbortSignal): Promise<SuggestionsResponse> {
+  try {
+    return await request<SuggestionsResponse>(`/places/suggestions?q=${encodeURIComponent(q)}`, undefined, signal)
+  } catch (e) {
+    // Keeps search working if the frontend is deployed before the backend.
+    if (!(e instanceof ApiError && e.status === 404)) throw e
+    const legacy = await request<{ results: LegacyLocation[] }>(
+      `/locations?q=${encodeURIComponent(q)}&limit=8`, undefined, signal)
+    return {
+      results: legacy.results.map((r) => ({
+        source: 'padunggo', location_id: r.id, name: r.name, detail: r.area,
+        kind: r.kind, latitude: r.latitude, longitude: r.longitude, status: r.status,
+      })),
+      provider: { name: 'geoapify', status: 'disabled', attribution: [] },
+    }
+  }
 }
 
 // POST keeps the coordinates out of URLs and server access logs.
