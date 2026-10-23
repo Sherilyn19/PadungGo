@@ -128,9 +128,8 @@ function TripList({ plan, selectedId, onSelect, fareFor }: Pick<Props, 'selected
     <div className="space-y-2">
       {ranking && <p className="px-1 text-xs text-ink-muted">{ranking}</p>}
       {scarceTripsListedLast(plan) && (
-        <p className="px-1 text-xs text-ink-muted">
-          Trips with a <strong className="font-semibold text-caution">Scarce</strong> ride are listed last. Commuters
-          report few trips on those routes, so you may wait longer.
+          <p className="px-1 text-xs text-ink-muted">
+          <strong className="font-semibold text-caution">Scarce:</strong> Few jeepneys reported on this route.
         </p>
       )}
       <ol className="space-y-2" aria-label="Trips">
