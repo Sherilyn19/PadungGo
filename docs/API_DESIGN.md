@@ -512,7 +512,7 @@ explanation:
 | `rate_limited` | Provider answered 429; calls pause for 30 s | true |
 | `timeout` | No answer within `AI_TIMEOUT_SECONDS` (default 10) | true |
 | `error` | Provider unreachable, rejected the request, or sent an unreadable reply | true |
-| `invalid_output` | The answer failed the accuracy checks twice; it is never shown | true |
+| `invalid_output` | The answer failed the accuracy checks twice; it is never shown. The response also has `check`, a short code such as `missing_stop_name` naming the failed check (never answer text), for diagnosing false rejections | true |
 
 Other statuses: 400 `invalid_request` (malformed body, unknown field, bad ID,
 unknown `location_id`), 404 `not_found`, 429 `rate_limited` (per-visitor limit

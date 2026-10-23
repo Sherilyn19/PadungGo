@@ -50,9 +50,13 @@ def _find_option(options: list[dict], rides: list[dict]) -> dict | None:
     return None
 
 
-def _unavailable_response(reason: str) -> Response:
+def _unavailable_response(reason: str, check: str | None = None) -> Response:
     message, retryable = UNAVAILABLE.get(reason, UNAVAILABLE["error"])
-    return Response({"status": "unavailable", "reason": reason, "message": message, "retryable": retryable})
+    body = {"status": "unavailable", "reason": reason, "message": message, "retryable": retryable}
+    if check:
+        # A short code such as "missing_stop_name": which accuracy check failed. Never answer text.
+        body["check"] = check
+    return Response(body)
 
 
 @api_view(["POST"])
@@ -91,7 +95,7 @@ def explain_journey(request):
 
     explanation = explain_trip(option)
     if explanation.status != "ok":
-        return _unavailable_response(explanation.reason)
+        return _unavailable_response(explanation.reason, explanation.check)
     return Response({
         "status": "ok",
         "explanation": explanation.text,

@@ -27,7 +27,10 @@ _UNKNOWN_WORDS = (
     r"|not (?:confirmed|known|available|certain|guaranteed|verified)"
     r"|(?:isn|aren|can|couldn)['’]?t (?:be )?(?:known|confirmed|available|certain|say|tell|predict)"
     r"|cannot (?:say|tell|predict|be sure)"
-    r"|no (?:verified )?(?:frequency|timetable|schedule|fare)"
+    r"|no (?:verified |reliable |confirmed )?(?:frequency|timetable|schedule|fare|information|info|data)"
+    r"|(?:could|can)(?:n['’]t| not) (?:be )?(?:determined|calculated|confirmed|found|known)|not sure"
+    r"|unavailable|(?:don|doesn)['’]t (?:have|know)"
+    r"|not (?:provided|listed|set|shown|given|specified|included)"
     r"|ask (?:the|your) (?:driver|conductor)"
 )
 _HEDGE_WORDS = r"confirm|check|make sure|whether|ask|may|might|could|not sure|unknown|not field"
@@ -35,7 +38,7 @@ _HEDGE_WORDS = r"confirm|check|make sure|whether|ask|may|might|could|not sure|un
 _MONEY = re.compile(
     r"(?:₱|\bphp\s?|\bp(?=\d))\s*(\d[\d,]*(?:\.\d+)?)|(\d[\d,]*(?:\.\d+)?)\s*(?:pesos?|php)\b", _FLAGS)
 _DURATION = re.compile(
-    r"(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*\d+(?:\.\d+)?)?\s*(minutes?|mins?|hours?|hrs?)\b", _FLAGS)
+    r"(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*\d+(?:\.\d+)?)?[\s-]*(minutes?|mins?|hours?|hrs?)\b", _FLAGS)
 _DISTANCE = re.compile(
     r"(\d+(?:\.\d+)?)\s*(km|kilomet(?:er|re)s?|met(?:er|re)s?|m)\b", _FLAGS)
 _SPELLED_QUANTITY = re.compile(
@@ -43,7 +46,10 @@ _SPELLED_QUANTITY = re.compile(
     r"\s+(?:minutes?|mins?|hours?|pesos?|kilomet(?:er|re)s?|met(?:er|re)s?)\b", _FLAGS)
 _LIST_MARKER = re.compile(r"^\s*\d+[.)]\s", re.M)
 _ROUTE_CODE_LIKE = re.compile(r"(?<![A-Za-z0-9])\d{1,2}[A-Z]{1,2}(?![A-Za-z0-9])")
-_NEGATED_VERIFIED = re.compile(r"\b(?:not|never|non)[\s-]+(?:field[\s-]*)?verified\b|\bunverified\b", _FLAGS)
+# "not field-verified", "has not yet been verified", "no verified schedule", "unverified"
+_NOT_VERIFIED = re.compile(
+    r"\b(?:not|never|non|no|without|isn['’]t|hasn['’]t|haven['’]t)\b[\w\s'’-]{0,14}?\bverified\b|\bunverified\b", _FLAGS)
+_NEGATED_GUARANTEE = re.compile(r"\b(?:no|not|never|without|n['’]t)\s+(?:\w+\s+)?guarantee[sd]?\b", _FLAGS)
 
 # Each pattern is a claim the planner cannot support.
 _UNSUPPORTED_CLAIMS = (
@@ -101,7 +107,7 @@ def _shape_problem(text: str) -> str | None:
         return "empty"
     if len(text) > MAX_CHARS:
         return "too_long"
-    if re.search(r"[<>]|```|\]\(|https?://|www\.", text, _FLAGS):
+    if re.search(r"</?[a-z!]|```|\]\(|https?://|www\.", text, _FLAGS):
         return "markup_or_link"
     return None
 
@@ -169,9 +175,10 @@ def _number_problem(rest: str, facts: TripFacts) -> str | None:
 
     if _SPELLED_QUANTITY.search(rest):
         return "invented_quantity"
-    # Only the number of jeepney rides (or a list marker) may remain as a digit.
+    # Only the number of rides or transfers (or a list marker) may remain as a digit.
+    allowed = {str(len(facts.route_codes)), str(facts.transfers)}
     leftover = re.findall(r"\d+", _LIST_MARKER.sub(" ", rest))
-    if any(number != str(len(facts.route_codes)) for number in leftover):
+    if any(number not in allowed for number in leftover):
         return "invented_number"
     return None
 
@@ -180,19 +187,21 @@ def _claim_problem(text: str, rest: str, facts: TripFacts) -> str | None:
     for pattern, reason in _UNSUPPORTED_CLAIMS:
         # Landmark words are only suspicious outside the real stop names.
         haystack = rest if reason == "invented_landmark" else text
+        if reason == "certainty_claim":
+            haystack = _NEGATED_GUARANTEE.sub(" ", haystack)
         if pattern.search(haystack):
             return reason
     for sentence in _sentences(text):
         if _CURRENT_OPERATION.search(sentence) and not re.search(_HEDGE_WORDS, sentence, _FLAGS):
             return "current_operation_claim"
-    if facts.historic and re.search(r"\bverified\b", _NEGATED_VERIFIED.sub(" ", text), _FLAGS):
+    if facts.historic and re.search(r"\bverified\b", _NOT_VERIFIED.sub(" ", text), _FLAGS):
         return "verification_claim"
     return None
 
 
 def _missing_warning(text: str, facts: TripFacts) -> str | None:
     """Warnings the planner requires must survive the rewrite."""
-    if facts.historic and not re.search(r"\bnot[\s-]+field[\s-]*verified\b", text, _FLAGS):
+    if facts.historic and not _NOT_VERIFIED.search(text):
         return "missing_historic_warning"
     if facts.scarce_codes and not re.search(r"\bscarce\b", text, _FLAGS):
         return "missing_scarce_warning"

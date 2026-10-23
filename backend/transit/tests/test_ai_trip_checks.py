@@ -280,3 +280,53 @@ def test_same_stop_transfer_is_flagged_for_the_model():
     assert step["same_stop"] is True
     assert next(s for s in build_trip_facts(option(transfer=True)).prompt_facts["steps"]
                 if s["action"] == "transfer_walk")["same_stop"] is False
+
+
+# --- Natural phrasings a real model uses (found testing the live API) -------
+
+HISTORIC_TAIL = " The fare is unknown, so ask the driver. Waiting time is unknown. This data is historic and not field-verified."
+TRANSFER_BASE = "Take 17D from Stop One to Stop Three (xfer), walk to Stop Five (xfer), then take 42D to Stop Seven."
+
+
+@pytest.mark.parametrize("sentence", [
+    "This trip has 1 transfer.",
+    "It is a 10-minute ride, then an 8-minute ride.",
+    "There is no guarantee they still run.",
+    "The route has not yet been verified.",
+    "There is no verified schedule.",
+    "Total ride time is 18 minutes.",
+])
+def test_accepts_natural_wording_that_adds_no_facts(sentence):
+    assert check(TRANSFER_BASE + " " + sentence + HISTORIC_TAIL, option(transfer=True, historic=True, fare=False)) is None
+
+
+def test_arrows_are_not_treated_as_markup_but_html_tags_are():
+    opt = option(transfer=True, historic=True, fare=False)
+    arrows = "17D -> Stop One to Stop Three (xfer), walk to Stop Five (xfer), 42D to Stop Seven." + HISTORIC_TAIL
+    assert check(arrows, opt) is None
+    assert check("<b>" + arrows, opt) == "markup_or_link"
+
+
+@pytest.mark.parametrize("fare_wording,wait_wording", [
+    ("The fare could not be determined.", "There is no information on waiting times."),
+    ("No fare information is available.", "I am not sure how long you will wait."),
+])
+def test_accepts_other_ways_of_saying_unknown(fare_wording, wait_wording):
+    text = f"Board 17D at Stop One, get off at Stop Four. {fare_wording} {wait_wording}"
+    assert check(text, option(fare=False)) is None
+
+
+@pytest.mark.parametrize("sentence,reason", [
+    ("It takes 40 minutes.", "invented_time"),
+    ("It has 3 transfers.", "invented_number"),     # the trip has exactly 1
+    ("This is a guaranteed route.", "certainty_claim"),
+])
+def test_loosened_checks_still_reject_invented_facts(sentence, reason):
+    assert check(TRANSFER_BASE + " " + sentence + HISTORIC_TAIL, option(transfer=True, historic=True, fare=False)) == reason
+
+
+def test_do_not_worry_does_not_hide_a_verification_claim():
+    opt = option(historic=True, fare=False)
+    text = ("Do not worry, this is a verified route from Stop One to Stop Four with 17D. The data is not field-verified. "
+            "The fare is unknown. The wait is unknown.")
+    assert check(text, opt) == "verification_claim"

@@ -38,6 +38,7 @@ class TripFacts:
     stop_names: tuple           # every stop the answer must name
     other_names: tuple          # route names: allowed, but not required
     scarce_codes: tuple
+    transfers: int
     historic: bool
     fare_text: str | None       # e.g. "₱13.00"; None means the fare is unknown
     fare_is_approximate: bool
@@ -172,6 +173,7 @@ def build_trip_facts(option: dict) -> TripFacts:
         stop_names=tuple(dict.fromkeys(stop_names)),
         other_names=tuple(n for n in dict.fromkeys(s["route_name"] for s in ride_steps) if n),
         scarce_codes=scarce_codes,
+        transfers=option["transfers"],
         historic=historic,
         fare_text=fare_text,
         fare_is_approximate=approximate,
