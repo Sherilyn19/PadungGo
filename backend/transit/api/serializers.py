@@ -55,3 +55,40 @@ class PlanRequestSerializer(serializers.Serializer):
                 {k: "Unknown field." for k in extra}
             )
         return attrs
+
+
+class StrictSerializer(serializers.Serializer):
+    """Rejects keys it does not define, at any nesting level."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            extra = set(data) - set(self.fields)
+            if extra:
+                raise serializers.ValidationError({key: "Unknown field." for key in sorted(extra)})
+        return super().to_internal_value(data)
+
+
+class RideReferenceSerializer(StrictSerializer):
+    """Which ride of the trip the visitor chose. IDs only, never route facts."""
+
+    route_pattern_id = serializers.UUIDField()
+    board_occurrence_id = serializers.UUIDField()
+    alight_occurrence_id = serializers.UUIDField()
+
+
+class ExplainRequestSerializer(StrictSerializer):
+    """The same search as /journeys/plan, plus the rides of the chosen trip.
+
+    The server plans again and looks the trip up, so the client cannot supply
+    fares, stop names or other facts for the AI to repeat.
+    """
+
+    origin = EndpointSerializer()
+    destination = EndpointSerializer()
+    max_transfers = serializers.IntegerField(required=False, default=1, min_value=0, max_value=1)
+    sort_by = serializers.ChoiceField(
+        required=False, default="fewest_transfers",
+        choices=["fewest_transfers", "cheapest", "fastest", "least_walking"],
+    )
+    # One ride, or two when the trip has a transfer.
+    rides = RideReferenceSerializer(many=True, allow_empty=False, max_length=2)

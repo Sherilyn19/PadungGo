@@ -135,7 +135,11 @@ export interface RideSegment extends BaseSegment {
   // "scarce": commuters report few trips. "not_flagged" (or missing, on older
   // backends) only means no report is recorded, not that service is frequent.
   service_availability?: 'scarce' | 'not_flagged'
-
+  // Opaque IDs of this ride. "Explain this trip" sends them back so the
+  // server can find the same trip itself. Missing on older backends.
+  route_pattern_id?: string
+  board_occurrence_id?: string
+  alight_occurrence_id?: string
 }
 
 export type Segment = WalkSegment | TransferSegment | RideSegment
@@ -291,6 +295,11 @@ export function lookUpAddress(point: LatLng, signal?: AbortSignal): Promise<Addr
   }, signal)
 }
 
+// Planning always uses an id for saved places, otherwise the coordinates.
+function toEndpoint(p: Place) {
+  return p.id ? { location_id: p.id } : { latitude: p.latitude, longitude: p.longitude }
+}
+
 // Older API deployments accept at most 5 options.
 const LEGACY_JOURNEY_LIMIT = 5
 
@@ -300,15 +309,13 @@ export async function planJourney(
   sortBy: SortBy,
   maxTransfers: 0 | 1,
 ): Promise<PlanResponse> {
-  const endpoint = (p: Place) =>
-    p.id ? { location_id: p.id } : { latitude: p.latitude, longitude: p.longitude }
   const send = (limit: number) =>
     request<PlanResponse>('/journeys/plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        origin: endpoint(origin),
-        destination: endpoint(destination),
+        origin: toEndpoint(origin),
+        destination: toEndpoint(destination),
         sort_by: sortBy,
         max_transfers: maxTransfers,
         limit,
@@ -322,4 +329,62 @@ export async function planJourney(
     if (e instanceof ApiError && e.status === 400 && e.fields?.limit) return send(LEGACY_JOURNEY_LIMIT)
     throw e
   }
+}
+
+// --- AI trip explanation (docs/API_DESIGN.md, "Explain this trip") ---------
+
+// The search that produced the trips, so the server can plan again.
+export interface TripSearch {
+  from: Place
+  to: Place
+  sortBy: SortBy
+  maxTransfers: 0 | 1
+}
+
+export interface RideReference {
+  route_pattern_id: string
+  board_occurrence_id: string
+  alight_occurrence_id: string
+}
+
+export type ExplainResponse =
+  | { status: 'ok'; explanation: string; notices: string[]; ai_generated: true; model: string }
+  | { status: 'unavailable'; reason: string; message: string; retryable: boolean }
+
+// The chosen rides as opaque IDs, or null when this backend does not send
+// them. Only IDs go to the server; the explanation is built from its own copy
+// of the trip, so nothing here can change what the AI is told.
+export function rideReferences(option: JourneyOption): RideReference[] | null {
+  const refs: RideReference[] = []
+  for (const segment of option.segments) {
+    if (segment.mode !== 'ride') continue
+    const { route_pattern_id, board_occurrence_id, alight_occurrence_id } = segment
+    if (!route_pattern_id || !board_occurrence_id || !alight_occurrence_id) return null
+    refs.push({ route_pattern_id, board_occurrence_id, alight_occurrence_id })
+  }
+  return refs.length > 0 ? refs : null
+}
+
+export function explainRequestBody(search: TripSearch, rides: RideReference[]) {
+  return {
+    origin: toEndpoint(search.from),
+    destination: toEndpoint(search.to),
+    sort_by: search.sortBy,
+    max_transfers: search.maxTransfers,
+    rides,
+  }
+}
+
+export async function explainJourney(
+  search: TripSearch,
+  option: JourneyOption,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const rides = rideReferences(option)
+  if (!rides) throw new ApiError('This trip cannot be explained yet. Please search again.', 0, false)
+  return request<unknown>('/journeys/explain', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(explainRequestBody(search, rides)),
+  }, signal)
 }

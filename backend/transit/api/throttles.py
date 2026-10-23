@@ -12,3 +12,9 @@ class PlacesRateThrottle(AnonRateThrottle):
     """Place suggestions and addresses. Rate comes from DRF_PLACES_THROTTLE (default 40/min)."""
 
     scope = "places"
+
+
+class ExplainRateThrottle(AnonRateThrottle):
+    """AI trip explanations. Rate comes from DRF_EXPLAIN_THROTTLE (default 6/min)."""
+
+    scope = "explain"

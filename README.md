@@ -291,7 +291,8 @@ The supplied mechanics images require a GitHub repository with a proper license,
 a repository submission plus a **1-minute usage video**, and personal attendance
 on **October 25, 2026**. Teams may have 1–4 people, so solo work fits that size
 rule. If the system incorporates an AI model, it must be open source/open weights;
-AI is not required by this design. Judges and named core organizers cannot enter.
+the only AI in PadungGo is the optional "Explain this trip" text below, which uses
+an open-weight model. Judges and named core organizers cannot enter.
 
 The images allocate documentation 30%, technical soundness 60%, and infrastructure
 and deployment 10%; originality has no separate weight. These are requirements,
@@ -315,12 +316,39 @@ open-source submission. See the [mechanics review and documentation audit](docs/
 
 **Padulong sa imong destinasyon, mas sayon.**
 
-### AI assistance (planned, not implemented)
+### AI assistance: "Explain this trip"
 
-The deployed application contains **no AI model**. Journey planning is
-deterministic. An optional explanation panel was considered: it would use an
-open-weight model to explain planner results, and would never discover routes,
-calculate fares or fill in missing data. It has not been built.
+In **Trip details**, the **Explain this trip** button asks an AI model for a short
+plain-English summary of the selected trip: which jeepney(s) to take, where to
+board, where to get off or transfer, and what is uncertain. It runs only when
+pressed, never for every result, and the text is labelled **AI-generated**.
+
+- **Model:** `openai/gpt-oss-20b` by OpenAI, an open-weight model under the
+  **Apache 2.0** licence ([model card](https://huggingface.co/openai/gpt-oss-20b)).
+- **Hosted by:** [GroqCloud](https://console.groq.com/docs/model/openai/gpt-oss-20b)
+  (OpenAI-compatible API), called from the Django server. The key is a Render
+  environment variable and is never in the repository or the browser bundle.
+- **The planner stays in charge.** The deterministic planner decides routes,
+  stops, transfers, fares, timing, scarcity and verification. The browser sends
+  only the search and opaque ride IDs; the server plans again, finds that exact
+  trip, and gives the model only its minimal facts (no GPS coordinates, no typed
+  place names). Unknown fares and waiting times stay unknown, and the historic /
+  "not field-verified" warning is always shown, written by the server.
+- **Checked output.** An answer is shown only if it keeps the route codes (in
+  order), the stop names and the warnings, and invents no route, price, time or
+  frequency. Otherwise the app says the explanation is unavailable; the itinerary
+  is never affected. These checks reduce, but cannot eliminate, model mistakes.
+- **Limits:** 6 explanations a minute per visitor, a daily cap on provider calls
+  (default 800; Groq's base limit for this model is 1,000 requests a day, 8,000
+  tokens a minute, so about five uncached explanations a minute across all
+  visitors), and identical trips reuse a cached answer.
+
+**Status:** implemented and covered by automated tests with a faked provider and
+a local OpenAI-format stub. A real response from the hosted model on the deployed
+site is verified only after `AI_API_KEY` is set on Render; see
+[docs/SUBMISSION.md](docs/SUBMISSION.md). Until then the button reports that
+explanations are unavailable. Setup and the API contract are in
+[docs/API_DESIGN.md](docs/API_DESIGN.md#explain-this-trip-ai-explanation).
 
 ### Deployment
 

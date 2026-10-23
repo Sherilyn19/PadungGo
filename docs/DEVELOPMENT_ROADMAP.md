@@ -93,11 +93,10 @@ Implementation remains paused until explicitly authorized.
 
 ## AI and workshop alignment
 
-Add the grounded AI explanation service after the deterministic planner contract
-is stable. Use an open-weight model and a private local runtime such as Ollama
-during development. Keep the production model host configurable. The AI panel
-must explain only planner/evidence payloads and must not become a second routing
-engine. Kiro, ACP and MCP may support workshop/development workflows; they are not
+The grounded AI explanation ("Explain this trip") is implemented: GroqCloud
+serving the open-weight `openai/gpt-oss-20b` (Apache 2.0) behind Django, with no
+local runtime (Ollama is not used). The model host stays configurable. The AI panel
+explains only planner payloads and is not a second routing engine. Kiro, ACP and MCP may support workshop/development workflows; they are not
 required production dependencies under the current design.
 
 
@@ -106,5 +105,5 @@ required production dependencies under the current design.
 The competition deliverable must be deployed and usable remotely. Local-only
 screenshots or a local Ollama runtime do not satisfy the target. Deploy the
 frontend, Django API, database connection and hosted open-weight AI endpoint;
-keep provider credentials server-side. Use Ollama only for optional private
-local development, then verify the deployed AI path before recording the video.
+keep provider credentials server-side. Verify the deployed AI path (one real
+explanation on the live site) before recording the video.

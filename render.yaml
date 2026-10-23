@@ -34,3 +34,11 @@ services:
         sync: false                  # your Vercel URL, once the frontend exists
       - key: GEOAPIFY_API_KEY
         sync: false                  # server-side only; never a VITE_* variable
+      # "Explain this trip": GroqCloud serving openai/gpt-oss-20b (Apache 2.0).
+      # Without AI_API_KEY the button reports "unavailable"; the planner is unaffected.
+      - key: AI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: AI_MODEL
+        value: openai/gpt-oss-20b
+      - key: AI_API_KEY
+        sync: false                  # server-side only; never a VITE_* variable

@@ -32,7 +32,8 @@ Use one modular backend, not separate microservices. Frontend and backend may be
 deployed independently where practical. MapLibre renders maps; it does not itself
 supply licensed tiles, geocoding or pedestrian routing. Choose compliant providers
 or curated verified pedestrian links before promising navigable walking guidance.
-No live vehicle feed or AI model is required.
+No live vehicle feed is required. The only AI is the optional, on-request
+"Explain this trip" text described below; planning never depends on it.
 
 ## Canonical data and API designs
 
@@ -84,12 +85,47 @@ None of these operational controls is claimed to exist in the current starter.
 
 ## AI explanation layer
 
-An open-weight model may explain a completed itinerary, source evidence and
-uncertainty through a server-side Django service. The deterministic planner
-remains authoritative for route discovery, direction validation, fare calculation
-and verification status. Ollama is a private local runtime option; production
-hosting is a later deployment decision. Kiro, ACP and MCP remain workshop or
-development context unless a deliberate production integration is specified.
+An open-weight model can restate one finished itinerary in plain English
+("Explain this trip"). The deterministic planner stays authoritative for routes,
+stops, transfers, fares, timing, scarcity and verification status; the model only
+rewords facts the planner already produced. It is optional and on request: the
+planner, the map and every itinerary work when the AI is unavailable.
+
+```text
+Browser (Trip details, "Explain this trip")
+  → POST /api/v1/journeys/explain   (search inputs + opaque ride IDs only)
+      → Django plans again and finds that exact trip in the planner output
+      → transit/ai/trip_facts.py   minimal facts (no coordinates, no place names)
+      → transit/ai/provider.py     OpenAI-compatible call, timeout, daily cap
+          → GroqCloud: openai/gpt-oss-20b (Apache 2.0 open weights)
+      → transit/ai/output_checks.py accepts the text only if it keeps the facts
+```
+
+Design decisions:
+
+- **No client-supplied facts.** The browser sends only the search it already made
+  and the IDs of the chosen rides. The server reconstructs the trip, so a client
+  cannot make the AI repeat an invented route, stop or fare. Extra fields are
+  rejected (400) and IDs that match no planned trip return 404.
+- **Minimum data to the provider.** Route codes and names, stop names, transfer
+  order, scarce flags, known ride minutes, and the fare only if the planner has a
+  complete one. No GPS coordinates, typed place names, IDs or user identifiers.
+  Coordinates reach Django (as they already do for planning) but are neither
+  forwarded nor logged.
+- **Checked output.** The text is shown only if it names every route code in
+  order and every stop, repeats the historic / scarce / unknown-fare /
+  unknown-wait warnings, and adds no route code, price, time, distance, frequency
+  or "running now" claim. Failing answers get one retry, then "unavailable".
+  The warnings are also returned separately, written by the server, so they never
+  depend on the model. These checks are a safety net, not proof that every
+  sentence is true; the UI says so.
+- **Failure isolation.** Timeout, rate limit, quota, bad reply or missing
+  configuration all return HTTP 200 with `status: "unavailable"` and a plain
+  message. Per-visitor throttle (`DRF_EXPLAIN_THROTTLE`, default 6/min), a shared
+  daily provider cap, and a per-trip answer cache keep usage inside the free quota.
+
+Ollama is not used. Kiro, ACP and MCP are development tools, not part of the
+product.
 
 ## Production deployment
 
@@ -103,6 +139,6 @@ Browser
       → Hosted open-weight model endpoint
 ```
 
-The model endpoint is called server-side so credentials stay private. Ollama is
-optional for local development only. The deployment provider, hosted model
-provider, domains and budget remain decisions before implementation.
+The model endpoint is called server-side so credentials stay private. The hosted
+provider is GroqCloud with `openai/gpt-oss-20b`; its key is a Render environment
+variable (`AI_API_KEY`), never part of the repository or the frontend bundle.

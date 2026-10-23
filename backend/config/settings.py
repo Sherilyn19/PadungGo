@@ -205,6 +205,8 @@ REST_FRAMEWORK = {
         "anon": os.environ.get("DRF_ANON_THROTTLE", "120/min"),
         "plan": os.environ.get("DRF_PLAN_THROTTLE", "30/min"),
         "places": os.environ.get("DRF_PLACES_THROTTLE", "40/min"),
+        # Each explanation may call a quota-limited AI provider, so keep this low.
+        "explain": os.environ.get("DRF_EXPLAIN_THROTTLE", "6/min"),
     },
     "EXCEPTION_HANDLER": "transit.api.errors.exception_handler",
 }
@@ -285,4 +287,23 @@ GEOAPIFY = {
     "SEARCH_RECT": os.environ.get("GEOAPIFY_SEARCH_RECT", "123.70,10.15,124.10,10.50"),
     # A reverse result farther than this from the point is not shown as its address.
     "MAX_ADDRESS_DISTANCE_M": int(os.environ.get("GEOAPIFY_MAX_ADDRESS_DISTANCE_M", "100")),
+}
+
+# --- AI trip explanation (any OpenAI-compatible, open-weight model host) ---
+# The key stays on the server: browsers call PadungGo, which calls the provider.
+# Without all three of BASE_URL, API_KEY and MODEL the feature reports
+# "unavailable" and the journey planner is unaffected.
+
+AI = {
+    "BASE_URL": os.environ.get("AI_BASE_URL", "").strip().rstrip("/"),
+    "API_KEY": os.environ.get("AI_API_KEY", "").strip(),
+    "MODEL": os.environ.get("AI_MODEL", "").strip(),
+    "TIMEOUT_SECONDS": float(os.environ.get("AI_TIMEOUT_SECONDS", "10")),
+    # Reasoning models spend tokens thinking before they answer, so leave room.
+    "MAX_OUTPUT_TOKENS": int(os.environ.get("AI_MAX_OUTPUT_TOKENS", "1200")),
+    # "low" keeps answers fast on reasoning models; blank omits the parameter.
+    "REASONING_EFFORT": os.environ.get("AI_REASONING_EFFORT", "low").strip(),
+    # Groq's free plan allows 1,000 requests a day for the chosen model.
+    "DAILY_REQUEST_LIMIT": int(os.environ.get("AI_DAILY_REQUEST_LIMIT", "800")),
+    "CACHE_SECONDS": int(os.environ.get("AI_CACHE_SECONDS", str(24 * 60 * 60))),
 }

@@ -127,3 +127,11 @@ Update this file at the end of each work session, so the next session can contin
 - Contract: each ride segment gets `guide_fare_estimate` {status, reason, guide_effective_date, chargeable_km, known_vehicle_type, amounts_centavos{traditional,modern}{regular,discounted}}. Frontend type: `frontend/src/api.ts`.
 - Ownership: Kiro = `frontend/**` (PR #30, draft, branch `feat/fare-estimates`). Codex = `backend/**` + `docs/API_DESIGN.md` on `feat/fare-estimates-backend`. Merge backend first.
 - Known gaps: the Modern table is aircon modern/electric only; the LTFRB "not less than 20%" wording conflict is unresolved (we use printed cells); there is no evidence of per-route vehicle type.
+
+## AI trip explanation (Oct 23, 2026, branch `feat/ai-trip-explanation`)
+
+- Feature: "Explain this trip" in Trip details; `POST /api/v1/journeys/explain`; code in `backend/transit/ai/` and `backend/transit/api/explain_views.py`; frontend in `tripExplanation.ts`, `hooks/useTripExplanation.ts`, `components/trips/TripExplanation.tsx`.
+- Model/provider: `openai/gpt-oss-20b` (Apache 2.0, open weights) on GroqCloud via its OpenAI-compatible API. Verified from Groq's docs and the Hugging Face card on Oct 23; limits for this model: 30 RPM, 1K RPD, 8K TPM, 200K TPD.
+- Design: the client sends only the search and opaque ride IDs; the server re-plans and finds the trip; the model sees minimal facts (no coordinates); the answer is checked before display.
+- **Not yet verified against the real model.** No `AI_API_KEY` was available to Kiro. Tested with a faked provider and a local OpenAI-format stub. To finish: set `AI_API_KEY` on Render, deploy, run one real explanation, then tick the "AI explanation" items in `docs/SUBMISSION.md`.
+- Never commit the key. `render.yaml` declares `AI_API_KEY` as `sync: false`.

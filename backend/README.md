@@ -82,5 +82,7 @@ security settings depend only on `DJANGO_DEBUG`.
 Free-plan limits: the service sleeps after 15 minutes idle and takes about a
 minute to wake up.
 
-The AI explanation variables (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`) are added
-in a later phase.
+The AI explanation variables (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` and the
+optional limits) are described in `.env.example` and in
+[docs/API_DESIGN.md](../docs/API_DESIGN.md#explain-this-trip-ai-explanation).
+The code lives in `transit/ai/`; the endpoint is `transit/api/explain_views.py`.

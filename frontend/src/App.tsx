@@ -23,6 +23,12 @@ interface SearchState {
   isReturn: boolean
 }
 
+// The search as it was planned, so "Explain this trip" repeats it exactly.
+interface PlannedSearch extends SearchState {
+  sortBy: SortBy
+  maxTransfers: 0 | 1
+}
+
 // Phones: bottom sheet. Tablets: trip details slide over the trip list, so the
 // map keeps its room. Wide screens: main panel, trip details and map side by side.
 const PANELS_QUERY = '(min-width: 768px)'
@@ -52,7 +58,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState<SortBy>('fewest_transfers')
   const [maxTransfers, setMaxTransfers] = useState<0 | 1>(1)
   const [plan, setPlan] = useState<PlanResponse | null>(null)
-  const [search, setSearch] = useState<SearchState | null>(null)
+  const [search, setSearch] = useState<PlannedSearch | null>(null)
   // The selected trip is drawn on the map; the details panel may be open or hidden.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -73,7 +79,7 @@ export default function App() {
     setSelectedId(null)
     setDetailsOpen(false)
     resetVehicles()
-    setSearch(next)
+    setSearch({ ...next, sortBy: sort, maxTransfers: transfers })
     setSheetSnap('half')
     const slowTimer = window.setTimeout(() => setSlow(true), 5000)
     try {
@@ -151,6 +157,7 @@ export default function App() {
       key={selected.id}
       option={selected}
       endpoints={endpoints}
+      search={search}
       dataUpdatedOn={plan?.data_updated_on}
       passenger={fareChoices.passenger}
       vehicles={vehicleChoicesFor(fareChoices, selected)}

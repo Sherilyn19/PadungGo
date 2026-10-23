@@ -70,7 +70,7 @@ performed in this revision. The changelog records actual documentation changes.
 | Team of 1–4; AI use encouraged (2.jpg) | Project is solo | Fits team size; AI is optional |
 | Fresh project “initialized in October 3, 2026” (3.jpg) | Earliest local commit c55ecd5 is October 14, 2026; participant confirms organizers allow initialization after October 3 | Initialization-date concern resolved by participant's organizer clarification |
 | Hosted on GitHub with proper license (3.jpg) | origin points to https://github.com/Sherilyn19/PadungGo.git; MIT LICENSE present; owner confirms repo is private | Plan public release for open-source submission and verify judge access; no visibility change performed |
-| AI model incorporated in system must be open source/open weights (3.jpg) | No application/model implementation | Conditional rule; approved deterministic planner needs no model; use of development assistants alone does not establish an incorporated system model |
+| AI model incorporated in system must be open source/open weights (3.jpg) | No application/model implementation | The planner itself uses no model. The optional "Explain this trip" feature incorporates `openai/gpt-oss-20b` (Apache 2.0 open weights, hosted by GroqCloud), which satisfies the rule. Development assistants alone do not count as an incorporated model |
 | Personally attend October 25, 2026 (3.jpg) | Registration complete per participant; attendance not yet confirmed | Arrange attendance separately |
 | Judges/core organizers excluded (4.jpg) | Participant role not established | Eligibility requires participant confirmation; do not infer from name |
 | Submit GitHub repository and 1-minute usage video after 20 days; no pitches (2.jpg) | No video/submission artifact found | Deadline confirmed by participant: October 23, 2026, 11:59 PM; Philippine time used for planning. Video and final submission remain pending |
@@ -232,4 +232,4 @@ usable without the owner's computer running.
 
 ## Final AI decision
 
-The owner decided not to use Ollama locally, in the cloud or in production. Development and production both use the selected hosted open-weight inference API through the Django AI service. This keeps behavior consistent and removes local model-runtime requirements.
+The owner decided not to use Ollama locally, in the cloud or in production. Development and production both use the selected hosted open-weight inference API through the Django AI service: GroqCloud serving `openai/gpt-oss-20b` (Apache 2.0). This keeps behavior consistent and removes local model-runtime requirements.
