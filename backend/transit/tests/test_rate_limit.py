@@ -84,7 +84,7 @@ def test_missing_connecting_address_is_one_shared_bucket_not_an_error():
 
 @pytest.fixture
 def behind_render(settings):
-    settings.TRUSTED_PROXY_HOPS = 2
+    settings.TRUSTED_PROXY_HOPS = 3
 
 
 def plan_as(client, forwarded):
@@ -94,20 +94,20 @@ def plan_as(client, forwarded):
 
 def test_one_visitor_is_limited_even_when_the_proxy_address_changes(client, behind_render):
     # What production does: same visitor, a different Cloudflare edge address each time.
-    codes = [plan_as(client, f"1.2.3.4, 172.70.{i // 250}.{i % 250 + 1}") for i in range(LIMIT + 5)]
+    codes = [plan_as(client, f"1.2.3.4, 172.70.{i // 250}.{i % 250 + 1}, 10.20.0.9") for i in range(LIMIT + 5)]
     assert codes[:LIMIT] == [400] * LIMIT and codes[LIMIT:] == [429] * 5
 
 
 def test_adding_fake_addresses_does_not_escape_the_limit(client, behind_render):
-    codes = [plan_as(client, f"9.9.{i // 250}.{i % 250 + 1}, 1.2.3.4, 172.70.1.1") for i in range(LIMIT + 5)]
+    codes = [plan_as(client, f"9.9.{i // 250}.{i % 250 + 1}, 1.2.3.4, 172.70.1.1, 10.20.0.9") for i in range(LIMIT + 5)]
     assert codes.count(429) == 5
 
 
 def test_different_visitors_behind_the_same_proxy_have_separate_limits(client, behind_render):
     for _ in range(LIMIT + 1):
-        plan_as(client, "1.2.3.4, 172.70.1.1")
-    assert plan_as(client, "5.6.7.8, 172.70.1.1") == 400   # a different visitor is still allowed
-    assert plan_as(client, "1.2.3.4, 172.70.1.1") == 429
+        plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9")
+    assert plan_as(client, "5.6.7.8, 172.70.1.1, 10.20.0.9") == 400   # a different visitor is still allowed
+    assert plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9") == 429
 
 
 def test_without_trusted_proxies_the_header_is_ignored(client, settings):
@@ -119,19 +119,19 @@ def test_without_trusted_proxies_the_header_is_ignored(client, settings):
 def test_limit_resets_after_the_window(client, behind_render, monkeypatch):
     now = [1_000_000.0]
     monkeypatch.setattr(SimpleRateThrottle, "timer", lambda self: now[0])
-    assert [plan_as(client, "1.2.3.4, 172.70.1.1") for _ in range(LIMIT)] == [400] * LIMIT
-    assert plan_as(client, "1.2.3.4, 172.70.1.1") == 429
+    assert [plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9") for _ in range(LIMIT)] == [400] * LIMIT
+    assert plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9") == 429
     now[0] += 59
-    assert plan_as(client, "1.2.3.4, 172.70.1.1") == 429     # window not over yet
+    assert plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9") == 429     # window not over yet
     now[0] += 2
-    assert plan_as(client, "1.2.3.4, 172.70.1.1") == 400     # a minute later it is allowed again
+    assert plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9") == 400     # a minute later it is allowed again
 
 
 def test_blocked_response_names_the_wait_and_how_long(client, behind_render):
     for _ in range(LIMIT):
-        plan_as(client, "1.2.3.4, 172.70.1.1")
+        plan_as(client, "1.2.3.4, 172.70.1.1, 10.20.0.9")
     blocked = client.post(PLAN_URL, {}, content_type="application/json",
-                          HTTP_X_FORWARDED_FOR="1.2.3.4, 172.70.1.1", REMOTE_ADDR=PROXY)
+                          HTTP_X_FORWARDED_FOR="1.2.3.4, 172.70.1.1, 10.20.0.9", REMOTE_ADDR=PROXY)
     assert blocked.status_code == 429 and blocked.json()["error"]["retryable"] is True
     assert 0 < int(blocked["Retry-After"]) <= 60
 
@@ -149,7 +149,7 @@ def test_blocked_address_lookups_do_not_call_geoapify_or_use_its_quota(client, b
                         lambda lat, lon: calls.append(1) or {"status": "unavailable"})
     body = json.dumps({"latitude": 10.3, "longitude": 123.9})
     codes = [client.post("/api/v1/places/address", body, content_type="application/json",
-                         HTTP_X_FORWARDED_FOR=f"1.2.3.4, 172.70.0.{i % 200 + 1}", REMOTE_ADDR=PROXY).status_code
+                         HTTP_X_FORWARDED_FOR=f"1.2.3.4, 172.70.0.{i % 200 + 1}, 10.20.0.9", REMOTE_ADDR=PROXY).status_code
              for i in range(PLACES_LIMIT + 10)]
     assert codes.count(200) == PLACES_LIMIT and codes.count(429) == 10
     assert len(calls) == PLACES_LIMIT
@@ -161,7 +161,7 @@ def test_blocked_suggestion_lookups_do_not_call_geoapify(client, behind_render, 
     monkeypatch.setattr("transit.api.place_views.place_suggestions",
                         lambda q: calls.append(q) or {"results": [], "provider": {"status": "skipped"}})
     codes = [client.get("/api/v1/places/suggestions", {"q": "cebu"},
-                        HTTP_X_FORWARDED_FOR="1.2.3.4, 172.70.0.1", REMOTE_ADDR=PROXY).status_code
+                        HTTP_X_FORWARDED_FOR="1.2.3.4, 172.70.0.1, 10.20.0.9", REMOTE_ADDR=PROXY).status_code
              for _ in range(PLACES_LIMIT + 5)]
     assert codes.count(429) == 5 and len(calls) == PLACES_LIMIT
 
@@ -178,7 +178,7 @@ def test_blocked_explanations_do_not_reach_the_ai_provider(client, behind_render
                                   "board_occurrence_id": "00000000-0000-4000-8000-000000000002",
                                   "alight_occurrence_id": "00000000-0000-4000-8000-000000000003"}]})
     codes = [client.post("/api/v1/journeys/explain", body, content_type="application/json",
-                         HTTP_X_FORWARDED_FOR="1.2.3.4, 172.70.0.%d" % (i % 200 + 1), REMOTE_ADDR=PROXY).status_code
+                         HTTP_X_FORWARDED_FOR="1.2.3.4, 172.70.0.%d, 10.20.0.9" % (i % 200 + 1), REMOTE_ADDR=PROXY).status_code
              for i in range(EXPLAIN_LIMIT + 4)]
     assert codes[:EXPLAIN_LIMIT] == [404] * EXPLAIN_LIMIT and codes[EXPLAIN_LIMIT:] == [429] * 4
     assert calls == []
