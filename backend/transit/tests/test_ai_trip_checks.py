@@ -378,3 +378,28 @@ def test_a_verification_claim_is_still_rejected_whatever_the_dash():
     text = ("Board 17D at Stop One, get off at Stop Four on this field\u2011verified route. The data is not field\u2011verified. "
             "The fare is unknown. The wait is unknown.")
     assert check(text, option(historic=True, fare=False)) == "verification_claim"
+
+
+# --- Scarcity: "not flagged" is not "not scarce" ----------------------------------
+
+UNKNOWN_TAIL = " The fare is unknown, so ask the driver. Waiting time is unknown."
+
+
+@pytest.mark.parametrize("sentence", [
+    "The route is not scarce.", "42D isn't scarce.", "It is never scarce.", "There is no scarcity on 42D.",
+    "There are plenty of jeepneys.", "It is easy to catch.", "Jeepneys are readily available.",
+])
+def test_claims_that_a_route_is_not_scarce_or_common_are_rejected(sentence):
+    text = TRANSFER_BASE + " " + sentence + UNKNOWN_TAIL
+    assert check(text, option(transfer=True, fare=False)) == "scarcity_claim"
+
+
+def test_scarce_route_cannot_be_described_as_not_scarce():
+    text = (TRANSFER_BASE + " 17D is scarce, but 42D is not scarce." + UNKNOWN_TAIL)
+    assert check(text, option(transfer=True, scarce=True, fare=False)) == "scarcity_claim"
+
+
+@pytest.mark.parametrize("sentence", ["17D is scarce, so few trips are reported.", "42D is not flagged as scarce."])
+def test_true_scarcity_statements_are_accepted(sentence):
+    text = TRANSFER_BASE + " " + sentence + UNKNOWN_TAIL
+    assert check(text, option(transfer=True, scarce=True, fare=False)) is None

@@ -22,7 +22,7 @@ from .trip_facts import TripFacts, build_trip_facts
 logger = logging.getLogger(__name__)
 
 # Change this when the prompt changes, so old cached answers are not reused.
-PROMPT_VERSION = "3"
+PROMPT_VERSION = "4"
 MAX_ATTEMPTS = 2
 
 SYSTEM_PROMPT = """You rewrite one pre-computed jeepney trip in Metro Cebu as a short, friendly explanation for a commuter.
@@ -37,7 +37,7 @@ Rules:
 - Say the fare only if the data has a fare total, using exactly that amount. If the fare is not known, say the fare is unknown and the commuter should ask the driver. Never estimate a fare.
 - Always say the waiting time is unknown.
 - If data_status is historic_not_field_verified, say the route data is historic and not field-verified, so the commuter should confirm the jeepney still runs before travelling.
-- If a ride has scarce_service true, say that route is scarce, meaning commuters report few trips.
+- If a ride has scarce_service true, say that route is scarce, meaning commuters report few trips. If it is false, say nothing about scarcity: it only means no report exists, so never call a route "not scarce", common or easy to find.
 - Do not add routes, stops, streets, landmarks, times, frequencies, alternatives or advice that are not in the data. Do not say a jeepney is running now or runs often.
 - Write numbers as words, except route codes, the fare amount and ride minutes, which stay as digits."""
 
