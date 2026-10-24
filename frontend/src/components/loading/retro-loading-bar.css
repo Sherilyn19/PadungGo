@@ -18,7 +18,9 @@
     var(--color-brand-500) 0 13px,
     white 13px 20px
   );
-  animation: retro-loading-stripes-travel 800ms linear infinite;
+  /* This small loading indicator explicitly keeps moving even when the app's
+     global reduced-motion rule disables decorative entrance animations. */
+  animation: retro-loading-stripes-travel 800ms linear infinite !important;
 }
 
 @keyframes retro-loading-stripes-travel {
@@ -26,6 +28,3 @@
   to { transform: translateX(0); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .retro-loading-bar::before { animation: none; }
-}
