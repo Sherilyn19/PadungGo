@@ -23,6 +23,22 @@ from .search_types import (
 )
 
 MAX_TRANSFER_CANDIDATES = 40
+# A ride that ends within a short walk of where it began is a loop, not a trip: nobody
+# rides 15 km around a loop to get 300 m. Walking is allowed in this planner, so such
+# rides are not offered. Both limits must hold: short straight-line gap, long ride.
+LOOP_WALK_M = 1000
+LOOP_MIN_RIDE_M = 3000
+LOOP_RATIO = 3
+
+
+def is_loop_ride(network: Network, board: PatternStopData, alight: PatternStopData) -> bool:
+    """True if riding from `board` to `alight` only brings the passenger back to where they started."""
+    ride_m = alight.distance_along_m - board.distance_along_m
+    start, end = network.stops.get(board.stop_id), network.stops.get(alight.stop_id)
+    if start is None or end is None:
+        return False
+    straight = haversine_m(start.latitude, start.longitude, end.latitude, end.longitude)
+    return straight < LOOP_WALK_M and ride_m > max(LOOP_MIN_RIDE_M, LOOP_RATIO * straight)
 
 
 def _eligible_stops(
@@ -123,6 +139,7 @@ def _best_alight(
             occurrence.sequence <= board.sequence
             or not occurrence.can_alight
             or occurrence.stop_id not in context.destination_ids
+            or is_loop_ride(context.network, board, occurrence)
         ):
             continue
         key = (
@@ -204,6 +221,8 @@ def _transfer_candidates(
     first_pattern, first_board = first_boarding
     for first_alight in first_pattern.stops:
         if first_alight.sequence <= first_board.sequence or not first_alight.can_alight:
+            continue
+        if is_loop_ride(context.network, first_board, first_alight):
             continue
         if not _transfer_stop_allowed(context, first_alight.stop_id, boarding=False):
             continue

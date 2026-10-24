@@ -27,9 +27,9 @@ describe('no-trip message', () => {
     expect(m.text).toContain('start or your destination')
   })
 
-  it('does not call a nearby stop far away (no distance under 1.5 km)', () => {
-    const m = noTripMessage('insufficient_verified_data', hint({ destination_has_stop: false, nearest_destination_stop_m: 800 }), FALLBACK)
-    expect(m.text).not.toMatch(/closest one we know/)
+  it('also gives the distance when the closest stop is only a little too far', () => {
+    const m = noTripMessage('insufficient_verified_data', hint({ destination_has_stop: false, nearest_destination_stop_m: 700 }), FALLBACK)
+    expect(m.text).toMatch(/closest one we know is about .*700/)
   })
 
   it('leaves out the distance when none is known', () => {

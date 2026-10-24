@@ -41,7 +41,7 @@ it retries by itself). It saves <code>osm-route.json</code>.</p>
       <strong>{{ plan.new_stops.0.stop.name }}</strong> and join your current start,
       <strong>{{ plan.old_first_name }}</strong>, after a short link of {{ plan.join_gap_m }} m.</p>{% endif %}
       <table>
-        <thead><tr><th>#</th><th>Stop</th><th>Location</th><th>From start (m)</th><th>To next stop (m)</th><th>Board</th><th>Get off</th></tr></thead>
+        <thead><tr><th>#</th><th>Stop</th><th>Location</th><th>From start (m)</th><th>{% if plan.side == "end" %}From previous stop (m){% else %}To next stop (m){% endif %}</th><th>Board</th><th>Get off</th></tr></thead>
         <tbody>
         {% for n in plan.new_stops %}
           <tr><td>{{ forloop.counter0 }}</td><td>{{ n.stop.name }}</td><td>{{ n.stop.latitude|floatformat:5 }}, {{ n.stop.longitude|floatformat:5 }}</td>
