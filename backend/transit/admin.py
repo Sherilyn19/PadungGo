@@ -12,9 +12,9 @@ from django.core.validators import FileExtensionValidator
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 
 from .planner.loader import invalidate_network_cache
 from .importers.osm_route import (
@@ -26,6 +26,13 @@ from .importers.osm_route import (
     plan_end_extension,
     plan_extension,
 )
+from .importers.osm_new_routes import (
+    RECOMMENDED_RELATIONS,
+    apply_new_routes,
+    download_routes_command,
+    plan_new_route,
+)
+from .importers.osm_route import parse_osm_routes
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
     CITY_NAMES,
@@ -441,6 +448,53 @@ class RouteAdmin(admin.ModelAdmin):
     )
     list_filter = ("vehicle_class", "active", "service_availability")
     search_fields = ("code", "name", "operator")
+    change_list_template = "admin/transit/route_changelist.html"
+
+    def get_urls(self):
+        extra = [path("import-osm-routes/", self.admin_site.admin_view(self.import_osm_routes_view),
+                      name="transit_import_osm_routes")]
+        return extra + super().get_urls()
+
+    def import_osm_routes_view(self, request):
+        """Preview first, then create: whole routes from OpenStreetMap, for places with no stops."""
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        step = request.POST.get("step", "")
+        vehicle_class = request.POST.get("vehicle_class")
+        if vehicle_class not in (VehicleClass.JEEPNEY, VehicleClass.BUS, VehicleClass.MODERN_PUV):
+            vehicle_class = VehicleClass.JEEPNEY
+        plans = skipped = None
+        payload = error = ""
+        try:
+            if step == "preview":
+                upload = request.FILES.get("routes_file")
+                if upload is None:
+                    raise OSMRouteError("Choose the downloaded file first.")
+                raw = upload.read(MAX_UPLOAD_BYTES + 1)
+                payload = raw.decode("utf-8")
+            elif step == "apply":
+                payload = request.POST.get("payload", "")
+            if payload:
+                routes, skipped = parse_osm_routes(payload.encode("utf-8"))
+                plans = [plan_new_route(route) for route in routes]
+                if step == "apply" and any(not p.problem for p in plans):
+                    result = apply_new_routes(plans, vehicle_class)
+                    self.message_user(request, (
+                        f"Done. Created {result.routes} routes ({result.patterns} directions) using {result.stops} stops "
+                        f"and {result.transfers} transfer links. They are stored as documented, not field-verified."))
+                    return HttpResponseRedirect(reverse("admin:transit_route_changelist"))
+        except (OSMRouteError, UnicodeDecodeError) as exc:
+            error = str(exc) if isinstance(exc, OSMRouteError) else "That file is not readable text."
+            plans = None
+        context = {
+            **self.admin_site.each_context(request), "title": "Add routes from OpenStreetMap",
+            "plans": plans, "skipped": skipped, "payload": payload, "error": error,
+            "can_apply": bool(plans) and any(not p.problem for p in plans),
+            "vehicle_class": vehicle_class, "vehicle_classes": [VehicleClass.JEEPNEY, VehicleClass.BUS, VehicleClass.MODERN_PUV],
+            "download_command": download_routes_command(RECOMMENDED_RELATIONS),
+            "opts": self.model._meta,
+        }
+        return TemplateResponse(request, "admin/transit/osm_routes_import.html", context)
 
 
 @admin.register(RoutePattern)

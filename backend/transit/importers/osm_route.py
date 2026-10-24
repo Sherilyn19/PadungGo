@@ -82,6 +82,7 @@ class MappedRoute:
     name: str
     stops: list[MappedStop]
     path: list[tuple[float, float]]  # (lat, lon) along the road, in route order
+    operator: str = ""
 
 
 def _join_ways(ways: list[list[tuple[float, float]]]) -> list[tuple[float, float]]:
@@ -102,20 +103,19 @@ def _join_ways(ways: list[list[tuple[float, float]]]) -> list[tuple[float, float
     return path
 
 
-def parse_osm_route(raw: bytes) -> MappedRoute:
-    """Read the file saved from the Overpass query `rel(ID);out geom;node(r);out;`."""
+def _load_elements(raw: bytes) -> list[dict]:
     if len(raw) > MAX_FILE_BYTES:
         raise OSMRouteError("That file is too large to be one route.")
     try:
-        data = json.loads(raw)
-        elements = data["elements"]
-        relation = next(e for e in elements if e.get("type") == "relation")
-    except (ValueError, KeyError, StopIteration, TypeError):
+        elements = json.loads(raw)["elements"]
+        if not any(e.get("type") == "relation" for e in elements):
+            raise KeyError("relation")
+    except (ValueError, KeyError, TypeError, AttributeError):
         raise OSMRouteError("This file is not an OpenStreetMap route. Download it again with the command shown.") from None
-    if any(word in str(data.get("remark", "")).lower() for word in ("runtime error", "timed out")):
-        raise OSMRouteError("The download was cut short by the server. Download it again.")
+    return elements
 
-    nodes = {e["id"]: e for e in elements if e.get("type") == "node"}
+
+def _route_from_relation(relation: dict, nodes: dict) -> MappedRoute:
     stops: list[MappedStop] = []
     ways: list[list[tuple[float, float]]] = []
     for member in relation.get("members", []):
@@ -129,7 +129,39 @@ def parse_osm_route(raw: bytes) -> MappedRoute:
     if len(stops) < 2 or not ways:
         raise OSMRouteError("The route has no mapped stops or no mapped road.")
     tags = relation.get("tags") or {}
-    return MappedRoute(relation["id"], tags.get("ref", ""), tags.get("name", ""), stops, _join_ways(ways))
+    return MappedRoute(relation["id"], tags.get("ref", ""), tags.get("name", ""), stops, _join_ways(ways),
+                       operator=tags.get("operator", ""))
+
+
+def _check_not_cut_short(raw: bytes) -> None:
+    remark = str(json.loads(raw).get("remark", "")).lower()
+    if any(word in remark for word in ("runtime error", "timed out")):
+        raise OSMRouteError("The download was cut short by the server. Download it again.")
+
+
+def parse_osm_route(raw: bytes) -> MappedRoute:
+    """Read the file saved from the Overpass query `rel(ID);out geom;node(r);out;`."""
+    elements = _load_elements(raw)
+    _check_not_cut_short(raw)
+    nodes = {e["id"]: e for e in elements if e.get("type") == "node"}
+    relation = next(e for e in elements if e.get("type") == "relation")
+    return _route_from_relation(relation, nodes)
+
+
+def parse_osm_routes(raw: bytes) -> tuple[list[MappedRoute], list[str]]:
+    """Read a file holding several routes. A broken route is reported and skipped, not fatal."""
+    elements = _load_elements(raw)
+    _check_not_cut_short(raw)
+    nodes = {e["id"]: e for e in elements if e.get("type") == "node"}
+    routes: list[MappedRoute] = []
+    skipped: list[str] = []
+    for relation in (e for e in elements if e.get("type") == "relation"):
+        tags = relation.get("tags") or {}
+        try:
+            routes.append(_route_from_relation(relation, nodes))
+        except OSMRouteError as exc:
+            skipped.append(f"{tags.get('ref') or 'Route'} (OpenStreetMap {relation['id']}): {exc}")
+    return routes, skipped
 
 
 @dataclass
