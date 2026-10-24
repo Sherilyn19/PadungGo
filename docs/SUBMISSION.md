@@ -1,65 +1,59 @@
-# Hackathon submission: video plan and checklist
+# Cebu Hacktoberfest 2026: alignment review
 
-Cebu Hacktoberfest 2026. Submission is due **October 23, 2026, 11:59 PM (Asia/Manila)**: the public GitHub repository plus a **1-minute video showing how PadungGo is used**, with no pitching. In-person attendance is on **October 25, 2026**.
+Reviewed October 24, 2026. **PadungGo has strong implementation alignment with the supplied judging categories, but full competition compliance is not independently established.** The application, tests, deployment, documentation, and optional open-weight AI provide concrete evidence. Historical-data rights, current-service verification, attendance, and parts of the submission evidence remain unresolved or unverified.
 
-## 60-second usage video
+This is an evidence comparison, not a predicted score or an organizer's eligibility ruling. The general project overview is in the [README](../README.md); dated verification is in the [implementation review](REVIEW_2026-10-24.md).
 
-**Before recording:**
-- Open https://padunggo-api.onrender.com/health about two minutes beforehand. The free API host sleeps when idle and takes about a minute to wake.
-- Rehearse the journey once and record the same request. Use **Ayala Center Cebu → Colon Obelisk** (direct, five alternatives) and its return **Colon Obelisk → Ayala Center Cebu**, checked on the live API on October 24, 2026. Both gave a working AI explanation. Route codes change with the data (that day: 13C, 64C, 62B, 65B, 13B outbound; 17C, 04I, 04C, 62B, 65B back), so run the search once on the recording day and confirm it still gives direct options. The older 17D → 42D journey ([DEMO_JOURNEY_17D_42D.md](DEMO_JOURNEY_17D_42D.md)) no longer works because 42D is excluded.
-- Use a clean browser window at a phone-like width or full desktop, and keep the same one throughout.
+## Source and interpretation
 
-| Time | Show | On-screen action / caption |
+The participant supplied eight mechanics images: 1.jpg (event/workshop notice), 2.jpg (mechanics), 3.jpg (requirements), 4.jpg (participant exclusions), 5.jpg (overall criteria), 6.jpg (documentation), 7.jpg (technical soundness), and 8.jpg (infrastructure/deployment). They were inspected in the earlier mechanics review and are not bundled in this repository. They have not been independently authenticated as the organizer's latest rules. The [event website](https://hf26.cebutechcommunities.org) could not be retrieved during review.
+
+The deadline of October 23, 2026, 11:59 PM (Asia/Manila), registration status, and clarification allowing initialization after October 3 were supplied by the participant. The pictured wording alone does not establish those clarifications. Keep organizer confirmation and submission receipts as supporting evidence without publishing private details.
+
+## Mechanics checklist
+
+Checked items mean there is the evidence stated in the last column; they do not imply organizer acceptance.
+
+| Status | Requirement or review concern | PadungGo evidence / remaining uncertainty |
 |---|---|---|
-| 0:00–0:05 | Home screen at https://padung-go.app | Caption: "PadungGo: jeepney journeys in Metro Cebu" |
-| 0:05–0:15 | Choose the start | Type a place name and pick a suggestion, or tap the map. You can show that typing "osmeña" finds "Fuente Osmena". |
-| 0:15–0:22 | Choose the destination and search | Pick the destination and press Search. The loading placeholders appear. |
-| 0:22–0:35 | Results list | Show the options (direct or one transfer), route codes, the "Historic data · not field-verified" label and the Unknown fare or wait |
-| 0:35–0:43 | Open one option | Scroll through the numbered steps (walk, board, transfer, get off) and point out the ride line on the map |
-| 0:43–0:53 | **Explain this trip** (only if verified live, see below) | Press the button once. Show the loading state, then the text with its **AI-generated** label and the "Before you go" notes. |
-| 0:53–0:56 | Return trip | Optional: swap to show the independent return result or its honest empty state. Drop this row first if time runs short. |
-| 0:56–1:00 | End card | Repository URL, nothing else |
+| [x] | Team of 1–4 | Participant describes a solo project, within the stated team size. |
+| [x] | Fresh project initialized in the event period | Earliest local commit is October 14 (`c55ecd5`). Participant reports organizers allow initialization after October 3, resolving the literal date concern on that basis. |
+| [x] | Registration | Participant confirms complete; not independently checked against organizer records. |
+| [x] | GitHub repository with proper code license | Public [repository](https://github.com/Sherilyn19/PadungGo), anonymous GitHub API visibility check, and root [MIT license](../LICENSE). |
+| [ ] | Third-party rights (release review concern, beyond the pictured code-license wording) | Original code is MIT, but historic Cebu DOTC feed reuse/redistribution rights remain unestablished. Map, model, font, and provider terms remain separate. |
+| [x] | AI encouraged, optional; incorporated models must be open source/open weights | Application AI is implemented and a live response identified `openai/gpt-oss-20b`, with an Apache 2.0 open-weight model card. See [AI evidence](AI_EXPLANATIONS.md). Development-assistant use alone would not establish this. |
+| [x] | Submit repository plus a one-minute usage video after the development period; no pitches | Participant confirms the video and submission form have been submitted. This review did not inspect the uploaded video, link permissions, runtime, content, receipt, or submission timestamp. Do not list submission as still pending. |
+| [ ] | Demo includes actual application use and instructions to run in the repository and video | Repository run instructions are present. Uploaded video content and run-instruction coverage are unverified. No new submission is requested by this review. |
+| [ ] | Personally attend October 25, 2026 | Not yet confirmed; distinct from registration and online submission. |
+| [ ] | Judges and named core organizers cannot participate | Participant's role was not independently established. The supplied exclusions name Neriah “BJ” Ato, Sabrinah Yonell Yap, and Dorell James Galang, as well as judges. |
+| [ ] | Workshop/checkpoint expectations | October 10 notice describes a checkpoint; participant-supplied October 18 text describes a final checkpoint. The supplied evidence does not settle the eligibility consequence of missing checkpoints. Organizer clarification is needed before asserting an exemption or compliance. |
 
-**Do not show or say:**
-- that a route currently runs or is frequent;
-- that a fare is official;
-- the AI text as a recommendation: it restates the planner's result; the planner decides the trip. If the live explanation is unavailable or has not been verified, **leave out the 0:43–0:53 step** and do not mention AI;
-- that the AI knows whether a route runs, how often, or what it costs;
-- admin pages, `.env` files or dashboards containing settings.
+No separate originality weighting or universal requirement to use Kiro, Model Context Protocol, or Agent Client Protocol appears in the supplied mechanics. Workshop examples are not extra judging rules. Best Use of AI and Funniest/Easter Egg are additional recognition categories, not extra percentage weights in the supplied 100% rubric. No Easter Egg implementation or award outcome is established by this review.
 
-## Submission checklist
+## Judging comparison
 
-Tick items only when they are done and checked.
+Weights below reproduce the supplied rubric. Assessment concerns evidence, not an awarded score.
 
-**Code and checks**
-- [x] PRs #15–#23 merged to `main` (47cd42a). CI passed on #23.
-- [ ] Production runs the latest `main`: re-check on the day of recording. On October 24, 2026 Render ran `085d8c4` (#61) and `/api/v1/health` reported `trusted_proxy_hops: 3`; later merges need the same check.
+| Category | Weight | Evidence in the current project | Gap or qualification |
+|---|---:|---|---|
+| Documentation completeness | 15% | Project overview, commuter guide, local setup, architecture, database, API, sources, licensing and deployment guides | Historical feed rights unresolved; supplied reference PDFs/images are not bundled. |
+| Changelog / progress | 5% | Git history and [changelog](../CHANGELOG.md) show implementation and review progress | A commit history does not establish checkpoint acceptance. |
+| Contribution readiness | 5% | Public repository, MIT, contribution guide, issue/PR templates, automated checks | No claim of external contributor onboarding success. |
+| Demonstration quality | 5% | Live frontend/API responses, representative journey and real AI response; submitted video reported | Uploaded video quality, exact duration, accessibility and contents not inspected. |
+| Implementation completeness | 15% | Frontend/backend, directional direct and one-transfer search, independent return, map, fare choices, place services, Admin/imports, AI | Partial historic network; no complete times/live arrivals; search is heuristic. |
+| Solution fit | 10% | Addresses boarding, alighting, transfer and return-trip questions with explicit uncertainty | Current route operation, safe access and actual fare applicability need stronger evidence. |
+| User experience / design | 10% | Map plus numbered steps, incremental alternatives, scarcity/unknown labels, responsive frontend code | No full browser usability/accessibility audit; five-second welcome screen is independent of API readiness; AI fare selections differ. |
+| Security | 10% | Validation, Admin authentication, host/origin settings, server-side keys, upload safeguards, throttles and provider budgets | Per-process client limits, proxy dependence, no fresh full-history secret scan or penetration/dependency audit in this review. |
+| Code quality / structure | 5% | Separate planner/API/provider modules, typed frontend, domain models and migrations | SQLite checks do not prove all production spatial/database invariants; data review remains manual. |
+| Tooling | 5% | Version control, lockfile, pytest, Vitest, TypeScript/Vite build, Docker and GitHub Actions | No separate frontend lint command; build reports a large bundle warning. |
+| Testability | 5% | Backend/frontend suites and isolated provider tests; migration consistency checks | No demonstrated browser end-to-end, production PostGIS CI, load test or broad hosted-model evaluation. |
+| Deployment | 5% | Public frontend and API responded; API reports PostGIS mode; Vercel/Render/Supabase setup documented | Exact deployed commit parity, backup restoration and uptime not established. |
+| Scalability | 5% | Separated services, reusable network schema, network caching, pagination/result limits, provider budgets | In-memory search and per-worker caches/throttles; 40 transfer candidates retained after enumeration; no measured capacity or distributed-load evidence. |
 
-**AI explanation** (open-weight model: `openai/gpt-oss-20b`, Apache 2.0, via GroqCloud)
-- [x] `AI_API_KEY`, `AI_BASE_URL` and `AI_MODEL` are set on Render (shown by working explanations; the key is not in the repository or any `VITE_*` variable).
-- [x] Render runs a commit with `/api/v1/journeys/explain`.
-- [x] Real explanations from `openai/gpt-oss-20b`, October 24, 2026, called on the live API (`padunggo-api.onrender.com`): 04D + 10O, 17D + 10M and 04D + 10M (one transfer); Ayala Center Cebu → Colon Obelisk (13C), → Fuente Osmena (17C), and the two return trips. Each was labelled AI-generated with the server notices. Four early attempts failed the accuracy checks and were fixed in #53, #56, #57 and #58.
-- [ ] **Owner:** press **Explain this trip** once in the browser on https://padung-go.app and confirm the text, the AI-generated label and the "Before you go" box appear. The API calls above were not made through the website.
-- [ ] After #62 is merged, repeat one explanation and confirm it never says a route is "not scarce" (before #62 it did on two of four trips).
-- [ ] The itinerary still works with the key removed (the button reports "unavailable").
-- [ ] The model is still `openai/gpt-oss-20b` on Groq's model list and the Hugging Face card still says Apache 2.0 (re-check on the submission day).
-- [ ] The README, this file and the video do not claim more than was verified above.
+Totals: documentation **30%**, technical soundness **60%**, infrastructure/deployment **10%**.
 
-**Rate limiting** (protects the Geoapify and AI daily quotas)
-- [x] Verified in production on October 24, 2026 with empty requests that use no provider quota: 60 allowed, then HTTP 429 with `Retry-After`; rotating fake `X-Forwarded-For` entries did not escape the limit; allowed again 65 seconds later. Cause and fix: #59, #60, #61 (Render sends three addresses per request, the visitor is the third from the right).
-- [ ] Not verified live: two different real visitors having separate limits (only one test address was available); covered by unit tests and a two-worker gunicorn run.
+## Best Use of AI assessment
 
-**Credentials and privacy** (before making the repository public)
-- [ ] Credential review finished, covering history, merge-resolution content, PR comments and CI logs. No credentials have been found so far; see the review notes in the PR.
-- [ ] Right after making the repository public, turn on GitHub **Secret scanning** and **Push protection**, then check that the alerts list is empty.
-- [ ] Decide whether a personal author email may appear in public commit history. Future commits can use GitHub's private noreply email.
+There is now a real application AI feature, not just AI-assisted development. The server recomputes a selected trip, gives limited planner facts to an open-weight model, validates the answer, and supplies notices. A successful live sample supports implementation alignment with the optional category.
 
-**Data and licensing**
-- [ ] The route-data source and its terms are stated honestly: Cebu DOTC GTFS via Transitland, licence not yet established. The app footer and README already name the source. The repository does not contain the feed file.
-- [x] MIT licence is in place for original code and docs.
-
-**Repository and submission**
-- [ ] Repository made **public**; open it in a private window to confirm judges can see it.
-- [ ] Video recorded (≤ 60 s, usage only), uploaded, and its link tested while logged out.
-- [ ] Submission form sent with the repository URL and video link before **Oct 23, 11:59 PM**.
-- [ ] Attend in person on **Oct 25**.
+It does not establish that PadungGo will win that category. The feature has narrow scope, heuristic text checks, and a mismatch with passenger/vehicle fare choices. Reliability across routes, usefulness to commuters, and the submitted demonstration remain matters for evidence and judging.

@@ -1,39 +1,27 @@
 # Contributing to PadungGo
 
-Thank you for helping improve commuter guidance in Metro Cebu. Contributions are welcome even while the application is still in planning.
+Contributions are welcome: clearer instructions, accessibility improvements, tests, bug fixes, and well-sourced transport corrections.
 
-## Before contributing
+## Code and documentation
 
-1. Check open issues and this repository's roadmap.
-2. For major design changes, open an issue first.
-3. For route/stopping point/fare changes, provide **evidence**, not only an assertion.
-4. Do **not** upload private location histories, API keys, secrets, or third-party datasets without permission.
+1. Read the [overview](README.md), [setup](docs/REPOSITORY_SETUP.md), and relevant [technical guide](docs/README.md).
+2. Describe the problem or proposed change in an issue or pull request. Include reproducible steps for bugs, without personal location history or credentials.
+3. Keep changes focused. Explain the resulting behavior and any limitations; distinguish actual results from proposed work.
+4. Run checks relevant to the change. Backend changes normally need pytest and a migration check; frontend changes need Vitest and a production build. Record the commands and results in the pull request.
+5. Update documentation and the changelog when public behavior changes. Check local Markdown links and examples.
 
-## Suggested workflow
+Automated checks run on pull requests and pushes to main. They use SQLite for backend tests; passing them does not verify production PostGIS behavior, live transport service, or provider availability. Discuss significant architecture or data changes before implementation to avoid incompatible work.
 
-1. Fork this repository.
-2. Create a descriptive branch such as `docs/clarify-fare-sources` or `fix/return-routing`.
-3. Make one focused change and update documentation and tests where appropriate.
-4. Submit a pull request that explains the problem, what changed, and how it was verified.
-5. Be respectful when discussing corrections.
+## Transport and map data
 
-## Route-data submissions
+Follow the [source register](docs/DATA_SOURCES.md) and [verification guide](docs/DATA_VERIFICATION.md). Include source URL or identifier, date, exact scope, reuse permission, and conflicting evidence. A route name or sighting alone is not enough to supply a navigable path.
 
-A usable proposed route record should identify the route code, operator (if known), vehicle category, direction and variant, stop order, source(s), evidence date, operating status, and dataset license/permission. A submitted route remains **Candidate** until reviewed; only **Verified** routes can be used for trusted recommendations.
+Do not label historic, inferred, or synthetic records as current verified service. Do not upload third-party feeds, photographs, maps, or personal observations containing identifying information without appropriate rights and consent. The repository's MIT license does not establish those rights.
 
-See [Route Verification](docs/DATA_VERIFICATION.md).
+Imported records start as documented, not verified. Review both directions, boarding and alighting permissions, transfer access, distance provenance, fares, and current operation separately. Route codes are not unique database identifiers.
 
-## Development standards (once code is added)
+## Safety and respectful collaboration
 
-- Python: modular Django REST services, typed/validated API inputs, pytest coverage of route and fare calculations.
-- TypeScript: strong types, accessible React components, tests of major user journeys.
-- Favor clarity and correctness over additional frameworks or large-scale redesign.
-- Never display made-up journey alternatives or unsupported time estimates as facts.
+Never commit secrets, real credentials, or personal trip histories. See [security notes](docs/SECURITY.md) for handling a sensitive report. Keep discussion respectful, explain evidence, and welcome corrections. Do not post a person's private details in issues or evidence records.
 
-## Licensing
-
-By contributing original code or text, you agree it can be distributed under the repository's MIT License. Data from other publishers must be licensed or permissioned separately.
-
-## Product scope for contributors
-
-Support same-city, same-barangay and intercity journeys throughout Cebu City, Mandaue City and Lapu-Lapu City. The MVP uses a verified subset; 01K, 23D, 20A and 03Q are initial research only. Expand the dataset without hardcoding codes in routing. Verify each directional pattern independently and disclose unknown fare/time fields. Canonical stored statuses are `candidate`, `documented`, `verified` and `needs_review`.
+Original code and documentation contributions fall under the existing [MIT License](LICENSE). Record licenses and notices separately for any third-party material; do not assume that a code license covers embedded datasets.

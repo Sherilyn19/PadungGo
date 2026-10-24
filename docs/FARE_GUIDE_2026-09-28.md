@@ -5,11 +5,11 @@
 - Publisher: Land Transportation Franchising and Regulatory Board,
   Department of Transportation, Republic of the Philippines.
 - Publisher address printed on both guides: East Avenue, Quezon City.
-- Source page supplied by the owner: https://ltfrb.gov.ph/fare-rates/
-- Download date supplied by the owner: 2026-10-21 (Asia/Manila).
+- Source page supplied by a contributor: https://ltfrb.gov.ph/fare-rates/
+- Download date supplied by a contributor: 2026-10-21 (Asia/Manila).
 - Local source files: Traditional PUJ.pdf and Modern PUJ.pdf.
 - Each PDF contains one page. All references below are to page 1.
-- Owner-supplied download links:
+- Contributor-supplied download links:
   - https://drive.google.com/file/d/1xBNN-_KPeCwPeeYd4cAx1UtB2wMbA9NO/view
   - https://drive.google.com/file/d/15IcGdAKFdlSAqaCy8SHh759e6OP8mIZF/view
 
@@ -19,8 +19,15 @@ returned HTTP 403 during review, and the Drive pages could not be fetched.
 The evidence reviewed was the supplied local PDFs, their extracted text,
 and rendered pages, not an independently downloaded replacement.
 
-Do not commit the PDFs. This document records evidence and proposed policy
-inputs only. It does not authorize production writes or fare activation.
+The PDFs are not bundled in this repository. This record preserves their transcription and review limits; it does not grant rights to redistribute the source files.
+
+## Current application use
+
+The current code uses these rates in a separate **guide estimate**, not as verification that every route has an applicable fare rule. `guide_fares.py` rounds each ride's recorded positive integer metre distance up to a whole kilometre, up to 50 km, then rounds money to the nearest 25 centavos. Bus rides are excluded. The frontend selects Regular or grouped Student/Senior/PWD and traditional, modern, or uncertain vehicle type; uncertain type can show a range. “Modern” is limited by the air-conditioned modern/electric source scope below.
+
+Rounding fractional kilometres upward is an application estimate assumption: the supplied pages do not establish it as official policy. The actual vehicle subtype and billable distance remain unverified. The fixed guide has no automatic detection of a replacement guide.
+
+Evidence-supported fare quotation is a separate path with stricter applicability checks and can remain unknown. Frontend estimates do not make a journey eligible for cheapest ranking, and AI explanations do not use the frontend passenger/vehicle selections.
 
 ## Traditional PUJ
 
@@ -237,15 +244,12 @@ flat fare can be classified exact. Passenger categories retain their own
 printed policy inputs; discounts are not calculated from an already-rounded
 regular fare.
 
-The API adds fare classification and explanatory reasons. No model fields,
-migrations, dependencies or production data changes are required. The
+The API provides fare classification and explanatory reasons. The
 fractional-distance, discount-wording and vehicle-subtype questions below
 remain unresolved.
 
 The regression tests contain literal expected new-table values. They do
-not generate expectations from the formula being tested. Test execution
-must be recorded separately in the PR; the arithmetic review is not a
-claim that the test suite has been run.
+not generate expectations from the formula being tested. See the [dated review](REVIEW_2026-10-24.md) for test execution results; the arithmetic transcription alone is not a test-run claim.
 
 ## Consistency findings and limits
 
@@ -287,9 +291,5 @@ claim that the test suite has been run.
 - LTFRB-7 clarification: fractional-distance treatment, discount wording,
   geographic applicability where not explicit, and coverage of any modern
   variant not named by the supplied guide.
-- Kiro/owner review: source-link mapping, route fleet and subtype evidence,
-  route/pattern and distance verification, passenger-category support,
-  evidence records, and section 8 pre-check before any later Admin writes.
-- Keep proposed rules documented until the required evidence and approval
-  exist. Synthetic verified test fixtures do not verify production rules.
-- Keep the PR unmerged until the owner chooses to merge and deploy.
+- Remaining data review: source-link mapping, route fleet/subtype evidence, route/pattern distance provenance, passenger applicability, and evidence records.
+- Synthetic verified test fixtures do not verify production rules. Keep unresolved applicability visible even when the approximate guide feature returns a value.
