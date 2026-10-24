@@ -4,10 +4,15 @@ A model can still make a mistake that no rule here would catch, so these checks
 are a safety net, not proof that every sentence is true. They catch the
 failures that matter most for a commuter:
 
-* a missing or reordered route code, or a missing stop name;
-* a route code, price, time or distance that is not in the planner's data;
-* a certainty the planner does not have (frequency, "running now", official);
-* a missing warning (historic data, scarce route, unknown fare or waiting time).
+* a missing or reordered route code, or a missing hop-off / transfer stop;
+* a route code, price, time, distance or count that the model was never given
+  (it is told only the route codes and stops, so it cannot know them);
+* a certainty the planner does not have (frequency, "running now", "not scarce",
+  "verified" for historic data).
+
+The summary is friendly and short on purpose. Fares, waiting times and the
+"not field-verified" reminder are shown elsewhere on screen, so the answer is not
+required to repeat them.
 
 `check_explanation` returns None when the answer is acceptable, or a short
 reason code. The reason is for logs and tests; it is never shown to visitors.
@@ -15,24 +20,12 @@ reason code. The reason is for logs and tests; it is never shown to visitors.
 from __future__ import annotations
 
 import re
-from decimal import Decimal
 
 from .trip_facts import TripFacts
 
-MAX_CHARS = 900
+MAX_CHARS = 600
 
 _FLAGS = re.I
-_UNKNOWN_WORDS = (
-    r"unknown|unclear|uncertain|unconfirmed"
-    r"|not (?:confirmed|known|available|certain|guaranteed|verified)"
-    r"|(?:isn|aren|can|couldn)['’]?t (?:be )?(?:known|confirmed|available|certain|say|tell|predict)"
-    r"|cannot (?:say|tell|predict|be sure)"
-    r"|no (?:verified |reliable |confirmed )?(?:frequency|timetable|schedule|fare|information|info|data)"
-    r"|(?:could|can)(?:n['’]t| not) (?:be )?(?:determined|calculated|confirmed|found|known)|not sure"
-    r"|unavailable|(?:don|doesn)['’]t (?:have|know)"
-    r"|not (?:provided|listed|set|shown|given|specified|included)"
-    r"|ask (?:the|your) (?:driver|conductor)"
-)
 _HEDGE_WORDS = r"confirm|check|make sure|whether|ask|may|might|could|not sure|unknown|not field"
 
 _MONEY = re.compile(
@@ -123,11 +116,6 @@ def _sentences(text: str) -> list[str]:
     return [part for part in re.split(r"[.!?\n]+", text) if part.strip()]
 
 
-def _sentence_has(text: str, topic: str, wording: str) -> bool:
-    """True if one sentence contains both the topic word and the wording."""
-    return any(re.search(topic, s, _FLAGS) and re.search(wording, s, _FLAGS) for s in _sentences(text))
-
-
 def _shape_problem(text: str) -> str | None:
     if not text:
         return "empty"
@@ -182,42 +170,23 @@ def _with_digits(text: str) -> str:
     return _ONE_UNIT.sub(lambda m: f" 1 {m.group(1)} ", text)
 
 
-def _decimal(text: str) -> Decimal:
-    return Decimal(text.replace(",", ""))
-
-
 def _number_problem(rest: str, facts: TripFacts) -> str | None:
-    """Every route code, price, time, distance and number must come from the planner."""
+    """No route code, price, time, distance or count the model was never given."""
     # Real codes are already blanked out, so any code-shaped token left is invented.
     if _ROUTE_CODE_LIKE.search(rest):
         return "unknown_route_code"
     if _VAGUE_TIME.search(rest):
         return "invented_time"
-    rest = _with_digits(rest)
-    allowed_price = _decimal(facts.fare_text[1:]) if facts.fare_text else None
-    for match in _MONEY.finditer(rest):
-        if allowed_price is None:
-            return "invented_fare"
-        if _decimal(match.group(1) or match.group(2)) != allowed_price:
-            return "wrong_fare"
+    rest = _with_digits(rest)   # "eight minutes" is checked like "8 minutes"
+    if _MONEY.search(rest):
+        return "invented_fare"
     rest = _MONEY.sub(" ", rest)
-
-    known_minutes = {m for m in facts.ride_minutes if m is not None}
-    if facts.ride_minutes and None not in facts.ride_minutes:
-        known_minutes.add(sum(facts.ride_minutes))
-    for match in _DURATION.finditer(rest):
-        value = _decimal(match.group(1)) * (60 if match.group(2).casefold().startswith(("h")) else 1)
-        if value not in known_minutes:
-            return "invented_time"
+    if _DURATION.search(rest):
+        return "invented_time"
     rest = _DURATION.sub(" ", rest)
-
-    known_metres = set(facts.transfer_walk_metres)
-    for match in _DISTANCE.finditer(rest):
-        value = _decimal(match.group(1)) * (1000 if match.group(2).casefold().startswith("k") else 1)
-        if value not in known_metres:
-            return "invented_distance"
+    if _DISTANCE.search(rest):
+        return "invented_distance"
     rest = _DISTANCE.sub(" ", rest)
-
     # Only the number of rides or transfers (or a list marker) may remain as a digit.
     allowed = {str(len(facts.route_codes)), str(facts.transfers)}
     leftover = re.findall(r"\d+", _LIST_MARKER.sub(" ", rest))
@@ -242,23 +211,6 @@ def _claim_problem(text: str, rest: str, facts: TripFacts) -> str | None:
     return None
 
 
-def _missing_warning(text: str, facts: TripFacts) -> str | None:
-    """Warnings the planner requires must survive the rewrite."""
-    if facts.historic and not _NOT_VERIFIED.search(text):
-        return "missing_historic_warning"
-    if facts.scarce_codes and not re.search(r"\bscarce\b", text, _FLAGS):
-        return "missing_scarce_warning"
-    if facts.fare_text is None and not _sentence_has(text, r"\bfare", _UNKNOWN_WORDS):
-        return "missing_unknown_fare"
-    if facts.fare_text and facts.fare_is_approximate and not re.search(
-        r"\bapproximate|\babout\b|\baround\b|\bestimate", text, _FLAGS
-    ):
-        return "missing_approximate_fare"
-    if not _sentence_has(text, r"\bwait", _UNKNOWN_WORDS):
-        return "missing_unknown_wait"
-    return None
-
-
 def check_explanation(text: str, facts: TripFacts) -> str | None:
     """None if `text` is acceptable for this trip, otherwise a reason code."""
     problem = _shape_problem(text) or _route_problem(text, facts)
@@ -267,4 +219,4 @@ def check_explanation(text: str, facts: TripFacts) -> str | None:
     if _missing_stop_name(text, facts):
         return "missing_stop_name"
     rest = _without_known_names(text, facts)
-    return _number_problem(rest, facts) or _claim_problem(text, rest, facts) or _missing_warning(text, facts)
+    return _number_problem(rest, facts) or _claim_problem(text, rest, facts)

@@ -334,8 +334,12 @@ pressed, never for every result, and the text is labelled **AI-generated**.
   trip, and gives the model only its minimal facts (no GPS coordinates, no typed
   place names). Unknown fares and waiting times stay unknown, and the historic /
   "not field-verified" warning is always shown, written by the server.
+- **Friendly and short.** The summary is a few cheerful sentences in plain words
+  and does not repeat what the screen already shows (fare, ride time, warnings).
+  It sits in a collapsible "Here's the gist!" card that always carries the
+  **AI-generated** label.
 - **Checked output.** An answer is shown only if it keeps the route codes (in
-  order), the stop names and the warnings, and invents no route, price, time or
+  order) and the hop-off and transfer stops, and invents no route, price, time or
   frequency. Otherwise the app says the explanation is unavailable; the itinerary
   is never affected. These checks reduce, but cannot eliminate, model mistakes.
 - **Limits:** 6 explanations a minute per visitor, a daily cap on provider calls

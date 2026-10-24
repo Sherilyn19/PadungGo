@@ -541,31 +541,36 @@ unknown `location_id`), 404 `not_found`, 429 `rate_limited` (per-visitor limit
 
 ### What the model is given
 
-Built by `transit/ai/trip_facts.py` from the matched planner option: data status
-(`verified` or `historic_not_field_verified`), ordered steps (walk, ride with
-route code, route name, board stop, get-off stop, `scarce_service`, known ride
-minutes, transfer walk with stop names and metres), the fare total only when the
-planner's total is complete (else `{"known": false}`), and `waiting_time:
-"unknown"`. Imported placeholder stop names ("Unnamed stop (feed id 2939)") are
-replaced by "the stop shown on the map", as on screen, and a transfer between two
-rides at the same stop is flagged `same_stop: true`. It contains no coordinates, typed place names, database IDs or user
-identifiers.
+Built by `transit/ai/trip_facts.py` from the matched planner option: the number of
+transfers and the ordered steps. A ride carries only its route code, the boarding
+and hop-off stop names and a `scarce_service` flag; a transfer carries the two stop
+names and `same_stop`. Imported placeholder stop names ("Unnamed stop (feed id
+2939)") are replaced by "the stop shown on the map", as on screen. The model is
+**not** given fares, waiting or riding times, distances, route names, whether the
+data is historic, coordinates, place names, IDs or user identifiers. The screen
+already shows those, so the model cannot repeat them or get them wrong.
 
 ### Output checks
 
-`transit/ai/output_checks.py` accepts an answer only if it is at most 900
+The summary is short, cheerful and plain (about 30 to 55 words). The server
+returns `notices` (the planner's warnings, scarce routes, unknown waiting time,
+straight-line walking) next to it, so the warnings never depend on the model. The
+app shows the AI text and, for historic data, one short friendly reminder; it does
+not print the notices list.
+
+`transit/ai/output_checks.py` accepts an answer only if it is at most 600
 characters, has no markup or links, names every route code in travel order and
-every stop, repeats the required warnings (not field-verified, scarce, unknown
-fare, unknown waiting time, approximate fare), and contains no route code, price,
-time, distance or number outside the planner's facts, no frequency / 24-hour /
-"running now" / "cheapest" / alternative-route claim, and no landmark word that
-is not part of a real stop name. One failed answer is retried once with the
-failed check named; then the response is `unavailable`/`invalid_output`.
+every hop-off or transfer stop (boarding stops are optional), and contains **no**
+price, time, distance, count or route code the model was not given, no frequency /
+24-hour / "running now" / "cheapest" / "not scarce" / alternative-route claim, no
+landmark word that is not part of a real stop name, and no "verified" claim for
+historic data. Look-alike characters (non-breaking hyphens, special spaces) are
+treated as plain ones. One failed answer is retried once with the failed check
+named; then the response is `unavailable`/`invalid_output` with `check` set.
 
 Limits: the checks are a safety net, not proof that every sentence is true. Route
 codes are recognised in the Cebu shape (digits then letters, e.g. `17D`), and
-landmark detection is a word list. The UI tells commuters that AI can make
-mistakes and that the directions come from the planner.
+landmark detection is a word list.
 
 ### Privacy and cost controls
 

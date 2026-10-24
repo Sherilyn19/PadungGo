@@ -4,6 +4,16 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- "Explain this trip" is friendlier and no longer repeats the screen. The AI now
+  writes a short, cheerful, plain-words walkthrough (which jeepney to hop on, where
+  to hop off or change) and is no longer given, or allowed to mention, fares,
+  waiting or riding times, or the data warning. The "Before you go" list is gone;
+  the card shows one short reminder when routes come from older records. The
+  summary sits in a collapsible card ("Here's the gist!") that keeps the
+  AI-generated label visible when folded, with an animated button, a "cooking up a
+  summary" state, a word-by-word reveal and a softer error state. All motion stops
+  for people who ask their device for reduced motion.
+
 - Rate limits now work in production (#59, #60, #61). They had never applied: the
   per-visitor limits used the whole `X-Forwarded-For` text as the identity, and
   behind Cloudflare and Render that text changes on every request. Visitors are now
