@@ -70,6 +70,10 @@ The planner does not hardcode route codes or UUIDs.
 The GTFS importer can create fresh copies of routes (active, not_flagged)
 under a different source title, which would undo these decisions. Review this list and reconcile exact record identities before any future import.
 
+## Mandaue: the return leg stops short (Oct 24 check)
+
+An Admin export of 21A, 21D, 22A and 22D, plus live searches, shows each route is **one pattern** (direction "Unspecified") that holds both legs: out from Ibabao through Mandaue to the Carbon area, a turn-around of six stops that cannot be boarded or left, then a return leg north. The return leg **ends at M. Logarta Avenue**, about 3 km before Ibabao, so a trip from downtown Cebu to the Ibabao side of Mandaue has nowhere to get off. Checked live: boarding at Imus Avenue (a return-leg stop) reaches M. Logarta Avenue, but not the Mandaue City Police Office or Ibabao; Mandaue Police Office to Colon Obelisk works (21A, 21D, 22A, 22D). So the fix is stop data for the end of the return leg, not a larger search radius.
+
 ## Mandaue corrections
 
 Commuter reports, latest first:

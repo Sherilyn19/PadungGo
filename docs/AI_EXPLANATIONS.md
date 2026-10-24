@@ -6,9 +6,9 @@ PadungGo implements application AI through **Explain this trip** in Trip details
 
 1. The browser sends the original search and selected ride occurrence identifiers.
 2. The server recomputes the plan and locates those rides, rejecting a stale or unmatched selection.
-3. It creates minimal facts: public route/stop names, travel order, supported fare/time facts, and uncertainty flags. Coordinates and typed place-search text are omitted.
-4. The provider writes a short English summary. Code checks route order, stop names, quantities, and unsupported claims, then accepts the text or retries once.
-5. The response supplies an AI label, model name, and separate server-written notices. Failure leaves the itinerary unchanged.
+3. It creates minimal facts: route codes, public boarding, hop-off and transfer stop names, travel order, and a scarce-route flag. Fares, ride or waiting times, distances, route names, the historic-data flag, coordinates and typed place-search text are not sent, so the model cannot repeat or misstate what the screen already shows.
+4. The provider writes a short, cheerful summary in plain words (about 30 to 55 words). Code checks route order, hop-off and transfer stops, any price, time, distance or count the model was never given, and unsupported claims, then accepts the text or retries once.
+5. The response supplies an AI label, model name, and separate server-written notices. The app shows the text in a collapsible card that keeps the AI-generated label visible, plus one short reminder when routes come from older records; it does not print the notices list. Failure leaves the itinerary unchanged.
 
 These checks reduce mistakes; they do not prove the answer correct. Public stop names can still reveal a journey area. Review the [privacy notes](SECURITY.md).
 
@@ -41,7 +41,7 @@ A failed output can cause a second provider call; each call consumes budget. Ide
 
 - AI does not select routes, establish current service, determine vehicle availability, or verify fares.
 - The passenger category and vehicle choices used for frontend guide estimates are not sent to the explanation endpoint. The supported backend fare can remain unknown while the interface shows an approximate guide estimate.
-- Waiting and complete journey times are unknown. Historic-data and other notices must remain visible even if the prose omits them.
+- Waiting and complete journey times are unknown. The summary does not mention them. The server still returns the planner's notices, and the app keeps its own on-screen warnings and the older-records reminder even though the prose omits them.
 - Regex and other output checks can reject useful answers or miss misleading language. A working sample is not a reliability evaluation across all trips.
 - A network/data change can make the original selection no longer match the recomputed top 50 options.
 

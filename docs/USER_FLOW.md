@@ -6,7 +6,7 @@ Open [PadungGo](https://padung-go.app). A short welcome screen appears on page l
 2. Search for journeys. The hosted API may take time to wake. Available results contain direct rides or one transfer; use the control below the list to reveal more alternatives.
 3. Open an option. Read the numbered walking, boarding, transfer, and alighting steps, and compare the ride line with the map.
 4. Review the fare information. Choose Regular or the grouped Student/Senior/PWD category and a vehicle type per ride. “Not sure” can show a range. These are estimates, not a guarantee of entitlement, vehicle type, or the amount collected. If any ride lacks a usable amount, a complete total is not shown.
-5. Optionally press **Explain this trip**. The AI-generated text summarizes the selected itinerary. Read the “Before you go” notices and the original trip details. AI explanations do not use your fare-selector choices and may leave the fare unknown even when the interface displays an estimate.
+5. Optionally press **Explain this trip**. The AI-generated text summarizes the selected itinerary. It opens as a short “Here’s the gist!” card that you can fold away, and it does not repeat the fare or times shown above it. Check the trip details below it; the AI can make mistakes and does not use your fare-selector choices.
 6. Use the return-trip action for a fresh search. The return service and stops may differ or may be missing.
 
 ## Read the uncertainty labels

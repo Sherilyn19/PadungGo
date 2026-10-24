@@ -176,6 +176,18 @@ export interface JourneyOption {
   warnings: string[]
 }
 
+// Only on "no trip" answers: why, in numbers. Missing on older backends.
+export interface CoverageHint {
+  search_radius_m: number
+  origin_has_stop: boolean
+  destination_has_stop: boolean
+  // Straight-line metres to the nearest known stop, rounded to 100 m; null if none is known.
+  nearest_origin_stop_m: number | null
+  nearest_destination_stop_m: number | null
+  // Whether the same two places work the other way round; null when not checked.
+  reverse_has_trips: boolean | null
+}
+
 export interface PlanResponse {
   request_coverage_status: string
   reason: string | null
@@ -188,6 +200,7 @@ export interface PlanResponse {
   ranking: { requested: string; applied: string; warning: string | null; scarce_last?: boolean }
 
   warnings: string[]
+  coverage?: CoverageHint | null
 }
 
 // Mirrors MAX_JOURNEY_OPTIONS in backend/transit/planner/validation.py.

@@ -47,6 +47,28 @@ def _eligible_stops(
     return candidates
 
 
+# Reported distances are rounded: they are a hint about coverage, not a measured walk.
+_COVERAGE_ROUNDING_M = 100
+
+
+def nearest_stop_distance_m(
+    network: Network, endpoint: Endpoint, *, boarding: bool, allowed_statuses: frozenset[str],
+) -> Optional[int]:
+    """Straight-line metres to the closest eligible stop at any distance, or None if there is none."""
+    nearest = None
+    for stop in network.stops.values():
+        if stop.status not in allowed_statuses:
+            continue
+        if not (stop.can_board if boarding else stop.can_alight):
+            continue
+        distance = haversine_m(endpoint.latitude, endpoint.longitude, stop.latitude, stop.longitude)
+        if nearest is None or distance < nearest:
+            nearest = distance
+    if nearest is None:
+        return None
+    return int(round(nearest / _COVERAGE_ROUNDING_M) * _COVERAGE_ROUNDING_M)
+
+
 def _occurrence_index(
     network: Network, statuses: frozenset[str],
 ) -> OccurrenceIndex:

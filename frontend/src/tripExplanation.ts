@@ -68,3 +68,34 @@ export function explanationFromError(error: unknown): ExplanationState {
   }
   return { phase: 'unavailable', message: UNAVAILABLE_MESSAGE, retryable: true }
 }
+
+// --- Presentation helpers (pure, so they are easy to test) ---------------------
+
+export interface AnimatedWord {
+  text: string
+  // Position across the whole summary, used to stagger the fade-in.
+  index: number
+}
+
+// Splits the summary into words for the word-by-word reveal. The index runs
+// across paragraphs, so the whole text appears as one smooth sentence.
+export function animatedParagraphs(paragraphs: string[]): AnimatedWord[][] {
+  let index = 0
+  return paragraphs.map((paragraph) =>
+    paragraph
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((text) => ({ text, index: index++ })),
+  )
+}
+
+// The summary no longer repeats the data warning, so the card carries one short
+// friendly reminder of its own, only when the server says the data is historic.
+export function showsOlderRecordsReminder(notices: string[]): boolean {
+  return notices.some((notice) => /not field-verified/i.test(notice))
+}
+
+// "openai/gpt-oss-20b" -> "gpt-oss-20b".
+export function shortModelName(model: string): string {
+  return model.split('/').pop()?.trim() ?? ''
+}

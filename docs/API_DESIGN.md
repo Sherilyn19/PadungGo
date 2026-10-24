@@ -58,12 +58,14 @@ The example is a reproducible coordinate request, not a promise of current servi
 
 ### Response structure
 
-The response contains `request_coverage_status`, `reason`, `journey_options`, `ranking`, `warnings`, and `data_updated_on`. The date reflects the stored network version in Manila time, not field-verification freshness; it can be null when no version exists.
+The response contains `request_coverage_status`, `reason`, `journey_options`, `ranking`, `warnings`, `coverage`, and `data_updated_on`. The date reflects the stored network version in Manila time, not field-verification freshness; it can be null when no version exists.
 
 Coverage values emitted by the current engine:
 
 - `within_verified_network`: nonempty results under verified-only eligibility. This is a database status claim, not complete geographic coverage.
 - `limited_verified_coverage`: empty results or documented-mode results. Documented mode uses this even if an individual result contains only verified patterns.
+
+Empty results also carry `coverage`; it is null when trips exist. Fields: `search_radius_m` (default 500), `origin_has_stop` and `destination_has_stop` (an eligible stop within the radius), `nearest_origin_stop_m` and `nearest_destination_stop_m` (straight-line metres to the nearest eligible stop at any distance, rounded to 100 m, null if none is known), and `reverse_has_trips` (only for `no_journey_within_mvp_limits`: whether the same two places work the other way; null otherwise). It describes coverage only, never invents a stop or route, and the distances are hints, not walking routes. Older clients can ignore it.
 
 Empty-result reasons:
 
@@ -95,7 +97,7 @@ Send the original `origin`, `destination`, `max_transfers`, and `sort_by`, plus 
 
 The server plans again with up to 50 results and matches the ordered ride identities. A trip no longer present returns 404. A successful HTTP 200 body has `status: "ok"`, `explanation`, `notices`, `ai_generated: true`, and `model`.
 
-Provider failure returns HTTP 200 with `status: "unavailable"`, `reason`, `message`, and `retryable`. Reasons include `not_configured`, `quota`, `rate_limited`, `timeout`, `error`, and `invalid_output`. A rejected answer can include a short `check` code; its rejected text is not returned. Display the server notices alongside accepted text. See [AI configuration and limitations](AI_EXPLANATIONS.md).
+Provider failure returns HTTP 200 with `status: "unavailable"`, `reason`, `message`, and `retryable`. Reasons include `not_configured`, `quota`, `rate_limited`, `timeout`, `error`, and `invalid_output`. A rejected answer can include a short `check` code; its rejected text is not returned. The model is given only route codes, stop names and a scarce flag (no fares, times, distances or historic flag), and the accepted text is short and friendly. The server notices stay in the response; a client may show them or, as the web app does, rely on its own on-screen warnings and one short reminder. See [AI configuration and limitations](AI_EXPLANATIONS.md).
 
 ## Errors and rate limits
 
