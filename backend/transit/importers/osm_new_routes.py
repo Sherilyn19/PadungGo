@@ -67,6 +67,7 @@ class NewRoutePlan:
     stops: list = field(default_factory=list)      # NewStop; the first has hop_m 0 and no geometry
     pattern_path: list = field(default_factory=list)
     problem: str = ""
+    adds_to_existing: bool = False   # a typed-in direction added to a route that is already in the data
 
     @property
     def code(self) -> str:
@@ -74,7 +75,7 @@ class NewRoutePlan:
 
     @property
     def variant_key(self) -> str:
-        return f"{VARIANT_PREFIX}{self.route.relation_id}"
+        return self.route.variant_key or f"{VARIANT_PREFIX}{self.route.relation_id}"
 
     @property
     def last_stop_name(self) -> str:
@@ -94,8 +95,11 @@ def plan_new_route(route: MappedRoute) -> NewRoutePlan:
     if RoutePattern.objects.filter(variant_key=plan.variant_key).exists():
         plan.problem = "Already imported earlier; nothing to do."
         return plan
+    if route.source_kind == "list":
+        # Staff add a missing direction to a route, so an existing code is allowed; the preview says so.
+        plan.adds_to_existing = Route.objects.filter(code=plan.code).exists()
     # Same code from the GTFS feed means the route is already in the data.
-    if RoutePattern.objects.filter(route__code=plan.code).exclude(variant_key__startswith=VARIANT_PREFIX).exists():
+    elif RoutePattern.objects.filter(route__code=plan.code).exclude(variant_key__startswith=VARIANT_PREFIX).exists():
         plan.problem = f"Route {plan.code} already exists from another source, so it is not added again."
         return plan
     if len(route.stops) < MIN_STOPS:
@@ -129,6 +133,15 @@ def plan_new_route(route: MappedRoute) -> NewRoutePlan:
 
 
 def _source_for_route(route: MappedRoute) -> DataSource:
+    if route.source_kind == "list":
+        source, _ = DataSource.objects.get_or_create(
+            title=f"Stop list typed in by the PadungGo team: {route.ref}"[:300],
+            reference="https://github.com/Sherilyn19/PadungGo",
+            defaults={"publisher": "PadungGo team (rider knowledge)", "license": "Contributed by the project team",
+                      "collected_at": timezone.now(),
+                      "limitations": "Stops listed by a rider and not field-verified. Distances are straight lines "
+                                     "between stops, so real road distances are longer."})
+        return source
     title = f"{SOURCE_TITLE_PREFIX} {route.ref or route.relation_id}: {route.name}"[:300]
     source, _ = DataSource.objects.get_or_create(
         title=title, reference=f"https://www.openstreetmap.org/relation/{route.relation_id}",
@@ -142,10 +155,7 @@ def _source_for_route(route: MappedRoute) -> DataSource:
 def _stop_for(mapped, source: DataSource, by_osm_id: dict) -> Stop:
     """One saved stop per mapped stop, shared by every route that uses it (this is what makes transfers possible)."""
     if mapped.osm_id not in by_osm_id:
-        stop = Stop.objects.filter(
-            name=mapped.name, latitude=mapped.latitude, longitude=mapped.longitude,
-            source__title__startswith=SOURCE_TITLE_PREFIX,
-        ).first()
+        stop = Stop.objects.filter(name=mapped.name, latitude=mapped.latitude, longitude=mapped.longitude).first()
         by_osm_id[mapped.osm_id] = stop or Stop.objects.create(
             name=mapped.name, latitude=mapped.latitude, longitude=mapped.longitude,
             point=make_point(mapped.latitude, mapped.longitude), status=RecordStatus.DOCUMENTED, source=source)
@@ -219,7 +229,10 @@ def apply_new_routes(plans: list[NewRoutePlan], vehicle_class: str) -> ImportRes
         all_stops: dict = {}
         first_source = None
         for code, group in by_code.items():
-            route = Route.objects.filter(code=code, patterns__variant_key__startswith=VARIANT_PREFIX).first()
+            if group[0].route.source_kind == "list":
+                route = Route.objects.filter(code=code).first()
+            else:
+                route = Route.objects.filter(code=code, patterns__variant_key__startswith=VARIANT_PREFIX).first()
             if route is None:
                 route = Route.objects.create(
                     code=code[:20], name=_route_name(group), vehicle_class=vehicle_class,

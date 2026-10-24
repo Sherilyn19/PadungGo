@@ -83,6 +83,9 @@ class MappedRoute:
     stops: list[MappedStop]
     path: list[tuple[float, float]]  # (lat, lon) along the road, in route order
     operator: str = ""
+    # A stop list typed in by staff has no OpenStreetMap relation; it brings its own identity instead.
+    variant_key: str = ""
+    source_kind: str = "osm"   # "osm" or "list"
 
 
 def _join_ways(ways: list[list[tuple[float, float]]]) -> list[tuple[float, float]]:
