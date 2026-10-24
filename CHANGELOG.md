@@ -4,6 +4,26 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- Rate limits now work in production (#59, #60, #61). They had never applied: the
+  per-visitor limits used the whole `X-Forwarded-For` text as the identity, and
+  behind Cloudflare and Render that text changes on every request. Visitors are now
+  identified by the third address from the right (the proxies' own entry), anything
+  a client writes on the left is ignored, and IPv6 is grouped by /64. Verified live:
+  HTTP 429 after the limit, rotating fake headers do not escape, allowed again after
+  the window. `/api/v1/health` now reports `forwarded_chain_length` and
+  `trusted_proxy_hops` (counts only) so the setting can be checked from outside.
+- AI explanation: four fixes found by testing the live API: unnamed stops (#53),
+  ordinary wording such as "10-minute ride" (#56), numbers written as words (#57)
+  and Unicode dashes in "field-verified" (#58). It never says a route is "not
+  scarce" or common (#62), because an unflagged route only means no report exists.
+- The sort picker is hidden while the planner can only order by fewest transfers
+  (#63). Cheapest, Fastest and Least walking always fell back to it. The API still
+  accepts all four.
+- Route 03K is Scarce again (owner decision after a new classmate report, Oct 24).
+- New demo journey for the video: Ayala Center Cebu to Colon Obelisk and back (17D to
+  42D no longer works because 42D is excluded). Site address is now
+  https://padung-go.app.
+
 - Fix: "Explain this trip" rejected true quantities written as words ("eight
   minutes"), which the prompt itself asks for. Spelled-out numbers are now
   converted to digits and checked against the planner's facts like any other

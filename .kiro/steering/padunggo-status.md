@@ -128,6 +128,16 @@ Update this file at the end of each work session, so the next session can contin
 - Ownership: Kiro = `frontend/**` (PR #30, draft, branch `feat/fare-estimates`). Codex = `backend/**` + `docs/API_DESIGN.md` on `feat/fare-estimates-backend`. Merge backend first.
 - Known gaps: the Modern table is aircon modern/electric only; the LTFRB "not less than 20%" wording conflict is unresolved (we use printed cells); there is no evidence of per-route vehicle type.
 
+## Oct 24, 2026 summary (read this first)
+
+- Site: https://padung-go.app (Vercel custom domain). API: https://padunggo-api.onrender.com.
+- AI "Explain this trip": **working in production** (gpt-oss-20b via Groq). Fixed in #53, #56, #57, #58; #62 stops "not scarce" claims.
+- Rate limiting: **working in production** after #59/#60/#61. Root cause: Render sends 3 `X-Forwarded-For` entries (visitor, Cloudflare, Render); `DRF_NUM_PROXIES=3`. Check with `/api/v1/health`. Limits are per gunicorn worker.
+- 03K is Scarce again. 42D stays excluded, so the old 17D to 42D demo is gone; use Ayala Center Cebu to Colon Obelisk.
+- #63 hides the sort picker (only fewest transfers works).
+- Open: owner presses the button once on the site; Vercel preview shows a harmless "kiro-agent" author notice; per-visitor daily AI cap not built.
+- Deadline check: the brief says Oct 23, 11:59 PM Asia/Manila; GitHub and Render timestamps are already Oct 24 Manila.
+
 ## AI trip explanation (Oct 23, 2026, branch `feat/ai-trip-explanation`)
 
 - Feature: "Explain this trip" in Trip details; `POST /api/v1/journeys/explain`; code in `backend/transit/ai/` and `backend/transit/api/explain_views.py`; frontend in `tripExplanation.ts`, `hooks/useTripExplanation.ts`, `components/trips/TripExplanation.tsx`.

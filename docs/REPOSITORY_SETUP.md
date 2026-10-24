@@ -11,7 +11,7 @@
 - **Default branch:** `main`
 - **License:** MIT (applies to original project material; check third-party data and map terms separately)
 - **Topics:** `cebu`, `cebuano`, `public-transport`, `jeepney`, `route-planner`, `react`, `typescript`, `django`, `python`, `open-source`
-- **Website:** https://padung-go.vercel.app (deployed MVP).
+- **Website:** https://padung-go.app (deployed MVP).
 
 The documentation ZIP includes a root README and LICENSE, but is not a runnable application or a full repository export. If uploading the starter files to an empty GitHub repo manually, do **not** also auto-generate a competing README or LICENSE when creating it; use the included files. Never commit passwords, `.env` credentials, personal GPS histories or secrets.
 

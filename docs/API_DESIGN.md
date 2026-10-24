@@ -420,6 +420,27 @@ Errors use {error: {code, message, fields?, retryable}} with safe messages.
 | 503 | service_unavailable for database/provider failure preventing a trustworthy answer; distinguish from no-results |
 | 200 with empty options | Valid request without a supported journey, including outside intended area |
 
+### Rate limits
+
+Every API request counts toward a per-visitor limit; planning, place lookups and
+AI explanations also have their own, lower limits (defaults per minute: 120 all
+requests, 30 plans, 40 place lookups, 6 explanations; env `DRF_*_THROTTLE`). Over
+the limit the API answers 429 `rate_limited` with `Retry-After` before any work is
+done, so a blocked request never calls Geoapify or the AI provider. `/health` is
+not limited.
+
+The visitor is identified from `X-Forwarded-For` using only the entry added by the
+trusted proxies (`DRF_NUM_PROXIES`, 3 on Render: visitor, Cloudflare, Render
+proxy); anything a client writes on the left is ignored, a chain shorter than
+expected falls back to the connecting address, and IPv6 is grouped by /64.
+Counters are kept per web worker (two on Render), so a visitor can make up to twice
+the nominal rate, and a restart clears them. The money-relevant quotas (Geoapify,
+AI) are also capped by shared daily counters in the database.
+
+`GET /api/v1/health` returns `status`, `service`, `spatial_mode`,
+`forwarded_chain_length` and `trusted_proxy_hops` (counts only, no addresses),
+which is how a new host's proxy count can be checked from outside.
+
 Provider failure may yield qualified partial estimates only if the route/access
 itself remains verified. It must not silently become evidence that no route exists.
 

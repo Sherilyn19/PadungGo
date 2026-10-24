@@ -86,3 +86,9 @@ The AI explanation variables (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` and the
 optional limits) are described in `.env.example` and in
 [docs/API_DESIGN.md](../docs/API_DESIGN.md#explain-this-trip-ai-explanation).
 The code lives in `transit/ai/`; the endpoint is `transit/api/explain_views.py`.
+
+Rate limits identify visitors through `DRF_NUM_PROXIES` (3 on Render, 0 elsewhere);
+see `transit/api/throttles.py` and the "Rate limits" section of the API document.
+If limits seem not to apply, open `/api/v1/health` and compare
+`forwarded_chain_length` with `trusted_proxy_hops`: the visitor is the entry that
+many places from the right.
