@@ -66,6 +66,10 @@ _NEGATED_GUARANTEE = re.compile(r"\b(?:no|not|never|without|n['’]t)\s+(?:\w+\s
 _UNSUPPORTED_CLAIMS = (
     (re.compile(r"\bfrequent(?:ly)?\b|\bevery\s+(?:\d+|few|couple|other|hour|minute)\b"
                 r"|\bregular(?:ly)?\s+(?:service|trips|intervals|schedule)\b", _FLAGS), "frequency_claim"),
+    # scarce_service false only means no report exists; it never means "not scarce" or common.
+    # "not flagged as scarce" describes the data and is allowed.
+    (re.compile(r"\b(?:not|isn['’]t|never|no)\b(?!\s+flagged)\s+(?:\w+\s+){0,2}scarc\w*"
+                r"|\b(?:plenty of|lots of|readily available|easy to (?:find|catch))\b", _FLAGS), "scarcity_claim"),
     (re.compile(r"\b24\s*/\s*7\b|\b24\s+hours\b|\ball day\b|\b(?:around|round) the clock\b", _FLAGS),
      "operating_hours_claim"),
     (re.compile(r"\bguarantee[sd]?\b", _FLAGS), "certainty_claim"),
