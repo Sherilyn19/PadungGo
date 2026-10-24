@@ -1,0 +1,63 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Creates whole routes that OpenStreetMap contributors have mapped, for places where our imported data has no stops
+(for example parts of Lapu-Lapu and north Mandaue). Stops, their order, the road distances and the road shape all come
+from that map. Nothing is invented. A route code that already exists from another source is never added again. Routes are
+stored as <strong>documented, not field-verified</strong>, and fares stay unknown until a verified fare rule exists.
+You see everything below before anything is saved.</p>
+
+{% if error %}
+  <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ error }}</p>
+{% endif %}
+
+<h2>1. Download the routes (on your own computer)</h2>
+<p>Open PowerShell, run <code>cd $HOME\Downloads</code>, then paste this one line and press Enter (it retries by itself;
+wait up to a few minutes). It saves <code>osm-routes.json</code>: Mandaue 20A, and Lapu-Lapu MI-04A and MI-04B.</p>
+<textarea readonly rows="5" style="width:100%;max-width:900px;font-family:monospace;font-size:11px;" onclick="this.select()">{{ download_command }}</textarea>
+
+<h2>2. Upload it</h2>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <p><label>File: <input type="file" name="routes_file" accept=".json,application/json" required></label></p>
+  <p><label>Vehicle type:
+    <select name="vehicle_class">{% for v in vehicle_classes %}<option value="{{ v }}" {% if v == vehicle_class %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label><br>
+  <small>Jeepney routes are mapped as &ldquo;bus&rdquo; in OpenStreetMap. Choose what these routes really are.</small></p>
+  <p><button type="submit" name="step" value="preview" class="default">Show preview</button></p>
+</form>
+
+{% if plans or skipped %}
+  <h2>3. Preview</h2>
+  {% for message in skipped %}<p>Skipped: {{ message }}</p>{% endfor %}
+  {% for plan in plans %}
+    <h3>{{ plan.route.ref }} &mdash; {{ plan.route.name }}
+      <small><a href="https://www.openstreetmap.org/relation/{{ plan.route.relation_id }}" target="_blank" rel="noopener noreferrer">view on the map</a></small></h3>
+    {% if plan.problem %}
+      <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ plan.problem }}</p>
+    {% else %}
+      <p>{{ plan.stops|length }} stops, {{ plan.length_m }} m: from <strong>{{ plan.stops.0.stop.name }}</strong>
+      to <strong>{{ plan.last_stop_name }}</strong>.</p>
+      <table>
+        <thead><tr><th>#</th><th>Stop</th><th>Location</th><th>From start (m)</th><th>From previous stop (m)</th></tr></thead>
+        <tbody>
+        {% for n in plan.stops %}
+          <tr><td>{{ forloop.counter0 }}</td><td>{{ n.stop.name }}</td><td>{{ n.stop.latitude|floatformat:5 }}, {{ n.stop.longitude|floatformat:5 }}</td>
+              <td>{{ n.along_m }}</td><td>{{ n.hop_m }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endfor %}
+  {% if can_apply %}
+    <form method="post" style="margin-top:16px;">
+      {% csrf_token %}
+      <input type="hidden" name="vehicle_class" value="{{ vehicle_class }}">
+      <input type="hidden" name="payload" value="{{ payload }}">
+      <p>Routes with a problem (red) are left out. The rest are created together, or not at all.</p>
+      <button type="submit" name="step" value="apply" class="default">Create these routes</button>
+    </form>
+  {% else %}
+    <p>Nothing can be created from this file.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}
