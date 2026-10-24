@@ -40,7 +40,7 @@ Flag anything that could break the submission rules, eligibility, the deadline, 
 ## Live deployment
 
 - API (Render): https://padunggo-api.onrender.com/api/v1
-- Frontend (Vercel): https://padung-go.vercel.app
+- Frontend (Vercel): https://padung-go.app (custom domain; the earlier https://padung-go.vercel.app address is the same deployment)
 
 ## Reference guidance (user-supplied attachments)
 

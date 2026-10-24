@@ -1,5 +1,11 @@
 # Demo journey audit: 17D → 42D (October 20, 2026)
 
+> **Superseded for the video (October 24, 2026).** 42D has since been excluded from
+> suggestions by an owner decision ([ROUTE_AVAILABILITY_2026-10.md](ROUTE_AVAILABILITY_2026-10.md)),
+> so this journey no longer appears in live results. This file stays as the audit
+> record. The recommended video journey, checked on the live API, is in
+> [SUBMISSION.md](SUBMISSION.md).
+
 This audit uses the desktop research in `docs/RESEARCH_17D_42D_2026-10-20.md` (online research only; nothing was observed in person). It does not change any record or status. The journey was reproduced with a read-only request to the production API; there was no direct database access.
 
 ## 1. The journey as the API returns it

@@ -20,9 +20,9 @@ verified, interconnected subset of jeepney and bus services. **01K, 23D, 20A,
 and 03Q are the initial research batch**, not the permanent network boundary
 or proof of current operation. Coverage expands as evidence is verified.
 
-**Current status (October 21, 2026):** a working MVP is deployed.
+**Current status (October 24, 2026):** a working MVP is deployed.
 
-- **Try it:** https://padung-go.vercel.app (API: https://padunggo-api.onrender.com/api/v1).
+- **Try it:** https://padung-go.app (API: https://padunggo-api.onrender.com/api/v1).
   The free API host sleeps when idle, so the first search can take about a minute.
 - **Works today:** place search, device location or map tap; direct and
   one-transfer journeys; numbered journey steps; ride lines on the map; an
@@ -343,12 +343,13 @@ pressed, never for every result, and the text is labelled **AI-generated**.
   tokens a minute, so about five uncached explanations a minute across all
   visitors), and identical trips reuse a cached answer.
 
-**Status:** implemented and covered by automated tests with a faked provider and
-a local OpenAI-format stub. A real response from the hosted model on the deployed
-site is verified only after `AI_API_KEY` is set on Render; see
-[docs/SUBMISSION.md](docs/SUBMISSION.md). Until then the button reports that
-explanations are unavailable. Setup and the API contract are in
-[docs/API_DESIGN.md](docs/API_DESIGN.md#explain-this-trip-ai-explanation).
+**Status:** working in production. On October 24, 2026 the deployed API returned
+real explanations from `openai/gpt-oss-20b` for direct and one-transfer trips, each
+labelled AI-generated with the server-written warnings. If the AI service is down,
+over quota or fails the accuracy checks, the button says so and the trip details
+are unaffected. Setup and the API contract are in
+[docs/API_DESIGN.md](docs/API_DESIGN.md#explain-this-trip-ai-explanation); the
+verification record is in [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
 ### Deployment
 

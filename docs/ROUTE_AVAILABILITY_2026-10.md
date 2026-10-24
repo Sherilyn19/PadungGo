@@ -8,11 +8,12 @@ or complete route geometry. Later reports supersede earlier conflicting ones.
 ## Scarce
 
 Shown with the badge "Scarce" (list explanation "Scarce: Few jeepneys",
-tooltip "Few jeepneys"): **01B, 14B, 12K, 21F, 21G, 22G**.
+tooltip "Few jeepneys"): **01B, 03K, 14B, 12K, 21F, 21G, 22G**.
 
 | Route | Basis (commuting reports) |
 |---|---|
 | 01B | Classmate: operates only very occasionally. |
+| 03K | Latest classmate report (Oct 24, 2026): it operates, so the owner re-included it as Scarce. This supersedes the earlier "inactive" report. |
 | 14B | Owner: not seen for roughly five years; owner kept it as Scarce rather than excluded. |
 | 12K | Owner-approved as scarce. |
 | 21F, 21G, 22G | Mandaue classmate: very rare; paths have changed (see Mandaue section). |
@@ -27,7 +28,7 @@ sorting is preserved within each group, before the result limit.
 | Route | Basis |
 |---|---|
 | 03C, 03D | Owner explicitly approved exclusion after an ambiguous 03-series report. |
-| 03G, 03K | Latest classmate report: inactive (supersedes an earlier positive implication about 03K). |
+| 03G | Latest classmate report: inactive. |
 | 07C | Classmates: no longer operates. |
 | 12N | Excluded based on classmate reports. |
 | 42D | Owner's precautionary product decision. |
@@ -49,12 +50,17 @@ or replacement of traditional vehicles with modern vehicles.
 
 ## Application status (checked 2026-10-23 through the public API)
 
-- Exclusions: none of 03C, 03D, 03G, 03K, 07C, 12N, 42D appears among
-  the 90 active routes.
+- Exclusions: none of 03C, 03D, 03G, 07C, 12N, 42D appears among the active
+  routes (checked 2026-10-23 on 90 routes; the 2026-10-24 list has 91, the extra
+  one being 03K, see below).
 - Scarcity: live journey plans returned `service_availability: "scarce"` for
   rides on all six scarce routes, with those journeys grouped last.
-- 03K stays excluded (inactive) after the owner reconsidered; it is not marked
-  Scarce. Its record UUID was not captured.
+- 03K was re-included as Scarce on 2026-10-24 (owner decision after a new
+  classmate report). Checked the same day through the public API: a live plan
+  (Fuente Osmena to Colon) returned a 03K ride with `service_availability: "scarce"`
+  and `has_scarce_ride: true`. The 03K record in the list is "MABOLO - AYALA -
+  COLON - SM - NORTH BUS". Whether this is the original record or a re-imported
+  copy was not determined; see the re-import risk below.
 
 Route codes are not unique; decisions are applied to exact Route records.
 The planner does not hardcode route codes or UUIDs.
