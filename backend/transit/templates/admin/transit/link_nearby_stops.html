@@ -1,0 +1,24 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Riders often change jeepneys a short walk away, such as across the street, not at the exact same stop. Today only the
+exact same stop counts, so good trips are missed. This adds one-way walking links between stops of <em>different</em>
+routes that are up to <strong>{{ max_walk_m }} m</strong> apart (each stop gets its nearest {{ per_stop }} at most).</p>
+<p>Nothing is invented: the distance is the straight line between two stops already in the data, the links are stored as
+<strong>documented</strong>, and their note says the walking path is not verified. Links that already exist are not added again,
+so it is safe to run again after new routes are added.</p>
+<p><strong>{{ count }}</strong> links would be added.</p>
+{% if examples %}
+  <table>
+    <thead><tr><th>From stop</th><th>To stop</th><th>Walk (m)</th></tr></thead>
+    <tbody>{% for l in examples %}<tr><td>{{ l.from_name }}</td><td>{{ l.to_name }}</td><td>{{ l.distance_m }}</td></tr>{% endfor %}</tbody>
+  </table>
+  <p><small>First {{ examples|length }} shown.</small></p>
+  <form method="post" style="margin-top:16px;">
+    {% csrf_token %}
+    <button type="submit" name="step" value="apply" class="default">Add these links</button>
+  </form>
+{% else %}
+  <p>Nothing to add.</p>
+{% endif %}
+{% endblock %}

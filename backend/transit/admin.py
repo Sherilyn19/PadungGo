@@ -33,6 +33,7 @@ from .importers.osm_new_routes import (
     plan_new_route,
 )
 from .importers.osm_route import parse_osm_routes
+from .importers.stop_links import LINK_WALK_M, LINKS_PER_STOP, apply_links, plan_links
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
     CITY_NAMES,
@@ -511,6 +512,28 @@ class RoutePatternAdmin(admin.ModelAdmin):
 class TransferConnectionAdmin(admin.ModelAdmin):
     list_display = ("from_stop", "to_stop", "distance_m", "duration_seconds", "status")
     list_filter = ("status",)
+    change_list_template = "admin/transit/transfer_changelist.html"
+
+    def get_urls(self):
+        extra = [path("link-nearby-stops/", self.admin_site.admin_view(self.link_nearby_stops_view),
+                      name="transit_link_nearby_stops")]
+        return extra + super().get_urls()
+
+    def link_nearby_stops_view(self, request):
+        """Preview how many walking links are missing, then add them only when asked."""
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        links = plan_links()
+        if request.method == "POST" and request.POST.get("step") == "apply":
+            added = apply_links(links)
+            self.message_user(request, f"Done. Added {added} walking links between nearby stops.")
+            return HttpResponseRedirect(reverse("admin:transit_transferconnection_changelist"))
+        context = {
+            **self.admin_site.each_context(request), "title": "Link nearby stops",
+            "count": len(links), "examples": links[:15],
+            "max_walk_m": LINK_WALK_M, "per_stop": LINKS_PER_STOP, "opts": self.model._meta,
+        }
+        return TemplateResponse(request, "admin/transit/link_nearby_stops.html", context)
 
 
 @admin.register(FareRule)

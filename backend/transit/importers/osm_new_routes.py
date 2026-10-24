@@ -27,21 +27,24 @@ from transit.models import (
     DataSource, PatternStop, Route, RouteEvidence, RoutePattern, RouteSegment, Stop, TransferConnection,
 )
 from transit.models.enums import EvidenceStatus, RecordStatus
-from transit.planner.geo import haversine_m
 from transit.planner.loader import invalidate_network_cache
 
 from .gtfs_geometry import project_stops, slice_shape
+from .stop_links import apply_links, plan_links
 from .osm_route import (
     LICENSE_TEXT, MAX_STOP_OFFSET_M, SOURCE_TITLE_PREFIX, MappedRoute, NewStop,
 )
 
 VARIANT_PREFIX = "osm:"
 MIN_STOPS = 4
-# Routes the team checked by hand: not in the GTFS feed, and in areas that had no stops.
-RECOMMENDED_RELATIONS = (3207109, 3207166, 20605536, 20605537, 20605538, 20605539, 20605540, 20605541)
-# New stops closer than this to a stop already in the data get a walking link (both directions).
-LINK_WALK_M = 150
-LINKS_PER_STOP = 3
+# Mapped routes that are not in the GTFS feed (checked against the live route list):
+# 20A (Mandaue), MI-04A and MI-04B (Lapu-Lapu), 01K and 01Kx (to SM Seaside), 03L, 04B, 04H and 04M (Cebu City).
+# Ones already imported are reported as "Already imported", so the list can be reused.
+RECOMMENDED_RELATIONS = (
+    3207109, 3207166, 20605536, 20605537, 20605538, 20605539, 20605540, 20605541,
+    21251289, 21251290, 21452000, 21452001, 21251273, 21251274, 21251271, 21251272,
+    21256982, 20587180, 20587181,
+)
 _DIRECTION_SUFFIX = re.compile(r"\s*\((?:in|out)bound\)\s*$", re.IGNORECASE)
 
 
@@ -196,31 +199,6 @@ def _add_same_stop_transfers(stops: list[Stop], source: DataSource) -> int:
     return made
 
 
-def _nearby_stops(stop: Stop) -> list[tuple[float, Stop]]:
-    margin = 0.0016  # about 175 m of latitude; the exact distance is checked below
-    candidates = (Stop.objects.filter(
-        latitude__range=(stop.latitude - margin, stop.latitude + margin),
-        longitude__range=(stop.longitude - margin, stop.longitude + margin),
-        occurrences__isnull=False).exclude(id=stop.id).distinct())
-    close = [(haversine_m(stop.latitude, stop.longitude, c.latitude, c.longitude), c) for c in candidates]
-    return sorted((d, c) for d, c in close if d <= LINK_WALK_M)[:LINKS_PER_STOP]
-
-
-def _add_walking_links(stops: list[Stop], source: DataSource) -> int:
-    """Short links between a new stop and stops already in the data, so riders can change routes there."""
-    made = 0
-    for stop in stops:
-        for distance, other in _nearby_stops(stop):
-            for a, b in ((stop, other), (other, stop)):
-                _, created = TransferConnection.objects.get_or_create(
-                    from_stop=a, to_stop=b,
-                    defaults={"distance_m": round(distance), "status": RecordStatus.DOCUMENTED, "source": source,
-                              "restrictions": "Straight-line distance between two mapped stops; "
-                                              "the walking path is not verified."})
-                made += created
-    return made
-
-
 @dataclass
 class ImportResult:
     routes: int = 0
@@ -256,7 +234,8 @@ def apply_new_routes(plans: list[NewRoutePlan], vehicle_class: str) -> ImportRes
         if first_source is not None:
             stops = list(all_stops.values())
             result.stops = len(stops)
+            # Walking links to nearby stops already in the data, so riders can change onto existing routes.
             result.transfers = (_add_same_stop_transfers(stops, first_source)
-                                + _add_walking_links(stops, first_source))
+                                + apply_links(plan_links({stop.id for stop in stops})))
         invalidate_network_cache()
     return result
