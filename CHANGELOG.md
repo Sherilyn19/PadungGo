@@ -4,6 +4,17 @@ Significant changes will be recorded here as development occurs. Do not backdate
 
 ## Unreleased
 
+- "No trip found" now says why. The planner reports, for an empty result, which end
+  has no known stop within 500 m (and how far the nearest one is), and whether the
+  trip works the other way round. The app shows this in plain words and highlights
+  "Check the trip back" when only the other direction has trips. Found by testing
+  2,513 saved places from one starting point on the live API: nearly every failure
+  is missing stop data, not a routing fault. Places built from known stops: 100%
+  reachable. Cebu City: 75%. Mandaue: 12%. Lapu-Lapu: 0% (no known stop east of
+  longitude 123.923; the nearest is a median 5.2 km from a failing place). In Mandaue,
+  11 of 11 places with stops nearby had trips to Colon (21A, 21D, 22A, 22D) but not
+  from it. Adding the missing stops is a data task, not part of this change.
+
 - "Explain this trip" is friendlier and no longer repeats the screen. The AI now
   writes a short, cheerful, plain-words walkthrough (which jeepney to hop on, where
   to hop off or change) and is no longer given, or allowed to mention, fares,

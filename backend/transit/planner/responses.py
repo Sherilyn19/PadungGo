@@ -1,6 +1,8 @@
 """Planner coverage responses and public journey output."""
 from __future__ import annotations
 
+from typing import Optional
+
 from .journey_types import PlanRequest, PlanResult
 from .ranking import apply_labels, rank_options
 
@@ -20,7 +22,7 @@ _EMPTY_WARNINGS = {
 }
 
 
-def empty_result(req: PlanRequest, reason: str) -> PlanResult:
+def empty_result(req: PlanRequest, reason: str, coverage: Optional[dict] = None) -> PlanResult:
     return PlanResult(
         request_coverage_status=LIMITED,
         reason=reason,
@@ -32,6 +34,7 @@ def empty_result(req: PlanRequest, reason: str) -> PlanResult:
             "scarce_last": True,
         },
         warnings=[_EMPTY_WARNINGS[reason]],
+        coverage=coverage,
     )
 
 

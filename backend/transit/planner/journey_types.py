@@ -152,6 +152,9 @@ class PlanResult:
     journey_options: list[dict]
     ranking: dict
     warnings: list[str]
+    # Only for "no trip" answers: which end has no known stop, and how far away the
+    # nearest one is. None when trips were found.
+    coverage: Optional[dict] = None
 
     def to_dict(self) -> dict:
         return {
@@ -160,4 +163,5 @@ class PlanResult:
             "journey_options": self.journey_options,
             "ranking": self.ranking,
             "warnings": self.warnings,
+            "coverage": self.coverage,
         }
