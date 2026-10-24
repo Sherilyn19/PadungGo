@@ -325,3 +325,19 @@ def test_admin_stop_list_preview_then_create(staff):
 def test_admin_stop_list_shows_plain_error(staff):
     page = staff.post(LIST_URL, {"step": "preview", "stop_list": "nonsense"}).content.decode()
     assert "first line must be exactly" in page
+
+
+def test_prefill_return_direction_writes_the_stops_backwards_and_the_list_then_imports(staff):
+    route = Route.objects.create(code="RT9", name="Out and back", vehicle_class="jeepney")
+    pattern = RoutePattern.objects.create(route=route, variant_key="gtfs:rt9", direction="unspecified", status="documented")
+    for i in range(4):
+        stop = Stop.objects.create(name=f"Stop, {i}", latitude=LAT, longitude=123.90 + i * 0.01)
+        PatternStop.objects.create(pattern=pattern, stop=stop, sequence=i, distance_along_m=i * 1000)
+    response = staff.post("/admin/transit/routepattern/", {"action": "prefill_return_direction", "_selected_action": [str(pattern.pk)]})
+    assert response.status_code == 302 and response["Location"].endswith("/import-stop-list/")
+    page = staff.get(LIST_URL).content.decode()
+    assert page.index("Stop, 3") < page.index("Stop, 0") and "Out and back (return)" in page
+    assert "Stop, 3" not in staff.get(LIST_URL).content.decode()         # shown once only
+    text = html.unescape(page.split('rows="14"', 1)[1].split(">", 1)[1].split("</textarea>", 1)[0]).strip()
+    plans = _list_plans(text)
+    assert plans[0].problem == "" and plans[0].adds_to_existing and plans[0].stops[0].stop.name == "Stop, 3"

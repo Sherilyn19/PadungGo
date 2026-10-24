@@ -21,7 +21,7 @@ You see everything below before anything is saved.</p>
 
 {% if kind == "list" %}
 <h2>1. Paste the stops</h2>
-<form method="post">
+<form method="post" action="{% url 'admin:transit_import_stop_list' %}">
   {% csrf_token %}
   <p>One line per stop, in riding order, for one direction at a time. Keep the first line exactly as shown. Leave
   latitude and longitude empty only for a place whose exact name is already in our places. Change the direction text
