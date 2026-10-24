@@ -31,10 +31,10 @@ ONE = {"latitude": 10.300, "longitude": 123.900}
 TWO = {"latitude": 10.300, "longitude": 123.927}        # direct trip A1
 FAR = {"latitude": 10.3005, "longitude": 123.936}       # one-transfer trip A1 + B2
 
-DIRECT_OK = ("Board A1 at Stop One and get off at Stop Four. The ride takes about 15 minutes. "
-             "The fare is ₱13.00. Waiting time is unknown, so allow extra time.")
-TRANSFER_OK = ("Take A1 at Stop One and get off at Stop Three. Walk to Stop Five, then take B2 and get off at "
-               "Stop Seven. The fare is ₱26.00. Waiting time is unknown.")
+DIRECT_OK = "You're all set! Hop on A1 and hop off at Stop Four. Enjoy the ride!"
+TRANSFER_OK = ("You're all set! Hop on A1 and hop off at Stop Three, then walk to Stop Five and hop on B2 "
+               "to Stop Seven. Enjoy the ride!")
+BAD_FARE = "You're all set! Hop on A1 and hop off at Stop Four. It costs ₱99.00."
 
 
 @pytest.fixture(autouse=True)
@@ -161,38 +161,44 @@ def test_transfer_trip_is_explained_with_both_routes_in_order(client, net, provi
     assert body["explanation"].index("A1") < body["explanation"].index("B2")
 
 
-def test_unknown_fare_stays_unknown(client, net, provider):
+def test_fare_waiting_and_data_quality_are_never_sent_but_notices_still_warn(client, net, provider):
     FareRule.objects.update(status="documented")
-    fake = provider(reply("Take A1 from Stop One to Stop Four. The fare is unknown, so ask the driver. "
-                          "Waiting time is unknown."))
+    fake = provider(reply(DIRECT_OK))
     body = explain_direct(client).json()
     assert body["status"] == "ok"
-    assert '"fare": {"known": false}' in fake.prompt
+    for left_out in ("fare", "wait", "minute", "centavo", "verified", "route_name"):
+        assert left_out not in fake.prompt.split("Trip data (JSON):")[1].casefold(), left_out
     assert any("Total fare unavailable" in n for n in body["notices"])
     assert "Waiting time is unknown: no verified frequency data." in body["notices"]
 
 
-def test_historic_data_keeps_the_not_field_verified_warning(client, net, provider, settings):
+def test_historic_data_still_gets_the_server_warning_without_the_ai_repeating_it(client, net, provider, settings):
     settings.PLANNER = {**settings.PLANNER, "ALLOW_DOCUMENTED": True}
     RoutePattern.objects.update(status="documented")
     invalidate_network_cache()
-    fake = provider(reply("Take A1 from Stop One to Stop Four. This is historic data and not field-verified, so "
-                          "confirm the jeepney still runs. The fare is unknown, so ask the driver. The wait is unknown."))
+    fake = provider(reply(DIRECT_OK))
     body = explain_direct(client).json()
-    assert body["status"] == "ok"
-    assert "historic_not_field_verified" in fake.prompt
+    assert body["status"] == "ok" and body["explanation"] == DIRECT_OK
     assert any("not field-verified" in n for n in body["notices"])
+    assert "historic" not in fake.prompt.split("Trip data (JSON):")[1].casefold()
 
 
-def test_scarce_service_is_passed_on_and_must_be_mentioned(client, net, provider):
+def test_scarce_service_is_passed_on_and_cannot_be_called_common(client, net, provider):
     Route.objects.filter(code="A1").update(service_availability="scarce")
     invalidate_network_cache()
-    fake = provider(reply("Take A1 from Stop One to Stop Four. A1 is scarce, so few trips are reported. "
-                          "The fare is ₱13.00. The wait is unknown."))
+    fake = provider(reply("You're all set! Hop on A1, though it does not pass often, so a little patience helps. Hop off at Stop Four."))
     body = explain_direct(client).json()
     assert body["status"] == "ok"
     assert '"scarce_service": true' in fake.prompt
     assert any("A1 is flagged scarce" in n for n in body["notices"])
+
+
+def test_calling_a_scarce_route_common_is_rejected(client, net, provider):
+    Route.objects.filter(code="A1").update(service_availability="scarce")
+    invalidate_network_cache()
+    provider(reply(DIRECT_OK + " It is not scarce."))
+    body = explain_direct(client).json()
+    assert body["reason"] == "invalid_output" and body["check"] == "scarcity_claim"
 
 
 def test_trip_can_be_chosen_from_saved_place_ids(client, net, provider):
@@ -325,12 +331,12 @@ def test_unknown_saved_place_is_a_400(client, net, provider):
 
 
 @pytest.mark.parametrize("fabricated,reason_hint", [
-    ("Take A1 from Stop One to Stop Four, then ride 63C. The fare is ₱13.00. The wait is unknown.", "route"),
-    ("Take A1 from Stop One to Stop Four. The fare is ₱20.00. The wait is unknown.", "price"),
-    ("Take A1 from Stop One to Stop Four. It takes 5 minutes. The fare is ₱13.00. The wait is unknown.", "time"),
-    ("Take A1 from Stop One to Stop Four. Jeepneys run every 5 minutes. The fare is ₱13.00. The wait is unknown.", "frequency"),
-    ("Take A1 from Stop One to Stop Four, near the Colon church. The fare is ₱13.00. The wait is unknown.", "landmark"),
-    ("Take A1 from Stop One to Stop Four. The fare is ₱13.00.", "dropped warning"),
+    ("You're all set! Hop on A1 and hop off at Stop Four, then ride 63C. Enjoy!", "route"),
+    (BAD_FARE, "price"),
+    ("You're all set! Hop on A1 and hop off at Stop Four in 5 minutes. Enjoy!", "time"),
+    ("You're all set! Hop on A1, jeepneys run every 5 minutes. Hop off at Stop Four.", "frequency"),
+    ("You're all set! Hop on A1 and hop off at Stop Four, near the Colon church. Enjoy!", "landmark"),
+    ("You're all set! Hop on A1 and hop off at Stop Four. Enjoy the ride, it is the fastest!", "ranking"),
 ])
 def test_model_that_invents_facts_is_never_shown(client, net, provider, fabricated, reason_hint):
     fake = provider(reply(fabricated))
@@ -341,16 +347,15 @@ def test_model_that_invents_facts_is_never_shown(client, net, provider, fabricat
 
 
 def test_invalid_first_answer_is_retried_once_with_the_failed_check(client, net, provider):
-    fake = provider(reply("Take A1 from Stop One to Stop Four. The fare is ₱99.00. The wait is unknown."),
-                    reply(DIRECT_OK))
+    fake = provider(reply(BAD_FARE), reply(DIRECT_OK))
     body = explain_direct(client).json()
     assert body["status"] == "ok" and body["explanation"] == DIRECT_OK
     assert fake.calls == 2
-    assert "wrong_fare" in fake.sent[1]["body"]["messages"][-1]["content"]
+    assert "invented_fare" in fake.sent[1]["body"]["messages"][-1]["content"]
 
 
 def test_invalid_answers_are_not_cached(client, net, provider):
-    fake = provider(reply("Take A1 from Stop One to Stop Four. The fare is ₱20.00. The wait is unknown."))
+    fake = provider(reply(BAD_FARE))
     explain_direct(client)
     explain_direct(client)
     assert fake.calls == 4
@@ -443,7 +448,7 @@ def test_unconfigured_feature_is_unavailable_without_a_call(client, net, provide
 
 def test_daily_quota_stops_calls(client, net, provider, settings):
     settings.AI = {**settings.AI, "DAILY_REQUEST_LIMIT": 1}
-    fake = provider(reply("Take A1 from Stop One to Stop Four. The fare is ₱99.00. The wait is unknown."))
+    fake = provider(reply(BAD_FARE))
     body = explain_direct(client).json()   # attempt 1 is rejected, attempt 2 finds the quota used
     assert body["reason"] == "quota" and body["retryable"] is False
     assert fake.calls == 1
@@ -485,7 +490,7 @@ def test_only_post_is_allowed(client, net):
 
 
 def test_unavailable_response_names_the_failed_check_but_never_the_answer(client, net, provider):
-    secret_text = "Take A1 from Stop One to Stop Four, then ride 63C. The fare is ₱13.00. The wait is unknown."
+    secret_text = "You're all set! Hop on A1, hop off at Stop Four, then ride 63C. Enjoy!"
     provider(reply(secret_text))
     resp = explain_direct(client)
     body = resp.json()

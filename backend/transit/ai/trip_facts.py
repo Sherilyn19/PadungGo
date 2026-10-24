@@ -35,15 +35,11 @@ class TripFacts:
 
     prompt_facts: dict          # sent to the model, nothing else is
     route_codes: tuple          # in travel order, one entry per ride
-    stop_names: tuple           # every stop the answer must name
-    other_names: tuple          # route names: allowed, but not required
+    stop_names: tuple           # stops the answer must name: where to get off or transfer
+    other_names: tuple          # boarding stops and route names: allowed, not required
     scarce_codes: tuple
     transfers: int
     historic: bool
-    fare_text: str | None       # e.g. "₱13.00"; None means the fare is unknown
-    fare_is_approximate: bool
-    ride_minutes: tuple         # known minutes per ride (None when unknown)
-    transfer_walk_metres: tuple
     notices: tuple              # server-written warnings shown beside the answer
 
 
@@ -58,42 +54,15 @@ def stop_label(value) -> str:
     return UNNAMED_STOP if _UNNAMED_PREFIX.match(name) else name
 
 
-def format_pesos(centavos: int) -> str:
-    return f"₱{centavos // 100:,}.{centavos % 100:02d}"
-
-
-def _ride_minutes(seconds) -> int | None:
-    """Whole minutes, at least 1; unknown stays unknown."""
-    if type(seconds) is not int or seconds < 0:
-        return None
-    return max(1, round(seconds / 60))
-
-
-def _fare(option: dict) -> tuple[str | None, bool]:
-    """The total is shown only when the planner calls it complete and supported."""
-    fare = option.get("fare") or {}
-    centavos = fare.get("total_centavos")
-    known = (
-        fare.get("total_is_complete") is True
-        and fare.get("status") in ("exact", "approximate")
-        and type(centavos) is int
-        and centavos >= 0
-    )
-    if not known:
-        return None, False
-    return format_pesos(centavos), fare["status"] == "approximate"
-
-
 def _ride_step(number: int, ride: dict) -> dict:
     return {
         "step": number,
         "action": "ride",
         "route_code": clean_name(ride["route_code"]),
-        "route_name": clean_name(ride.get("route_name")),
+        "route_name": clean_name(ride.get("route_name")),  # allowed in an answer, never sent
         "board_at": stop_label(ride["board_stop_name"]),
         "get_off_at": stop_label(ride["alight_stop_name"]),
         "scarce_service": ride.get("service_availability") == "scarce",
-        "ride_minutes": _ride_minutes(ride.get("duration_seconds")),
     }
 
 
@@ -115,7 +84,6 @@ def _steps(segments: list[dict]) -> list[dict]:
                 # The planner links a stop to itself when both rides use the same stop.
                 "same_stop": segment.get("from_stop_id") is not None
                              and segment.get("from_stop_id") == segment.get("to_stop_id"),
-                "walk_metres": segment["distance_m"] if type(segment.get("distance_m")) is int else None,
             })
         elif index == 0:
             steps.append({"step": number, "action": "walk_to_first_stop",
@@ -124,6 +92,20 @@ def _steps(segments: list[dict]) -> list[dict]:
             steps.append({"step": number, "action": "walk_to_destination",
                           "from_stop": stop_label(segments[index - 1]["alight_stop_name"])})
     return steps
+
+
+def _model_view(steps: list[dict]) -> list[dict]:
+    """What the model sees of each step. The screen already shows fares, minutes,
+    distances and route names, so none of them are sent: the model cannot repeat,
+    or get wrong, what it was never given."""
+    keep = {
+        "ride": ("step", "action", "route_code", "board_at", "get_off_at", "scarce_service"),
+        "transfer_walk": ("step", "action", "from_stop", "to_stop", "same_stop"),
+    }
+    return [
+        {key: step[key] for key in keep.get(step["action"], tuple(step)) if key in step}
+        for step in steps
+    ]
 
 
 def _notices(option: dict, historic: bool, scarce_codes: tuple) -> tuple:
@@ -145,39 +127,27 @@ def build_trip_facts(option: dict) -> TripFacts:
     segments = option["segments"]
     steps = _steps(segments)
     ride_steps = [s for s in steps if s["action"] == "ride"]
-    transfer_steps = [s for s in steps if s["action"] == "transfer_walk"]
 
     historic = (option.get("evidence") or {}).get("verification_status") != VERIFIED
-    fare_text, approximate = _fare(option)
     scarce_codes = tuple(dict.fromkeys(s["route_code"] for s in ride_steps if s["scarce_service"]))
 
-    stop_names = []
-    for step in steps:
-        for key in ("stop", "board_at", "get_off_at", "from_stop", "to_stop"):
-            if step.get(key) and step[key] != UNNAMED_STOP:
-                stop_names.append(step[key])
+    def names(keys):
+        found = (step.get(key) for step in steps for key in keys)
+        return tuple(dict.fromkeys(n for n in found if n and n != UNNAMED_STOP))
 
-    prompt_facts = {
-        "data_status": HISTORIC if historic else VERIFIED,
-        "transfers": option["transfers"],
-        "steps": steps,
-        "fare": (
-            {"known": True, "total": fare_text, "certainty": "approximate" if approximate else "exact"}
-            if fare_text else {"known": False}
-        ),
-        "waiting_time": "unknown",
-    }
+    # The answer must say where to hop off and where to change. Boarding stops are
+    # optional (they are often unnamed, and the steps below the summary list them).
+    required_stops = names(("get_off_at", "from_stop", "to_stop"))
+    prompt_facts = {"transfers": option["transfers"], "steps": _model_view(steps)}
     return TripFacts(
         prompt_facts=prompt_facts,
         route_codes=tuple(s["route_code"] for s in ride_steps),
-        stop_names=tuple(dict.fromkeys(stop_names)),
-        other_names=tuple(n for n in dict.fromkeys(s["route_name"] for s in ride_steps) if n),
+        stop_names=required_stops,
+        other_names=tuple(dict.fromkeys(
+            [*names(("stop", "board_at")), *(s["route_name"] for s in ride_steps if s["route_name"])]
+        )),
         scarce_codes=scarce_codes,
         transfers=option["transfers"],
         historic=historic,
-        fare_text=fare_text,
-        fare_is_approximate=approximate,
-        ride_minutes=tuple(s["ride_minutes"] for s in ride_steps),
-        transfer_walk_metres=tuple(s["walk_metres"] for s in transfer_steps if s["walk_metres"] is not None),
         notices=_notices(option, historic, scarce_codes),
     )

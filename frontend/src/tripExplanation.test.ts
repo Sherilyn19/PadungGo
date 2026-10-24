@@ -236,3 +236,40 @@ describe('HTTP failures', () => {
     expect(explanationFromError(error)).toMatchObject({ phase: 'unavailable', retryable: true })
   })
 })
+
+// --- Presentation helpers ------------------------------------------------------
+
+import { animatedParagraphs, shortModelName, showsOlderRecordsReminder } from './tripExplanation'
+
+describe('word-by-word reveal', () => {
+  it('numbers words across paragraphs so the text appears in one flow', () => {
+    const words = animatedParagraphs(['You are set!', 'Enjoy the ride.'])
+    expect(words.map((p) => p.map((w) => w.text))).toEqual([['You', 'are', 'set!'], ['Enjoy', 'the', 'ride.']])
+    expect(words.flat().map((w) => w.index)).toEqual([0, 1, 2, 3, 4, 5])
+  })
+
+  it('ignores extra spaces and empty paragraphs', () => {
+    expect(animatedParagraphs(['  Hop   on  17D ', '']).map((p) => p.map((w) => w.text))).toEqual([['Hop', 'on', '17D'], []])
+  })
+
+  it('keeps every word exactly as written (nothing is added or dropped)', () => {
+    const text = "Hop on 04L, then hop off at Salinas Drive & enjoy!"
+    expect(animatedParagraphs([text])[0].map((w) => w.text).join(' ')).toBe(text)
+  })
+})
+
+describe('friendly reminder', () => {
+  it('shows only when the server says the data is not field-verified', () => {
+    expect(showsOlderRecordsReminder(['Built from documented data that is not field-verified; confirm it.'])).toBe(true)
+    expect(showsOlderRecordsReminder(['Waiting time is unknown: no verified frequency data.'])).toBe(false)
+    expect(showsOlderRecordsReminder([])).toBe(false)
+  })
+})
+
+describe('model label', () => {
+  it('drops the vendor prefix', () => {
+    expect(shortModelName('openai/gpt-oss-20b')).toBe('gpt-oss-20b')
+    expect(shortModelName('gpt-oss-20b')).toBe('gpt-oss-20b')
+    expect(shortModelName('')).toBe('')
+  })
+})

@@ -16,7 +16,7 @@ Cebu Hacktoberfest 2026. Submission is due **October 23, 2026, 11:59 PM (Asia/Ma
 | 0:15–0:22 | Choose the destination and search | Pick the destination and press Search. The loading placeholders appear. |
 | 0:22–0:35 | Results list | Show the options (direct or one transfer), route codes, the "Historic data · not field-verified" label and the Unknown fare or wait |
 | 0:35–0:43 | Open one option | Scroll through the numbered steps (walk, board, transfer, get off) and point out the ride line on the map |
-| 0:43–0:53 | **Explain this trip** (only if verified live, see below) | Press the button once. Show the loading state, then the text with its **AI-generated** label and the "Before you go" notes. |
+| 0:43–0:53 | **Explain this trip** (only if verified live, see below) | Press the button once. Show the animated button, the "cooking up a summary" state, then the "Here's the gist!" card with its **AI-generated** label; fold and unfold it once. |
 | 0:53–0:56 | Return trip | Optional: swap to show the independent return result or its honest empty state. Drop this row first if time runs short. |
 | 0:56–1:00 | End card | Repository URL, nothing else |
 
@@ -38,8 +38,8 @@ Tick items only when they are done and checked.
 **AI explanation** (open-weight model: `openai/gpt-oss-20b`, Apache 2.0, via GroqCloud)
 - [x] `AI_API_KEY`, `AI_BASE_URL` and `AI_MODEL` are set on Render (shown by working explanations; the key is not in the repository or any `VITE_*` variable).
 - [x] Render runs a commit with `/api/v1/journeys/explain`.
-- [x] Real explanations from `openai/gpt-oss-20b`, October 24, 2026, called on the live API (`padunggo-api.onrender.com`): 04D + 10O, 17D + 10M and 04D + 10M (one transfer); Ayala Center Cebu → Colon Obelisk (13C), → Fuente Osmena (17C), and the two return trips. Each was labelled AI-generated with the server notices. Four early attempts failed the accuracy checks and were fixed in #53, #56, #57 and #58.
-- [ ] **Owner:** press **Explain this trip** once in the browser on https://padung-go.app and confirm the text, the AI-generated label and the "Before you go" box appear. The API calls above were not made through the website.
+- [x] Real explanations from `openai/gpt-oss-20b`, October 24, 2026, called on the live API (`padunggo-api.onrender.com`): 04D + 10O, 17D + 10M and 04D + 10M (one transfer); Ayala Center Cebu → Colon Obelisk (13C), → Fuente Osmena (17C), and the two return trips. Each was labelled AI-generated (these runs used the earlier, longer wording). Four early attempts failed the accuracy checks and were fixed in #53, #56, #57 and #58.
+- [ ] **Owner:** press **Explain this trip** once in the browser on https://padung-go.app and confirm the card opens with a short friendly summary and the AI-generated label, and that it folds and unfolds. The API calls above were not made through the website.
 - [ ] After #62 is merged, repeat one explanation and confirm it never says a route is "not scarce" (before #62 it did on two of four trips).
 - [ ] The itinerary still works with the key removed (the button reports "unavailable").
 - [ ] The model is still `openai/gpt-oss-20b` on Groq's model list and the Hugging Face card still says Apache 2.0 (re-check on the submission day).
