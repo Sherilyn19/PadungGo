@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import zipfile
 from dataclasses import dataclass
 
@@ -33,7 +34,7 @@ from .importers.osm_new_routes import (
     plan_new_route,
 )
 from .importers.osm_route import parse_osm_routes
-from .importers.stop_list import EXAMPLE, parse_stop_list
+from .importers.stop_list import COLUMNS, EXAMPLE, parse_stop_list
 from .importers.stop_links import LINK_WALK_M, LINKS_PER_STOP, apply_links, plan_links
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
@@ -371,6 +372,24 @@ def _extend_from_osm(modeladmin, request, queryset, side):
     return TemplateResponse(request, "admin/transit/extend_from_osm.html", context)
 
 
+@admin.action(description="Prefill a return direction from these routes (same stops, reversed order)",
+              permissions=["change"])
+def prefill_return_direction(modeladmin, request, queryset):
+    """Write the stops of the chosen routes backwards into the stop-list page; staff review and trim them there."""
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(COLUMNS)
+    for pattern in queryset.select_related("route").order_by("route__code", "variant_key")[:5]:
+        direction = f"{pattern.signboard or pattern.route.name or pattern.route.code} (return)"
+        for occurrence in reversed(list(pattern.pattern_stops.select_related("stop").order_by("sequence"))):
+            stop = occurrence.stop
+            writer.writerow([pattern.route.code, direction, stop.name, round(stop.latitude, 6), round(stop.longitude, 6)])
+    request.session["prefill_stop_list"] = out.getvalue()
+    return HttpResponseRedirect(reverse("admin:transit_import_stop_list"))
+
+
 @admin.action(description="Add stops at the start from an OpenStreetMap route (preview first)", permissions=["change"])
 def extend_start_from_osm(modeladmin, request, queryset):
     return _extend_from_osm(modeladmin, request, queryset, "start")
@@ -511,7 +530,9 @@ class RouteAdmin(admin.ModelAdmin):
             "can_apply": bool(plans) and any(not p.problem for p in plans),
             "vehicle_class": vehicle_class, "vehicle_classes": classes,
             "download_command": download_routes_command(RECOMMENDED_RELATIONS),
-            "stop_list_example": EXAMPLE, "typed_list": request.POST.get("stop_list", ""),
+            "stop_list_example": EXAMPLE,
+            # Text prepared by the "Prefill a return direction" action is shown once, on the next visit.
+            "typed_list": request.POST.get("stop_list", "") or request.session.pop("prefill_stop_list", ""),
             "opts": self.model._meta,
         }
         return TemplateResponse(request, "admin/transit/osm_routes_import.html", context)
@@ -523,7 +544,8 @@ class RoutePatternAdmin(admin.ModelAdmin):
     list_filter = ("direction", "status", "route__vehicle_class")
     search_fields = ("route__code", "signboard", "variant_key")
     list_select_related = ("route",)
-    actions = [export_ordered_stops, adjust_stop_stretch, extend_start_from_osm, extend_end_from_osm]
+    actions = [export_ordered_stops, adjust_stop_stretch, extend_start_from_osm, extend_end_from_osm,
+               prefill_return_direction]
     inlines = [PatternStopInline, RouteSegmentInline]
 
 
