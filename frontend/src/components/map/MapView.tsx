@@ -1,3 +1,4 @@
+import './map-retro-border.css'
 import { ArrowDownToDot, ArrowRightLeft, BusFront, CircleDot, Flag, Minus, Plus, Scan, type LucideIcon } from 'lucide-react'
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl'
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
@@ -303,7 +304,7 @@ export default function MapView({ origin, destination, option, onMapClick, inset
   return (
     // A fully open phone sheet would push the corner overlays to the top of the
     // screen; past ~half height they stay behind the sheet instead.
-    <div className="relative h-full w-full" style={{ ['--map-bottom-inset' as string]: `${Math.min(insets.bottom, overlayLimit)}px` }}>
+    <div className="map-retro-border relative h-full w-full" style={{ ['--map-bottom-inset' as string]: `${Math.min(insets.bottom, overlayLimit)}px` }}>
       <div ref={container} className={`map-canvas-entrance h-full w-full${mapReady ? ' map-canvas-entrance--ready' : ''}`} aria-label="Map of Metro Cebu" aria-busy={!mapReady} role="region" />
       {!mapReady && <p className="map-loading-notice" role="status">{mapError ? 'The map could not connect. You can still use the trip planner. Refresh to try the map again.' : 'The map is taking a little longer. You can still plan your trip.'}</p>}
       {option && insets.bottom <= overlayLimit && (
