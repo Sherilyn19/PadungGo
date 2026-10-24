@@ -33,6 +33,7 @@ from .importers.osm_new_routes import (
     plan_new_route,
 )
 from .importers.osm_route import parse_osm_routes
+from .importers.stop_list import EXAMPLE, parse_stop_list
 from .importers.stop_links import LINK_WALK_M, LINKS_PER_STOP, apply_links, plan_links
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
 from .places.osm_import import (
@@ -453,30 +454,46 @@ class RouteAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         extra = [path("import-osm-routes/", self.admin_site.admin_view(self.import_osm_routes_view),
-                      name="transit_import_osm_routes")]
+                      name="transit_import_osm_routes"),
+                 path("import-stop-list/", self.admin_site.admin_view(self.import_stop_list_view),
+                      name="transit_import_stop_list")]
         return extra + super().get_urls()
 
     def import_osm_routes_view(self, request):
-        """Preview first, then create: whole routes from OpenStreetMap, for places with no stops."""
+        return self._import_routes(request, kind="osm")
+
+    def import_stop_list_view(self, request):
+        return self._import_routes(request, kind="list")
+
+    def _import_routes(self, request, *, kind):
+        """Preview first, then create whole routes: from OpenStreetMap, or from a typed-in stop list."""
         if not request.user.is_superuser:
             raise PermissionDenied
         step = request.POST.get("step", "")
+        classes = [VehicleClass.JEEPNEY, VehicleClass.BUS, VehicleClass.MODERN_PUV]
         vehicle_class = request.POST.get("vehicle_class")
-        if vehicle_class not in (VehicleClass.JEEPNEY, VehicleClass.BUS, VehicleClass.MODERN_PUV):
+        if vehicle_class not in classes:
             vehicle_class = VehicleClass.JEEPNEY
         plans = skipped = None
         payload = error = ""
         try:
             if step == "preview":
-                upload = request.FILES.get("routes_file")
-                if upload is None:
-                    raise OSMRouteError("Choose the downloaded file first.")
-                raw = upload.read(MAX_UPLOAD_BYTES + 1)
-                payload = raw.decode("utf-8")
+                if kind == "osm":
+                    upload = request.FILES.get("routes_file")
+                    if upload is None:
+                        raise OSMRouteError("Choose the downloaded file first.")
+                    payload = upload.read(MAX_UPLOAD_BYTES + 1).decode("utf-8")
+                else:
+                    payload = request.POST.get("stop_list", "")
+                    if not payload.strip():
+                        raise OSMRouteError("Paste the stop list first.")
             elif step == "apply":
                 payload = request.POST.get("payload", "")
             if payload:
-                routes, skipped = parse_osm_routes(payload.encode("utf-8"))
+                if kind == "osm":
+                    routes, skipped = parse_osm_routes(payload.encode("utf-8"))
+                else:
+                    routes, skipped = parse_stop_list(payload), []
                 plans = [plan_new_route(route) for route in routes]
                 if step == "apply" and any(not p.problem for p in plans):
                     result = apply_new_routes(plans, vehicle_class)
@@ -488,11 +505,13 @@ class RouteAdmin(admin.ModelAdmin):
             error = str(exc) if isinstance(exc, OSMRouteError) else "That file is not readable text."
             plans = None
         context = {
-            **self.admin_site.each_context(request), "title": "Add routes from OpenStreetMap",
+            **self.admin_site.each_context(request), "kind": kind,
+            "title": "Add routes from OpenStreetMap" if kind == "osm" else "Add a route from a stop list",
             "plans": plans, "skipped": skipped, "payload": payload, "error": error,
             "can_apply": bool(plans) and any(not p.problem for p in plans),
-            "vehicle_class": vehicle_class, "vehicle_classes": [VehicleClass.JEEPNEY, VehicleClass.BUS, VehicleClass.MODERN_PUV],
+            "vehicle_class": vehicle_class, "vehicle_classes": classes,
             "download_command": download_routes_command(RECOMMENDED_RELATIONS),
+            "stop_list_example": EXAMPLE, "typed_list": request.POST.get("stop_list", ""),
             "opts": self.model._meta,
         }
         return TemplateResponse(request, "admin/transit/osm_routes_import.html", context)

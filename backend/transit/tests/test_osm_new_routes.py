@@ -244,3 +244,84 @@ def test_admin_previews_then_adds_links(staff):
     assert "<strong>2</strong> links would be added" in page and TransferConnection.objects.count() == 0
     assert staff.post("/admin/transit/transferconnection/link-nearby-stops/", {"step": "apply"}).status_code == 302
     assert TransferConnection.objects.count() == 2
+
+
+# --- routes typed in as a stop list ----------------------------------------
+from transit.importers import stop_list as sl_mod  # noqa: E402
+
+LIST_URL = "/admin/transit/route/import-stop-list/"
+HEAD = "route_code,direction,stop_name,latitude,longitude\n"
+GOOD = HEAD + "".join(f"QQ1,Town to Beach,Stop {i},10.30,{123.90 + i * 0.01}\n" for i in range(4))
+
+
+def _list_plans(text):
+    return [n.plan_new_route(r) for r in sl_mod.parse_stop_list(text)]
+
+
+def test_a_typed_list_becomes_a_documented_route_with_straight_line_distances():
+    plans = _list_plans(GOOD)
+    assert plans[0].problem == "" and plans[0].code == "QQ1" and len(plans[0].stops) == 4
+    n.apply_new_routes(plans, "jeepney")
+    pattern = RoutePattern.objects.get(route__code="QQ1")
+    assert pattern.status == "documented" and pattern.variant_key.startswith("list:QQ1:")
+    assert RouteSegment.objects.filter(pattern=pattern).count() == 3
+    assert 1000 < RouteSegment.objects.filter(pattern=pattern).first().distance_m < 1200
+    assert "Stop list typed in" in pattern.evidence.first().source.title
+
+
+def test_the_same_list_cannot_be_added_twice():
+    n.apply_new_routes(_list_plans(GOOD), "jeepney")
+    assert _list_plans(GOOD)[0].problem.startswith("Already imported")
+
+
+def test_a_missing_direction_can_be_added_to_a_route_already_in_the_data():
+    route = Route.objects.create(code="QQ1", name="From feed", vehicle_class="jeepney")
+    RoutePattern.objects.create(route=route, variant_key="gtfs:qq1", direction="unspecified", status="documented")
+    plans = _list_plans(GOOD)
+    assert plans[0].problem == "" and plans[0].adds_to_existing
+    n.apply_new_routes(plans, "jeepney")
+    assert Route.objects.filter(code="QQ1").count() == 1 and RoutePattern.objects.filter(route=route).count() == 2
+
+
+def test_two_directions_share_their_stops():
+    back = HEAD + "".join(f"QQ1,Beach to Town,Stop {i},10.30,{123.90 + i * 0.01}\n" for i in (3, 2, 1, 0))
+    n.apply_new_routes(_list_plans(GOOD + back.split("\n", 1)[1]), "jeepney")
+    assert Stop.objects.filter(name="Stop 2").count() == 1 and RoutePattern.objects.count() == 2
+
+
+def test_a_stop_without_coordinates_uses_one_exact_known_place_only():
+    from transit.models import Location
+    Location.objects.create(name="Unique Plaza", latitude=10.30, longitude=123.90, kind="place")
+    Location.objects.create(name="Twin Plaza", latitude=10.30, longitude=123.91, kind="place")
+    Location.objects.create(name="Twin Plaza", latitude=10.30, longitude=123.92, kind="place")
+    rest = "".join(f"QQ2,Out,Stop {i},10.30,{123.93 + i * 0.01}\n" for i in range(3))
+    assert _list_plans(HEAD + "QQ2,Out,unique plaza,,\n" + rest)[0].stops[0].stop.longitude == 123.90
+    with pytest.raises(o.OSMRouteError, match="more than one known place"):
+        sl_mod.parse_stop_list(HEAD + "QQ2,Out,Twin Plaza,,\n" + rest)
+    with pytest.raises(o.OSMRouteError, match="no known place"):
+        sl_mod.parse_stop_list(HEAD + "QQ2,Out,Nowhere Land,,\n" + rest)
+
+
+@pytest.mark.parametrize("text,message", [
+    ("wrong,header\n", "first line must be exactly"),
+    (HEAD + "QQ3,Out,A,abc,123.9\n", "not a number"),
+    (HEAD + "QQ3,Out,A,40.0,123.9\n", "outside Metro Cebu"),
+    (HEAD + "QQ3,Out,A,10.30,123.90\nQQ3,Out,B,10.30,124.20\n", "wrong coordinate"),
+    (HEAD + ",Out,A,10.30,123.90\n", "required"),
+])
+def test_bad_lists_are_refused_in_plain_words(text, message):
+    with pytest.raises(o.OSMRouteError, match=message):
+        sl_mod.parse_stop_list(text)
+
+
+def test_admin_stop_list_preview_then_create(staff):
+    page = staff.post(LIST_URL, {"step": "preview", "vehicle_class": "jeepney", "stop_list": GOOD}).content.decode()
+    assert "Create these routes" in page and "Stop 2" in page and Route.objects.count() == 0
+    payload = html.unescape(page.split('name="payload" value="', 1)[1].split('"', 1)[0])
+    assert staff.post(LIST_URL, {"step": "apply", "vehicle_class": "jeepney", "payload": payload}).status_code == 302
+    assert Route.objects.filter(code="QQ1").exists()
+
+
+def test_admin_stop_list_shows_plain_error(staff):
+    page = staff.post(LIST_URL, {"step": "preview", "stop_list": "nonsense"}).content.decode()
+    assert "first line must be exactly" in page

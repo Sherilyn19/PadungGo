@@ -1,16 +1,37 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 <h1>{{ title }}</h1>
+{% if kind == "list" %}
+<p>For routes that no outside map data covers, such as the part of a route that the imported feed cuts short, or routes on
+Mactan Island. You type the stops of one direction in order; nothing is guessed. A stop without coordinates is matched only
+when exactly one known place has that exact name. Distances are <strong>straight lines</strong> between stops (real roads are
+longer). Routes are stored as <strong>documented, not field-verified</strong>. Adding a direction to a route code that
+already exists is allowed: the preview tells you, so do not repeat a direction that is already there.</p>
+{% else %}
 <p>Creates whole routes that OpenStreetMap contributors have mapped, for places where our imported data has no stops
 (for example parts of Lapu-Lapu and north Mandaue). Stops, their order, the road distances and the road shape all come
 from that map. Nothing is invented. A route code that already exists from another source is never added again. Routes are
 stored as <strong>documented, not field-verified</strong>, and fares stay unknown until a verified fare rule exists.
 You see everything below before anything is saved.</p>
+{% endif %}
 
 {% if error %}
   <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ error }}</p>
 {% endif %}
 
+{% if kind == "list" %}
+<h2>1. Paste the stops</h2>
+<form method="post">
+  {% csrf_token %}
+  <p>One line per stop, in riding order, for one direction at a time. Keep the first line exactly as shown. Leave
+  latitude and longitude empty only for a place whose exact name is already in our places. Change the direction text
+  for each direction (for example &ldquo;Carbon to Pit-os&rdquo;).</p>
+  <textarea name="stop_list" rows="14" style="width:100%;max-width:900px;font-family:monospace;font-size:12px;" placeholder="{{ stop_list_example }}" required>{{ typed_list }}</textarea>
+  <p><label>Vehicle type:
+    <select name="vehicle_class">{% for v in vehicle_classes %}<option value="{{ v }}" {% if v == vehicle_class %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label></p>
+  <p><button type="submit" name="step" value="preview" class="default">Show preview</button></p>
+</form>
+{% else %}
 <h2>1. Download the routes (on your own computer)</h2>
 <p>Open PowerShell, run <code>cd $HOME\Downloads</code>, then paste this one line and press Enter (it retries by itself;
 wait up to a few minutes). It saves <code>osm-routes.json</code> (Mandaue 20A, Lapu-Lapu MI-04A and MI-04B, SM Seaside 01K and 01Kx, and 03L, 04B, 04H, 04M). Routes you already added show &ldquo;Already imported&rdquo; and are left alone.</p>
@@ -25,13 +46,15 @@ wait up to a few minutes). It saves <code>osm-routes.json</code> (Mandaue 20A, L
   <small>Jeepney routes are mapped as &ldquo;bus&rdquo; in OpenStreetMap. Choose what these routes really are.</small></p>
   <p><button type="submit" name="step" value="preview" class="default">Show preview</button></p>
 </form>
+{% endif %}
 
 {% if plans or skipped %}
   <h2>3. Preview</h2>
   {% for message in skipped %}<p>Skipped: {{ message }}</p>{% endfor %}
   {% for plan in plans %}
     <h3>{{ plan.route.ref }} &mdash; {{ plan.route.name }}
-      <small><a href="https://www.openstreetmap.org/relation/{{ plan.route.relation_id }}" target="_blank" rel="noopener noreferrer">view on the map</a></small></h3>
+      {% if plan.adds_to_existing %}<small>(adds a direction to a route already in the data)</small>{% endif %}
+      {% if kind == "osm" %}<small><a href="https://www.openstreetmap.org/relation/{{ plan.route.relation_id }}" target="_blank" rel="noopener noreferrer">view on the map</a></small>{% endif %}</h3>
     {% if plan.problem %}
       <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ plan.problem }}</p>
     {% else %}
