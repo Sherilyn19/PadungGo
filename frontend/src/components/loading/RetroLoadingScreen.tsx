@@ -1,5 +1,6 @@
 import { BusFront, Heart } from 'lucide-react'
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
+import RetroLoadingBar from './RetroLoadingBar'
 import './retro-loading-screen.css'
 
 export default function RetroLoadingScreen({ ready }: { ready: boolean }) {
@@ -21,10 +22,8 @@ export default function RetroLoadingScreen({ ready }: { ready: boolean }) {
         <div className="retro-loading-content">
           <div className="retro-loading-stamp" aria-hidden="true"><BusFront size={32} strokeWidth={1.7} /><Heart size={12} /></div>
           <p className="retro-loading-heading">A tiny pause before we go.</p>
-          <div className="retro-loading-dots" aria-hidden="true">
-            {Array.from({ length: 5 }, (_, index) => (
-              <span key={index} style={{ '--dot-index': index } as CSSProperties} />
-            ))}
+          <div className="retro-loading-screen-progress">
+            <RetroLoadingBar />
           </div>
           <p className="retro-loading-phrase">Take a breath. Let’s go somewhere.</p>
           <p className="retro-loading-caption">Opening your little window to Cebu…</p>

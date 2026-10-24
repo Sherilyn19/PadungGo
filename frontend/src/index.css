@@ -451,28 +451,6 @@ body {
   animation-delay: calc(140ms + min(var(--i, 0), 8) * 65ms);
 }
 
-/* Retro segmented progress bar for loading. */
-@keyframes progress-slide {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 28px 0;
-  }
-}
-.progress-retro {
-  height: 14px;
-  border: 1px solid var(--color-brand-800);
-  border-radius: 3px;
-  background-color: #fff;
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--color-brand-500) 0 10px,
-    transparent 10px 14px
-  );
-  animation: progress-slide 700ms linear infinite;
-}
-
 @keyframes shimmer {
   from {
     background-position: -200px 0;

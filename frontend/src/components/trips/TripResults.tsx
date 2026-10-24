@@ -1,3 +1,4 @@
+import RetroLoadingBar from '../loading/RetroLoadingBar'
 import { CircleAlert, MapPin, RotateCcw, Route, Search, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 import type { JourneyOption, PlanResponse } from '../../api'
@@ -56,7 +57,7 @@ function Landing() {
 function Loading({ slow }: { slow: boolean }) {
   return (
     <div className="space-y-2" aria-hidden="true">
-      <div className="progress-retro" />
+      <RetroLoadingBar />
       {slow && <p className="fade-up px-1 text-xs text-ink-muted">Still searching. This can take up to a minute.</p>}
       {[0, 1, 2].map((k) => (
         <div key={k} className="card space-y-2 p-3">

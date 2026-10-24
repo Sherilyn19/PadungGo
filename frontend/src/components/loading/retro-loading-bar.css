@@ -1,0 +1,31 @@
+.retro-loading-bar {
+  position: relative;
+  height: 14px;
+  overflow: hidden;
+  border: 1px solid var(--color-brand-800);
+  border-radius: 3px;
+  background: white;
+}
+
+/* Move one complete stripe period so each loop joins without a jump.
+   Only the small inner strip moves, avoiding per-frame background repainting. */
+.retro-loading-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0 -20px 0 0;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-brand-500) 0 13px,
+    white 13px 20px
+  );
+  animation: retro-loading-stripes-travel 800ms linear infinite;
+}
+
+@keyframes retro-loading-stripes-travel {
+  from { transform: translateX(-20px); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retro-loading-bar::before { animation: none; }
+}
