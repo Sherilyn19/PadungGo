@@ -1,32 +1,23 @@
-# Transportation and Mapping Data Sources
+# Data sources and rights
 
-**This is a research checklist, not confirmation that any feed is current, complete, or licensed for redistribution.**
+Original PadungGo code and documentation use the [MIT License](../LICENSE). Third-party data and assets retain their own terms. Attribution alone does not establish permission to import or redistribute a dataset.
 
-| Potential source | Possible use | Verify before use |
+## Source and rights register
+
+| Material | Use and provenance | Rights and limits |
 |---|---|---|
-| LTFRB official communications | Route regulations and fare policies | Effective date, exact vehicle class, rounding and exceptions |
-| Cebu LGUs / transport offices | Terminals, authorized boarding places, route plans | Whether plan reflects current operations |
-| Cebu GTFS archive on Transitland | Historic shapes, stops and routes | Archived service dates; access and redistribution terms |
-| OpenStreetMap | Roads, map context, some transit locations | ODbL attribution / derived database obligations and tile policy |
-| Operator schedules / signs | Route operation and service frequencies | Current operation and permission to republish |
-| Permitted field observations | Boarding locations and directional operation | Timestamp, reviewer and scope of observation |
+| [Cebu DOTC GTFS archive via Transitland](https://www.transit.land/feeds/f-wcb4-cebu~dotc) | Historic transport shapes, stops, routes and timetable values, principally 2014–2017 | Reuse/redistribution permission has not been established. No feed ZIP is bundled. Availability through an archive is not a license or current-service confirmation. This remains a release/data-compliance gap. |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) | Map context, named-place imports and selected route corrections | Open Database License (ODbL); retain attribution and review database/derived-data obligations for the actual use. Map geometry does not establish current operation or safe boarding. |
+| [OpenFreeMap](https://openfreemap.org/) | Browser basemap tiles/style | Service and underlying map/font assets have separate terms and attribution. Do not relabel them MIT. |
+| [Geoapify](https://www.geoapify.com/) | Optional address labels and extra place suggestions | Provider terms, quotas and underlying-data attribution apply. Not a transport-service verifier. |
+| [Supplied LTFRB fare guides](FARE_GUIDE_2026-09-28.md) | Transcribed September 28, 2026 traditional and air-conditioned modern/electric tables | Source access/mapping and applicability limitations are documented separately; the PDFs are not bundled or relicensed. Approximate guide calculation is not a verified fare for every vehicle. |
+| [Commuter reports](ROUTE_AVAILABILITY_2026-10.md) | Scarcity/exclusion decisions and correction leads | Dated reports, not regulatory notices, measured frequency, or complete geometry. Avoid personal identifying details. |
+| [gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) | Optional AI explanation model, hosted by Groq | Apache 2.0 model license; separate hosting terms. Weights are not bundled. |
+| Pixelify Sans, Lucide, and software dependencies | Interface font/icons and application libraries | Font and icon packages carry their own OFL/ISC notices; preserve package licenses and check any added assets individually. MIT does not replace dependency licenses. |
 
-Useful starting URLs:
-- https://www.ltfrb.gov.ph/
-- https://www.transit.land/feeds/f-wcb4-cebu~dotc
-- https://www.openstreetmap.org/
+GTFS means General Transit Feed Specification, a transport-data format; the format itself does not grant permission for a particular feed. Keep source metadata, rights, observation dates, and derived changes together. Do not mark imported records verified just because import succeeds. See [verification](DATA_VERIFICATION.md).
 
-## Import rules
-
-1. Record licensing and source attribution **before** storing a third-party dataset in the public repository.
-2. Keep `data/candidate` and `data/verified` separate.
-3. Do not assume a source is accurate for 2026 merely because its webpage was recently refreshed.
-4. Never describe historical or synthetic data as current, verified commuter guidance.
-5. The MIT code license does **not** automatically cover third-party route databases or map tiles.
-
-## Pilot scope clarification
-
-The full vision covers locations within and across Cebu City, Mandaue City and Lapu-Lapu City. The MVP uses a smaller verified interconnected subset. 01K, 23D, 20A and 03Q are the initial research batch, not permanent limits or verified coverage. No October 14 research report is available in the supplied files; no historical findings or source values have been changed.
+The dated research below preserves source leads and limitations from earlier reviews. It is not a fresh audit of every external link or a statement that these services operate today. The later [fare review](FARE_GUIDE_2026-09-28.md) supersedes earlier statements that the supplied guide pages had not yet been inspected.
 
 ## Route-directory research — October 17, 2026
 
@@ -69,7 +60,7 @@ Shared place names suggest checking 01K/23D around Parkmall, 01K/03Q around
 SM City Cebu, and 03Q/20A around Ayala. These are research hypotheses only.
 Nearby terminals may have different bays, road sides, restrictions or unsafe
 crossings. Verify each directed pedestrian connection before adding a transfer.
-A plausible chain through all four services may exceed the MVP's one-transfer
+A plausible chain through all four services may exceed the current version's one-transfer
 limit; do not promise every pair is reachable merely because the graph connects.
 
 The four codes remain an initial batch. Future same-city and intercity research
@@ -90,22 +81,13 @@ Do not copy directory prices into the fare service. Waiting estimates require
 separate frequency/timetable evidence. No fare amount, coordinate, headway or
 route geometry was imported by this research.
 
-The pilot now has published descriptions supporting further investigation
+This October 17 research established published descriptions supporting further investigation
 (`documented` in research terms), but no operational database rows were created.
 Missing current directional, stop/access and rights evidence prevents trusted routing.
 
-### Reference and selective-reuse policy
+### Code and design references
 
-The owner chose references first: study JeepMe's map interactions/structure/route
-selection and JTransit's instructions/transfers/trip presentation. Build PadungGo's
-core using the approved stack, direction-aware planner, evidence records and
-independent return search.
-
-Evaluate small code reuse only when it saves time. Record the exact upstream
-file/commit, license and required notices, purpose, local modifications and tests.
-A repository code license does not establish rights or accuracy for every embedded
-dataset/map. Route catalogs remain research leads requiring separate verification.
-No third-party code or map assets have been copied.
+[JeepMe](https://github.com/RecursiveDev/JeepMe) and [JTransit](https://jtransit.github.io/) were studied as interface and journey-presentation references. This does not establish transport-data accuracy or permission to copy embedded datasets. Any reused code or asset needs its own source, revision, license, required notices, and modification record.
 
 ## Suroy reference review — October 17, 2026
 

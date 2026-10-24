@@ -22,7 +22,7 @@ Source: official mechanics images supplied by the user on Oct 19, 2026 (also sum
   - The project must be fresh. Organizers confirmed that initializing after Oct 3 is allowed.
   - It must be hosted on GitHub with a proper license. MIT is in place.
   - Any AI model built into the system must be open source or open weights. The planner uses none; the optional "Explain this trip" feature uses `openai/gpt-oss-20b` (Apache 2.0) hosted by GroqCloud.
-  - The participant must attend in person on **Oct 25, 2026**.
+  - The participant must attend the in-person event.
 - **Eligibility:** teams of 1–4 people (this is a solo project). Judges and the core organizers (Neriah "BJ" Ato, Sabrinah Yonell Yap, Dorell James Galang) cannot participate.
 - **Award categories:** Best Overall Project, Best Use of AI, Most Funny/Best Easter Egg.
 - **Repository visibility:** the repo is private now and must be **made public** before submission; check that judges can access it.

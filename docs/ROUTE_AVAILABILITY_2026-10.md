@@ -1,8 +1,6 @@
 # Route availability decisions — October 2026
 
-These are product decisions based on Sherilyn's (the owner's) and classmates'
-commuting reports. Treat those reports as reliable observations, not official
-regulatory notices. Historical references do not establish current frequency
+These are maintained product decisions based on commuter reports. They are reported observations, not independently verified regulatory notices. Historical references do not establish current frequency
 or complete route geometry. Later reports supersede earlier conflicting ones.
 
 ## Scarce
@@ -12,11 +10,11 @@ tooltip "Few jeepneys"): **01B, 03K, 14B, 12K, 21F, 21G, 22G**.
 
 | Route | Basis (commuting reports) |
 |---|---|
-| 01B | Classmate: operates only very occasionally. |
-| 03K | Latest classmate report (Oct 24, 2026): it operates, so the owner re-included it as Scarce. This supersedes the earlier "inactive" report. |
-| 14B | Owner: not seen for roughly five years; owner kept it as Scarce rather than excluded. |
-| 12K | Owner-approved as scarce. |
-| 21F, 21G, 22G | Mandaue classmate: very rare; paths have changed (see Mandaue section). |
+| 01B | Commuter report: operates only very occasionally. |
+| 03K | Latest commuter report (follow-up update): it operates, so the maintainer re-included it as Scarce. This supersedes the earlier "inactive" report. |
+| 14B | Maintainer report: not seen for roughly five years; maintainer kept it as Scarce rather than excluded. |
+| 12K | Maintainer-designated as scarce. |
+| 21F, 21G, 22G | Mandaue commuter: very rare; paths have changed (see Mandaue section). |
 
 No measured frequency or waiting time is available, so none is shown.
 Journeys containing a scarce ride follow ordinary journeys; the selected
@@ -27,11 +25,11 @@ sorting is preserved within each group, before the result limit.
 
 | Route | Basis |
 |---|---|
-| 03C, 03D | Owner explicitly approved exclusion after an ambiguous 03-series report. |
-| 03G | Latest classmate report: inactive. |
-| 07C | Classmates: no longer operates. |
-| 12N | Excluded based on classmate reports. |
-| 42D | Owner's precautionary product decision. |
+| 03C, 03D | Maintainer excluded the records after an ambiguous 03-series report. |
+| 03G | Latest commuter report: inactive. |
+| 07C | Commuter reports: no longer operates. |
+| 12N | Excluded based on commuter reports. |
+| 42D | Maintainer's precautionary product decision. |
 
 42D: Mango Jeep announced withdrawal of **its own** 42D service and said
 another operator continued serving the route
@@ -42,21 +40,23 @@ Excluded records keep their patterns, stops, fares and evidence; nothing is dele
 
 ## Unchanged
 
-14D, 17B, 17D and 12L: the owner reports these are not scarce. 03L received a
+14D, 17B, 17D and 12L: commuter reports indicate these are not scarce. 03L received a
 positive operating report but has no stored record (see Missing route data).
 
 Do not infer scarcity or closure from a missing webpage, a directory omission,
 or replacement of traditional vehicles with modern vehicles.
 
-## Application status (checked 2026-10-23 through the public API)
+## Recorded application checks (October 23–24, 2026)
+
+These are dated checks recorded by prior maintainers, not a new database census in the documentation review. Later data changes may supersede them.
 
 - Exclusions: none of 03C, 03D, 03G, 07C, 12N, 42D appears among the active
-  routes (checked 2026-10-23 on 90 routes; the 2026-10-24 list has 91, the extra
+  routes (checked on 90 routes; a later list has 91, the extra
   one being 03K, see below).
 - Scarcity: live journey plans returned `service_availability: "scarce"` for
   rides on all six scarce routes, with those journeys grouped last.
-- 03K was re-included as Scarce on 2026-10-24 (owner decision after a new
-  classmate report). Checked the same day through the public API: a live plan
+- 03K was re-included as Scarce in a follow-up update (maintainer decision after a new
+  commuter report). Checked the same day through the public API: a live plan
   (Fuente Osmena to Colon) returned a 03K ride with `service_availability: "scarce"`
   and `has_scarce_ride: true`. The 03K record in the list is "MABOLO - AYALA -
   COLON - SM - NORTH BUS". Whether this is the original record or a re-imported
@@ -68,12 +68,15 @@ The planner does not hardcode route codes or UUIDs.
 ### Re-import risk
 
 The GTFS importer can create fresh copies of routes (active, not_flagged)
-under a different source title, which would undo these decisions. No re-import
-is authorized; review this list before any future import.
+under a different source title, which would undo these decisions. Review this list and reconcile exact record identities before any future import.
+
+## Mandaue: the return leg stops short (follow-up check)
+
+An Admin export of 21A, 21D, 22A and 22D, plus live searches, shows each route is **one pattern** (direction "Unspecified") that holds both legs: out from Ibabao through Mandaue to the Carbon area, a turn-around of six stops that cannot be boarded or left, then a return leg north. The return leg **ends at M. Logarta Avenue**, about 3 km before Ibabao, so a trip from downtown Cebu to the Ibabao side of Mandaue has nowhere to get off. Checked live: boarding at Imus Avenue (a return-leg stop) reaches M. Logarta Avenue, but not the Mandaue City Police Office or Ibabao; Mandaue Police Office to Colon Obelisk works (21A, 21D, 22A, 22D). So the fix is stop data for the end of the return leg, not a larger search radius.
 
 ## Mandaue corrections
 
-Classmate reports, latest first:
+Commuter reports, latest first:
 - "20B ug 21B same rana. Ibabao Mandaue to Ayala." Accepted as an Ibabao–Ayala
   service with no Carbon continuation. No active 20B record is stored.
 - 21A, 21D, 22A, 22D: from Ibabao via SM Cebu; they stop at the Cathedral and the
@@ -91,7 +94,7 @@ What the stored data (Admin export, 2026-10-23) shows:
   Ibabao–Manalili–Cebu City. This agrees with the reports but is not
   verification of current service.
 
-Applied with the Admin action "Switch stops off or on along a stretch" (preview
+The prior maintenance record reports applying the Admin action "Switch stops off or on along a stretch" (preview
 first, reversible, only the boarding/getting-off switches change; distances,
 segments and transfers stay): 21A, 22A, 21D, 22D keep Kamagong Street /
 J. Solon Drive as the last Carbon-side stop and switch off the stops after it
@@ -101,9 +104,9 @@ those four patterns.
 Ibabao start (draft from OpenStreetMap): contributors map routes 22A and 22D with
 the same first stop, C. M. Cabahug (10.3244, 123.9502), and the stretch up to
 Ginebra San Miguel meets the stored start (Cebu North Road) about 90 m away.
-The Admin action "Add stops at the start from an OpenStreetMap route (preview
-first)" adds those 12 stops, with road distances and shape from the map, in front
-of the selected routes. Source: OpenStreetMap relation 3208066 (ODbL, credit
+The available Admin action "Add stops at the start from an OpenStreetMap route (preview
+first)" can add those 12 stops, with road distances and shape from the map, in front
+of the selected routes. The documentation review did not independently verify the production state of this extension. Source: OpenStreetMap relation 3208066 (ODbL, credit
 OpenStreetMap contributors). Stored as documented, not field-verified. 21A and
 21D have no OpenStreetMap route of their own; they share the corridor, so the
 same stretch is used. OpenStreetMap's 22A takes a different road via SM City Cebu
@@ -121,8 +124,8 @@ Still missing (no geometry invented):
 |---|---|---|
 | 42E | Continuing service implied by the Mango Jeep announcement above. | Needs its own path; never rename 42D or copy its path. |
 | 03L | Positive operating report; historical references: Mabolo–Carbon. | No stored record or path. |
-| 15, 15A | Owner saw both operating on 2026-10-23 (Asia/Manila). | No stored records; do not assume a shared path. |
-| 04B | Owner: not seen for about five years. | Not in the stored dataset; do not invent a record. |
+| 15, 15A | A contributor reported seeing both operating on 2026-10-23 (Asia/Manila). | No stored records; do not assume a shared path. |
+| 04B | Maintainer report: not seen for about five years. | Not in the stored dataset; do not invent a record. |
 | 04M | Requested as missing. | Unresolved. |
 | 11F, 11G | Listed in a supplied document screenshot (11F Inayawan–SM–Ayala via Leon Kilat; 11G Inayawan/Laray–Colon). | Research leads only. |
 | 02E | Report: operates via E-Mall toward Plaza; Pier continuation uncertain ("ata"). | Stored record exists; path not reconciled. |

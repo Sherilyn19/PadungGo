@@ -1,31 +1,16 @@
-# Solo Developer Roadmap
+# Roadmap
 
-**Planning summary, not completed work.** See
-[DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) for canonical gates and criteria.
+These are future priorities, not promises of implemented functionality or a committed schedule. See [current capabilities](PRODUCT_REQUIREMENTS.md) and [verification results](IMPLEMENTATION_REVIEW.md) first.
 
-PadungGo's full vision covers location-to-location journeys within and across
-the entire areas of Cebu City, Mandaue City and Lapu-Lapu City. The solo hackathon
-MVP demonstrates a smaller verified interconnected subset with direct journeys
-and at most one transfer. 01K, 23D, 20A and 03Q are an initial research batch,
-not the complete intended network. Geographic selection never guarantees coverage.
+| Priority | Improvement | Evidence needed before claiming completion |
+|---|---|---|
+| Data rights | Establish historical feed reuse/redistribution permissions or replace it with suitably licensed data | Source-specific terms or permission and attribution record |
+| Current service | Verify directional routes, boarding places, transfer access, and unresolved Mandaue corrections | Dated observations/operator evidence and reviewed geometry |
+| Fare reliability | Resolve vehicle subtype, fractional-distance treatment, source applicability, and guide supersession | Applicable current source and regression examples |
+| Consistent explanation | Align AI facts with selected passenger/vehicle estimates while preserving estimate labels | Contract changes and tests across known/unknown fares |
+| Freshness | Enforce review expiry and improve source/observation-date presentation | Explicit policy, eligibility checks, and tests |
+| Search quality | Assess nearest-stop heuristics, coverage boundaries, additional transfers and alternatives | Representative journeys, correctness comparisons, and performance measurements |
+| Operations | Shared caches/client limits, readiness checks, restore testing and observability | Multi-worker/replica checks and operational evidence |
+| Quality | Browser journeys, accessibility review, PostGIS integration tests and bundle reduction | Repeatable checks and measured before/after results |
 
-| Work phase | Required result |
-|---|---|
-| Design and eligibility | Consistent documents; registration complete and post-October-3 initialization allowed per participant |
-| Evidence readiness | Verified directional patterns, eligible stops and safe connections; no arbitrary route quota |
-| Backend and database | Django/DRF, Supabase PostgreSQL/PostGIS, migrations, Admin and validated imports |
-| Planner/API | Generic search, sourced fares, honest time components, distinct alternatives and independent returns |
-| Frontend | Four input methods for both endpoints, map plus text, accessible errors and limited-coverage messaging |
-| Quality and release | Automated checks, tested setup, changelog, deployment, GitHub submission and 1-minute video |
-| Coverage expansion | Add verified intra-city and intercity patterns/places without changing route logic |
-| Future improvements | Multiple transfers and measured infrastructure improvements after MVP completion |
-
-Test directionality, invalid transfers, unverified exclusions, unknown fare/time
-propagation, fewer-than-three results, asymmetric returns, GPS denial and API
-failure versus no-results. Synthetic fixtures prove algorithms, not real coverage.
-
-The participant confirms organizers allow initialization after October 3 and
-registration is complete. Submission is due **October 23, 2026 at 11:59 PM**
-(Philippine time used for planning). The repository is private during development;
-plan public release and verify judge access for submission. The pictured October 25
-attendance requirement remains a separate event. See [mechanics review](NEXT_STEPS.md).
+More routes, live arrivals, complete journey times, offline use, and ticketing are not present capabilities. Expand only when suitable data, permissions, and testing support the claim.

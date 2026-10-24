@@ -1,12 +1,10 @@
-# Data directory
+# Data contributions
 
-Do not import source records as verified unless the seven-step route checklist is satisfied and reuse rights are confirmed. This starter ships **no route data**.
+This directory contains guidance and empty candidate/verified placeholders, not a bundled transport feed. Production data is maintained separately in the application database.
 
-- `candidate/`: research leads and unverified notes (not used for trusted journey suggestions)
-- `verified/`: records approved for recommendation, with source/evidence references
+- `candidate/`: space for permitted research leads and supporting notes.
+- `verified/`: space for permitted reviewed records with source/evidence references.
 
-Do not commit restricted third-party feeds or personal data.
+Follow the [verification standard](../docs/DATA_VERIFICATION.md) and [source/rights register](../docs/DATA_SOURCES.md). Moving a file between these directories does not change database status or establish verification. Do not commit restricted feeds or personal information. The MIT code license does not cover third-party data automatically.
 
-## Dataset scope
-
-The full vision covers locations within and across Cebu City, Mandaue City and Lapu-Lapu City. The MVP uses a smaller verified interconnected subset. 01K, 23D, 20A and 03Q are only the initial research batch, not permanent limits. Follow direction-aware patterns and evidence history in [database design](../docs/DATABASE_DESIGN.md); missing fare and wait data stay unknown.
+For an authorized feed, see [import instructions](../backend/README.md#import-a-transport-feed). Historic imports remain documented and need an explicit configuration setting to appear in planner results.

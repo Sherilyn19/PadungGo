@@ -1,41 +1,14 @@
-# PadungGo Frontend
+# PadungGo frontend
 
-React + TypeScript + Vite, Tailwind CSS, MapLibre GL JS with OpenFreeMap tiles
-(OpenStreetMap data, no API key). It calls the Django API; it never talks to the
-database directly.
+React, TypeScript, Vite, Tailwind CSS, and MapLibre provide the commuter interface. The frontend calls the Django API; it does not connect directly to the database. Map tiles use OpenFreeMap with OpenStreetMap attribution.
 
-## Run locally (Windows PowerShell)
+- [Run locally and test](../docs/REPOSITORY_SETUP.md)
+- [Commuter guide](../docs/USER_FLOW.md)
+- [API behavior](../docs/API_DESIGN.md)
+- [Deployment](../docs/DEPLOYMENT.md)
 
-`npm.cmd` works even when PowerShell's execution policy blocks `npm.ps1`.
+The interface supports place search, device location, map pins, direct/one-transfer journeys, independent return search, fare-estimate choices, scarcity notices, and optional AI explanations. It requests up to 50 alternatives and reveals eight at a time. Ride lines use stored geometry; dashed walking connections are not verified pedestrian paths.
 
-```powershell
-cd frontend
-npm.cmd ci                              # exact versions from package-lock.json
-Copy-Item .env.example .env.local       # set VITE_API_BASE_URL if not using a local backend
-npm.cmd run dev                         # http://localhost:5173
-npm.cmd test                            # Vitest: API client, formatting, journey steps
-npm.cmd run build                       # type-check and production build into dist/
-```
+The welcome screen is timed at five seconds per page mount, independently of API readiness. Waiting times and complete trip durations remain unknown. The fare selector affects displayed estimates, not the facts supplied to AI.
 
-`VITE_API_BASE_URL` is public (it ends up in the browser bundle). Never put
-secrets in `VITE_*` variables.
-
-## Deploy to Vercel
-
-- Root Directory: `frontend` (Vite is auto-detected; build `npm run build`, output `dist`).
-- Environment variable: `VITE_API_BASE_URL=https://padunggo-api.onrender.com/api/v1`.
-- Then set `FRONTEND_ORIGIN` on the Render backend to the Vercel URL
-  (for example `https://padunggo.vercel.app`) so the browser is allowed to call the API.
-
-## What the UI shows
-
-- Start/destination by search, device location, or tapping the map.
-- Up to five options, direct or with one transfer; independent return trip.
-- Ride lines follow the imported route shapes. Walk legs are dashed straight
-  lines, labelled as not verified walking paths.
-- Unknown fares, waits and walking times are shown as "Unknown", never zero.
-- Historic GTFS results are labelled "not field-verified".
-- Numbered journey steps cover walking, boarding, transfers (including
-  same-stop transfers) and getting off.
-- Loading placeholders and short reveal animations; reduced-motion settings
-  turn off the animations and make map camera moves instant.
+`VITE_API_BASE_URL` is embedded in the public build. Never put credentials in `VITE_*` variables. Frontend changes are checked with Vitest and the TypeScript/Vite production build; a passing build is not a browser accessibility or end-to-end test.

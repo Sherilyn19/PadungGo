@@ -1,86 +1,33 @@
-# PadungGo User Flow
+# Using PadungGo
 
-**Planned behavior; no working interface exists yet.** The full vision covers
-locations within and across Cebu City, Mandaue City and Lapu-Lapu City. The MVP
-can recommend only a verified interconnected subset; 01K, 23D, 20A and 03Q are
-research leads, not selectable verified services by default.
+Open [PadungGo](https://padung-go.app). A short welcome screen appears on page load; it is timed and does not mean the API is ready.
 
-## Main journey
+1. Select your start and destination. Type a place and choose a suggestion, use device location with permission, or select a point on the map. Check the marker: similarly named places may be different locations.
+2. Search for journeys. The hosted API may take time to wake. Available results contain direct rides or one transfer; use the control below the list to reveal more alternatives.
+3. Open an option. Read the numbered walking, boarding, transfer, and alighting steps, and compare the ride line with the map.
+4. Review the fare information. Choose Regular or the grouped Student/Senior/PWD category and a vehicle type per ride. “Not sure” can show a range. These are estimates, not a guarantee of entitlement, vehicle type, or the amount collected. If any ride lacks a usable amount, a complete total is not shown.
+5. Optionally press **Explain this trip**. The AI-generated text summarizes the selected itinerary. It opens as a short “Here’s the gist!” card that you can fold away, and it does not repeat the fare or times shown above it. Check the trip details below it; the AI can make mistakes and does not use your fare-selector choices.
+6. Use the return-trip action for a fresh search. The return service and stops may differ or may be missing.
 
-```mermaid
-flowchart TD
-    A[Open app and see limited verified coverage] --> B[Select origin and destination]
-    B --> C[Validate coordinates and intended geographic area]
-    C --> D[Search verified network: direct or one transfer]
-    D --> E{Valid alternatives available?}
-    E -- Yes --> F[Compare distinct options and estimate limitations]
-    E -- No --> G[Explain no verified journey and allow editing]
-    F --> H[Select option: text instructions and map]
-    H --> I[Request independent return search]
-    I --> D
-```
+## Read the uncertainty labels
 
-## Endpoint selection
+- **Historic / not field-verified:** the source does not confirm current operation. Confirm locally before relying on it.
+- **Scarce:** reports suggest few vehicles. No measured wait is available. An unflagged route is not confirmed frequent.
+- **Estimated / approximate fare:** recorded distance and vehicle assumptions can differ from actual charging. Ask the driver.
+- **Unknown time:** the application lacks a supported duration. An archived ride subtotal is not a full trip time.
+- **Walking connection:** dashed straight lines are not checked walking paths. Use safe, permitted crossings.
 
-For either endpoint, offer current GPS location with permission, manual name
-search, map-point selection, or predefined places/landmarks/terminals. Resolve
-search selections to coordinates; show ambiguous matches for confirmation.
-Allow changing either point and swapping endpoints. GPS denial or inaccuracy
-leads to manual alternatives. Do not require GPS merely to select a destination.
+The data-update date means stored network information changed; it is not the date someone rode every route.
 
-Accept points in any of the three cities, including two points in the same city
-or barangay. First check geographic validity, then transport coverage. Explain
-that a selectable place may lack verified connections; never silently snap a
-location to a different city or imply that city inclusion guarantees a journey.
+## When something is unavailable
 
-## Results and instructions
-
-Aim for 3–5 distinct valid alternatives, showing fewer when fewer exist. Multiple
-labels on one alternative do not create additional journeys. Show fare, supported
-duration components, transfers and walking distance to support comparison.
-
-For the selected option, present sequential text and matching map segments:
-
-1. Walk to the named eligible boarding location using supported pedestrian data.
-2. Recognize the jeepney/bus, route code or signboard, and direction.
-3. Ride to the named alighting point.
-4. If needed, walk to the connecting boarding location and board the next service.
-5. Alight and complete the final walk to the selected destination.
-
-Map origin/destination, boarding/alighting points, ride geometries, transfer
-points and supported walks; switching alternatives updates the highlighted path.
-Keep route identity and stop instructions understandable without map colors.
-
-Show per-leg and total fare, source/effective date, assumptions and uncertainty.
-Separate walking, waiting and riding. Unknown components remain unknown; show a
-known subtotal with exclusions rather than an apparently complete trip duration.
-Show verification dates, evidence references and limits, not a real-time badge.
-
-## Return flow
-
-Request B→A through the same planner with independently selected directional
-patterns, stops, transfers, costs and ranking. Offer multiple distinct return
-options when available; never reverse the outbound instructions mechanically.
-Preserve outbound results if the return has no verified option.
-
-## Failure and incomplete-data states
-
-| State | User-facing behavior |
+| Situation | Meaning and action |
 |---|---|
-| GPS denied/unavailable | Explain briefly and retain search, map and predefined inputs |
-| Invalid coordinate or ambiguous search | Identify the affected field; let the user correct/select it |
-| Outside intended three-city area | Explain geographic scope and allow a new selection |
-| Inside area but insufficient verified data | Explain limited coverage without claiming no public service exists |
-| No itinerary within one transfer | Say no verified journey under MVP limits; allow endpoint edits |
-| Missing/stale route direction or unsafe transfer | Exclude it from guidance rather than infer a connection |
-| Unknown fare or time | Keep valid ride guidance; label unknown estimate and disable unsupported ranking claims |
-| Walking provider unavailable | Explain missing pedestrian guidance; exclude journeys whose access cannot be established |
-| API/network failure | Keep inputs, show retry, and distinguish failure from genuine no-results |
-| Return unavailable | Explain separately; retain outbound itinerary |
+| No journey found | The stored data and one-transfer search cannot supply an option. This does not prove no public transport exists. Try a nearby known landmark or ask locally. |
+| Start and destination are almost identical | Choose distinct endpoints if you intended a ride. |
+| Address unavailable | The selected coordinates are still used. Check the pin before searching. |
+| AI explanation unavailable | Continue using the itinerary. The provider, quota, or output checks may have prevented an answer. |
+| Too many requests | Wait for the indicated retry period. |
+| A route looks wrong | Do not rely on it. [Report an issue](https://github.com/Sherilyn19/PadungGo/issues) with a source and observation date, without private trip history. |
 
-## Accessibility and privacy
-
-Use keyboard-operable selectors and map alternatives, labeled fields, clear focus,
-readable text/contrast, screen-reader status messages and non-color identifiers.
-Explain GPS consent; do not store precise commuter location history or expose it
-in analytics/logs. See [API states](API_DESIGN.md) for the matching response contract.
+See the [source register](DATA_SOURCES.md) for provenance and the [project overview](../README.md) for scope.

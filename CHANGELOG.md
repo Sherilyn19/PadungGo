@@ -1,20 +1,30 @@
 # Changelog
 
-Significant changes will be recorded here as development occurs. Do not backdate entries or fabricate development history.
+Significant project changes. Earlier dated entries describe their historical state, not necessarily current behavior.
+
+## Documentation review (follow-up pass)
+
+- Replaced the event-branded overview with a general project README and useful license/CI/contribution badges.
+- Organized commuter instructions, setup, architecture, database, API, data rights, AI, security, and deployment guides around the current implementation.
+- Retired obsolete personal schedules and pre-implementation checklists while retaining dated source and fare evidence.
+- Separated competition alignment from the public product overview; recorded the public repository and participant-confirmed completed video/form submission.
+- Documented historic data, unresolved feed permissions, approximate fare assumptions, incomplete timing, heuristic search, process-local limits, and AI fare-selection differences.
+- Recorded verification results and limits in [the implementation review](docs/IMPLEMENTATION_REVIEW.md). No application behavior, license, data, or deployment changed in this documentation pass.
 
 ## Unreleased
 
+- Documentation brought up to date with the application changes merged after the review: the shorter, friendlier AI summary (it no longer receives or repeats fares and times, and the "Before you go" list is gone), the `coverage` field on empty plan results, and the Mandaue return-leg finding.
+
 - "No trip found" now says why. The planner reports, for an empty result, which end
   has no known stop within 500 m (and how far the nearest one is), and whether the
-  trip works the other way round. The app shows this in plain words and highlights
-  "Check the trip back" when only the other direction has trips. Found by testing
-  2,513 saved places from one starting point on the live API: nearly every failure
-  is missing stop data, not a routing fault. Places built from known stops: 100%
-  reachable. Cebu City: 75%. Mandaue: 12%. Lapu-Lapu: 0% (no known stop east of
-  longitude 123.923; the nearest is a median 5.2 km from a failing place). In Mandaue,
-  11 of 11 places with stops nearby had trips to Colon (21A, 21D, 22A, 22D) but not
-  from it. Adding the missing stops is a data task, not part of this change.
-
+  trip works the other way round. The app shows this in plain words. Measured on the
+  live API (25 random saved places per city, searched from Colon Obelisk): about 80%
+  of Cebu City places, about 24% of Mandaue places and none of the Lapu-Lapu places
+  returned a trip. Where no stop was within 500 m, the nearest known stop was a median
+  1.8 to 2.2 km away and none was within 0.8 km, so a larger radius would not help:
+  stop data is missing. In Mandaue, the 21A, 21D, 22A and 22D return leg ends at
+  M. Logarta Avenue, about 3 km before Ibabao. An earlier note here that quoted 12%
+  and 5.2 km used a rougher method and was corrected in a follow-up check.
 - "Explain this trip" is friendlier and no longer repeats the screen. The AI now
   writes a short, cheerful, plain-words walkthrough (which jeepney to hop on, where
   to hop off or change) and is no longer given, or allowed to mention, fares,
@@ -40,7 +50,7 @@ Significant changes will be recorded here as development occurs. Do not backdate
 - The sort picker is hidden while the planner can only order by fewest transfers
   (#63). Cheapest, Fastest and Least walking always fell back to it. The API still
   accepts all four.
-- Route 03K is Scarce again (owner decision after a new classmate report, Oct 24).
+- Route 03K is Scarce again (updated commuter report).
 - New demo journey for the video: Ayala Center Cebu to Colon Obelisk and back (17D to
   42D no longer works because 42D is excluded). Site address is now
   https://padung-go.app.
@@ -74,8 +84,7 @@ Significant changes will be recorded here as development occurs. Do not backdate
   answer is checked against the planner's facts before display, and timeouts,
   quota or bad answers show an "unavailable" state without affecting the
   itinerary. Per-visitor throttle `DRF_EXPLAIN_THROTTLE` (6/min), a daily provider
-  cap, and caching. Disabled until `AI_API_KEY` is set. Not yet verified against
-  the live hosted model. No migration; ride segments of the plan response are
+  cap, and caching. Disabled until `AI_API_KEY` is set. Initially unverified against the live hosted model; later checks returned real explanations (see the review record). No migration; ride segments of the plan response are
   now typed with their `route_pattern_id` / occurrence IDs on the frontend.
 
 - Trip planning is now limited per visitor (30 searches a minute, adjustable with
@@ -129,7 +138,7 @@ Significant changes will be recorded here as development occurs. Do not backdate
   guides print one shared discounted column.
 - Favicon replaced with the PadungGo header logo (SVG, 32px PNG, Apple
   touch icon).
-- Panel headers restyled after the owner's blue linocut reference: navy to
+- Panel headers restyled with a blue linocut style: navy to
   cobalt, printed speckles, a hand-cut white frame and a small star.
 
 ### Fare estimates (backend) — October 22, 2026
@@ -151,14 +160,14 @@ Significant changes will be recorded here as development occurs. Do not backdate
   fares keep priority and are never reused for another passenger type. Rides
   without a supported fare say "Ask the driver for this ride's fare." and no
   total is shown.
-- Cream, moss and coral accents from the owner's second palette reference.
+- Cream, moss and coral accents in the updated palette.
   Ride colours are now blue, moss, coral, charcoal, teal and plum.
 - `formatFare` uses integer centavo maths and rejects fractional or negative
   amounts.
 
 ### Commuter UI redesign — October 21, 2026
 
-- New blue design system based on the owner's reference: one blue accent,
+- New blue design system with the updated visual direction: one blue accent,
   1px borders, 4px corners, a faint grid background, a self-hosted pixel
   display face (Pixelify Sans, OFL) and Lucide SVG icons. No emojis.
 - Desktop/tablet: resizable left panel (drag, arrow keys, double-click to
@@ -178,11 +187,11 @@ Significant changes will be recorded here as development occurs. Do not backdate
   shows 8 at a time with "Show more", falling back to 5 on older deployments.
 - Sort and transfer changes re-run the current search, and stale responses
   are ignored.
-- Owner review follow-up:
+- Interface review follow-up:
   - Trip accordions replaced by a sliding, resizable "Trip details" panel
     beside the list (side by side on wide screens, over the list on tablets,
     full sheet view with "All trips" on phones).
-  - Each ride has its own colour from the owner's palette reference, used in
+  - Each ride has its own colour from the interface palette, used in
     the timeline, route plates, journey strip and map line.
   - Info tooltips, data-source notes and status text removed from commuter
     views; one short "Routes can change" note remains.
@@ -245,7 +254,7 @@ Merged to `main`. Production deployment of #22 and #23 has not been verified yet
 ### Security and correctness fixes — October 19, 2026
 
 **Security**
-- **Production settings:** they no longer guess from the command line whether tests are running. Before, that guess could enable the dev secret key and skip the HTTPS/secure-cookie settings. Now the security settings depend only on `DJANGO_DEBUG`, and the server refuses to start in production without a real secret key. Tests use `config/test_settings.py`.
+- **Production settings:** they no longer guess from the command line whether tests are running. Before, that guess could enable the dev secret key and skip the HTTPS/secure-cookie settings. Now the security settings depend only on `DJANGO_DEBUG`, and the server refuses to start in production with a missing or default development secret key. Tests use `config/test_settings.py`.
 - **GTFS upload:**
   - Oversized uploads are refused from the `Content-Length` header (413) before Django reads the body.
   - The file must have a `.zip` extension and its contents must really be a zip archive.
@@ -271,7 +280,7 @@ Merged to `main`. Production deployment of #22 and #23 has not been verified yet
 - Initial project concept, architecture, open-source contribution guidance and data-verification standards.
 
 ### Changed — October 17, 2026
-- Distinguished full intra-city/intercity coverage vision, verified MVP subset and initial four-route research batch.
+- Distinguished full intra-city/intercity coverage vision, verified initial version subset and initial four-route research batch.
 - Aligned the seven core documents, direction-aware schema, shared versioned API, independent returns and 3–5 distinct alternatives when available.
 - Standardized unknown fare/time behavior and preserved detailed routing guidance.
 - Visually reviewed all eight supplied mechanics images and recorded eligibility uncertainty, implementation gaps, audit and consistency review in docs/NEXT_STEPS.md.
@@ -279,32 +288,24 @@ Merged to `main`. Production deployment of #22 and #23 has not been verified yet
 
 ### Updated after participant clarification — October 17, 2026
 - Recorded completed registration, intentionally private development repository, organizer permission to initialize after October 3, and October 23 at 11:59 PM submission deadline (Philippine time used for planning).
-- Removed the resolved initialization-date blocker and retained public-release/submission and October 25 attendance tasks.
+- Removed the resolved initialization-date blocker and retained public-release/submission and in-person attendance tasks.
 - Added a sourced, limited JeepMe/JTransit reference review; no competitor code or transport data imported.
 - The earlier documentation ZIP remains a historical snapshot; repository documents contain these latest updates.
 
 ### Research update — October 17, 2026
-- Recorded the owner's references-first/selective-code-reuse decision.
+- Documented a references-first approach with source and license checks for selective reuse.
 - Reviewed CommuteTour and Cebu Jeepneys for 01K, 03Q, 20A and 23D; recorded source links, variant/alias questions, licensing, connectivity hypotheses and verification gaps.
 - Flagged outdated fare references and the need for the applicable current LTFRB matrix; no routes, fares, coordinates, third-party code or map assets imported.
 
 ### Reference and planning update — October 17, 2026
 - Added Suroy's guide as a secondary reference with metadata/fare-currency caveats; no operational data imported.
-- Recorded workshop nonattendance, distinguished workshop tooling themes from explicit competition requirements, and retained the checkpoint-attendance uncertainty.
-- Added immediate evidence/scope/deployment planning priorities and a provisional schedule through October 23; implementation remains unstarted.
-
-### Planned
-- Initial route dataset after evidence review.
-- Django REST API and database migrations.
-- React map, GPS and location selectors.
-- Direction-aware itinerary search, alternative ranking, fare estimates and time breakdowns.
-- Test suite and production deployment.
+- Distinguished workshop tooling themes from explicit competition requirements and retained the checkpoint uncertainty.
+- Added initial evidence, scope, and deployment planning priorities before implementation.
 
 ### Stack update — October 17, 2026
-- Added an open-weight AI explanation layer and documented Hosted open-weight inference API.
-- Kept personal hardware and local configuration private; no device specifications were added to repository documentation.
+- Documented a proposed open-weight AI explanation layer and hosted inference interface; implementation came later.
 - Kept the deterministic planner authoritative and Kiro/ACP/MCP as optional workshop/development context.
 
 ### Deployment clarification — October 17, 2026
-- Recorded that the competition deliverable must be deployed and usable remotely.
-- Reclassified Ollama as optional development tooling; production AI must use a hosted open-weight inference path behind Django.
+- Recorded the project goal of a deployed application usable remotely.
+- Described local inference as optional development tooling and planned a hosted inference path behind Django.
