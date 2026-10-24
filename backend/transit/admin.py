@@ -19,9 +19,11 @@ from django.urls import path
 from .planner.loader import invalidate_network_cache
 from .importers.osm_route import (
     OSMRouteError,
+    apply_end_extensions,
     apply_extensions,
     download_command,
     parse_osm_route,
+    plan_end_extension,
     plan_extension,
 )
 from .importers.gtfs import GTFSImportError, ImportOptions, import_gtfs
@@ -303,12 +305,28 @@ def adjust_stop_stretch(modeladmin, request, queryset):
     return TemplateResponse(request, "admin/transit/stop_stretch.html", context)
 
 
-@admin.action(description="Add stops at the start from an OpenStreetMap route (preview first)", permissions=["change"])
-def extend_start_from_osm(modeladmin, request, queryset):
+# What differs between adding stops before a route's first stop and after its last one.
+_OSM_SIDES = {
+    "start": {
+        "title": "Add stops at the start of a route", "action_name": "extend_start_from_osm",
+        "default_join": "Ginebra San Miguel", "default_relation": 3208066,
+        "plan": plan_extension, "apply": apply_extensions,
+    },
+    "end": {
+        "title": "Add stops at the end of a route", "action_name": "extend_end_from_osm",
+        "default_join": "Gatewalk", "default_relation": 3208008,
+        "plan": plan_end_extension, "apply": apply_end_extensions,
+    },
+}
+
+
+def _extend_from_osm(modeladmin, request, queryset, side):
+    """Preview first, then apply: shared by the start and end versions."""
     if not request.user.is_superuser:
         raise PermissionDenied
+    spec = _OSM_SIDES[side]
     step = request.POST.get("step", "")
-    join_stop = (request.POST.get("join_stop") or "Ginebra San Miguel").strip()
+    join_stop = (request.POST.get("join_stop") or spec["default_join"]).strip()
     patterns = list(queryset.select_related("route").order_by("route__code", "variant_key"))
     plans = route = None
     payload = error = ""
@@ -324,24 +342,34 @@ def extend_start_from_osm(modeladmin, request, queryset):
             payload = request.POST.get("payload", "")
             route = parse_osm_route(payload.encode("utf-8"))
         if route is not None:
-            plans = [plan_extension(p, route, join_stop) for p in patterns]
+            plans = [spec["plan"](p, route, join_stop) for p in patterns]
             if step == "apply" and not any(plan.problem for plan in plans):
-                added = apply_extensions(plans, route)
-                modeladmin.message_user(request, f"Done. Added {added // max(len(plans), 1)} stops at the start of "
+                added = spec["apply"](plans, route)
+                modeladmin.message_user(request, f"Done. Added {added // max(len(plans), 1)} stops at the {side} of "
                                                  f"{len(plans)} routes.")
                 return None
     except (OSMRouteError, UnicodeDecodeError) as exc:
         error = str(exc) if isinstance(exc, OSMRouteError) else "That file is not readable text."
         plans = None
     context = {
-        **modeladmin.admin_site.each_context(request), "title": "Add stops at the start of a route",
+        **modeladmin.admin_site.each_context(request), "title": spec["title"], "side": side,
         "plans": plans, "can_apply": bool(plans) and not any(p.problem for p in plans),
         "route": route, "payload": payload, "error": error, "join_stop": join_stop,
         "selected": [str(p.pk) for p in patterns], "patterns": patterns,
-        "action_name": "extend_start_from_osm", "download_command": download_command(),
+        "action_name": spec["action_name"], "download_command": download_command(spec["default_relation"]),
         "opts": modeladmin.model._meta,
     }
     return TemplateResponse(request, "admin/transit/extend_from_osm.html", context)
+
+
+@admin.action(description="Add stops at the start from an OpenStreetMap route (preview first)", permissions=["change"])
+def extend_start_from_osm(modeladmin, request, queryset):
+    return _extend_from_osm(modeladmin, request, queryset, "start")
+
+
+@admin.action(description="Add stops at the end from an OpenStreetMap route (preview first)", permissions=["change"])
+def extend_end_from_osm(modeladmin, request, queryset):
+    return _extend_from_osm(modeladmin, request, queryset, "end")
 
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -421,7 +449,7 @@ class RoutePatternAdmin(admin.ModelAdmin):
     list_filter = ("direction", "status", "route__vehicle_class")
     search_fields = ("route__code", "signboard", "variant_key")
     list_select_related = ("route",)
-    actions = [export_ordered_stops, adjust_stop_stretch, extend_start_from_osm]
+    actions = [export_ordered_stops, adjust_stop_stretch, extend_start_from_osm, extend_end_from_osm]
     inlines = [PatternStopInline, RouteSegmentInline]
 
 

@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
-<h1>Add stops at the start of a route</h1>
-<p>Adds the first stops of a route that OpenStreetMap contributors have mapped, in front of the routes you selected.
+<h1>{{ title }}</h1>
+<p>{% if side == "end" %}Adds the last stops of a route that OpenStreetMap contributors have mapped, after the routes you selected.{% else %}Adds the first stops of a route that OpenStreetMap contributors have mapped, in front of the routes you selected.{% endif %}
 Distances and the road shape come from that map. Your existing stops, distances and fares are not changed, and
 you see everything below before anything is saved. The stops are stored as <strong>documented</strong>.</p>
 <p>Routes selected: {% for p in patterns %}<strong>{{ p.route.code }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
@@ -22,7 +22,7 @@ it retries by itself). It saves <code>osm-route.json</code>.</p>
   {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
   <p><label>File: <input type="file" name="route_file" accept=".json,application/json" required></label></p>
   <p><label>Stop where it meets your route: <input type="text" name="join_stop" value="{{ join_stop }}" size="40"></label><br>
-  <small>Exact name of the OpenStreetMap stop next to your route's current first stop. The stops before it are added.</small></p>
+  <small>Exact name of the OpenStreetMap stop next to your route's current {% if side == "end" %}last stop. The stops after it are added{% else %}first stop. The stops before it are added{% endif %}.</small></p>
   <p><button type="submit" name="step" value="preview" class="default">Show preview</button></p>
 </form>
 
@@ -35,9 +35,11 @@ it retries by itself). It saves <code>osm-route.json</code>.</p>
     {% if plan.problem %}
       <p role="alert" style="padding:10px 12px;background:#fdecea;color:#5c1410;border:1px solid #e08b84;border-radius:4px;font-weight:600;">{{ plan.problem }}</p>
     {% else %}
-      <p>{{ plan.new_stops|length }} stops will be added. The route will then start at
+      {% if plan.side == "end" %}<p>{{ plan.new_stops|length }} stops will be added. The route will keep its current end,
+      <strong>{{ plan.old_last_name }}</strong>, then continue after a short link of {{ plan.join_gap_m }} m and end at
+      <strong>{{ plan.last_new_stop_name }}</strong>.</p>{% else %}<p>{{ plan.new_stops|length }} stops will be added. The route will then start at
       <strong>{{ plan.new_stops.0.stop.name }}</strong> and join your current start,
-      <strong>{{ plan.old_first_name }}</strong>, after a short link of {{ plan.join_gap_m }} m.</p>
+      <strong>{{ plan.old_first_name }}</strong>, after a short link of {{ plan.join_gap_m }} m.</p>{% endif %}
       <table>
         <thead><tr><th>#</th><th>Stop</th><th>Location</th><th>From start (m)</th><th>To next stop (m)</th><th>Board</th><th>Get off</th></tr></thead>
         <tbody>

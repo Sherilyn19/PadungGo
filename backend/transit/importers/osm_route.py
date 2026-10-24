@@ -1,8 +1,9 @@
-"""Extend the start of an imported route with stops mapped in OpenStreetMap.
+"""Extend the start or the end of an imported route with stops mapped in OpenStreetMap.
 
-Some imported (GTFS) routes stop short of where jeepneys really start. When an
-OpenStreetMap contributor has mapped that route (stops in order plus the road
-it follows), its first stops can be added in front of the stored route. The
+Some imported (GTFS) routes stop short of where jeepneys really start, or of
+where they really end. When an OpenStreetMap contributor has mapped that route
+(stops in order plus the road it follows), the missing first stops can be added
+in front of the stored route, or the missing last stops after it. The
 new stops, their road distances and the road shape all come from that map data
 (ODbL, credit OpenStreetMap contributors). They are stored as "documented"
 and are not field-verified.
@@ -134,9 +135,13 @@ def parse_osm_route(raw: bytes) -> MappedRoute:
 @dataclass
 class NewStop:
     stop: MappedStop
-    along_m: int          # metres from the first new stop
-    hop_m: int            # metres to the next stop (or to the stored route start)
-    geometry: list        # road points from this stop to the next
+    # Start extension: metres from the first new stop; hop_m is the distance to the
+    # next stop (or to the stored route start) and geometry runs to that next stop.
+    # End extension: metres from the start of the stored route; hop_m is the distance
+    # FROM the previous stop (or the stored route end) and geometry runs from it.
+    along_m: int
+    hop_m: int
+    geometry: list
 
 
 @dataclass
@@ -144,9 +149,15 @@ class ExtensionPlan:
     pattern: RoutePattern
     new_stops: list = field(default_factory=list)
     old_first_name: str = ""
+    old_last_name: str = ""
+    side: str = "start"   # "start" or "end"
     join_gap_m: int = 0
     shift_m: int = 0
     problem: str = ""
+
+    @property
+    def last_new_stop_name(self) -> str:
+        return self.new_stops[-1].stop.name if self.new_stops else ""
 
 
 def plan_extension(pattern: RoutePattern, route: MappedRoute, join_stop: str) -> ExtensionPlan:
@@ -201,6 +212,62 @@ def plan_extension(pattern: RoutePattern, route: MappedRoute, join_stop: str) ->
     return plan
 
 
+def plan_end_extension(pattern: RoutePattern, route: MappedRoute, join_stop: str) -> ExtensionPlan:
+    """What would be added after the last stop of `pattern`; nothing is saved.
+
+    `join_stop` is the OpenStreetMap stop that sits next to the stored route's last
+    stop. The stops AFTER it in the mapped route are added; the join stop itself is
+    not (the stored last stop already stands for it).
+    """
+    plan = ExtensionPlan(pattern, side="end")
+    names = [s.name.casefold() for s in route.stops]
+    wanted = join_stop.strip().casefold()
+    if wanted not in names:
+        plan.problem = f"The OpenStreetMap route has no stop named \u201c{join_stop.strip()}\u201d."
+        return plan
+    join_at = names.index(wanted)
+    if join_at == len(route.stops) - 1:
+        plan.problem = "That is the last stop of the OpenStreetMap route, so there is nothing to add after it."
+        return plan
+
+    projections = project_stops(route.path, [(s.latitude, s.longitude) for s in route.stops])
+    if projections is None:
+        plan.problem = "The mapped road is too short to use."
+        return plan
+    far = next((s for s, p in zip(route.stops, projections) if p.offset_m > MAX_STOP_OFFSET_M), None)
+    if far:
+        plan.problem = f"Stop \u201c{far.name}\u201d is not on the mapped road, so the route looks inconsistent."
+        return plan
+
+    last = pattern.pattern_stops.select_related("stop__source").order_by("-sequence").first()
+    if last is None:
+        plan.problem = "This route has no stops."
+        return plan
+    plan.old_last_name = last.stop.name
+    if last.stop.source_id and last.stop.source.title.startswith(SOURCE_TITLE_PREFIX):
+        plan.problem = "This route already ends with stops from OpenStreetMap; nothing more to add."
+        return plan
+    join = route.stops[join_at]
+    gap = haversine_m(join.latitude, join.longitude, last.stop.latitude, last.stop.longitude)
+    if gap > MAX_JOIN_GAP_M:
+        plan.problem = (f"\u201c{join.name}\u201d is {gap:.0f} m from this route's last stop "
+                        f"(\u201c{last.stop.name}\u201d), so they do not meet.")
+        return plan
+
+    plan.join_gap_m = round(gap)
+    along = last.distance_along_m
+    for k in range(join_at + 1, len(route.stops)):
+        here, there = projections[k - 1], projections[k]
+        hop = max(0, round(there.along_m - here.along_m))
+        geometry = slice_shape(route.path, here, there)
+        if k == join_at + 1:
+            hop += plan.join_gap_m
+            geometry = [(last.stop.latitude, last.stop.longitude)] + geometry
+        along += hop
+        plan.new_stops.append(NewStop(route.stops[k], along, hop, geometry))
+    return plan
+
+
 def _source_for(route: MappedRoute) -> DataSource:
     title = f"{SOURCE_TITLE_PREFIX} {route.ref or route.relation_id}: {route.name}"[:300]
     reference = f"https://www.openstreetmap.org/relation/{route.relation_id}"
@@ -213,20 +280,52 @@ def _source_for(route: MappedRoute) -> DataSource:
     return source
 
 
+def _stops_for(plans: list[ExtensionPlan], source: DataSource) -> dict[int, Stop]:
+    """One saved stop per mapped stop, shared by every route that uses it."""
+    stops_by_osm_id: dict[int, Stop] = {}
+    for plan in plans:
+        for new in plan.new_stops:
+            if new.stop.osm_id not in stops_by_osm_id:
+                stops_by_osm_id[new.stop.osm_id], _ = Stop.objects.get_or_create(
+                    source=source, name=new.stop.name,
+                    latitude=new.stop.latitude, longitude=new.stop.longitude,
+                    defaults={"point": make_point(new.stop.latitude, new.stop.longitude),
+                              "status": RecordStatus.DOCUMENTED})
+    return stops_by_osm_id
+
+
+def apply_end_extensions(plans: list[ExtensionPlan], route: MappedRoute) -> int:
+    """Append every plan after the stored last stop, or none if anything fails.
+
+    Existing stops, their sequence numbers and distances are not touched.
+    Returns how many stops were added.
+    """
+    added = 0
+    with transaction.atomic():
+        source = _source_for(route)
+        stops_by_osm_id = _stops_for(plans, source)
+        for plan in plans:
+            pattern = plan.pattern
+            old_last = PatternStop.objects.filter(pattern=pattern).order_by("-sequence").first()
+            occurrences = PatternStop.objects.bulk_create([
+                PatternStop(pattern=pattern, stop=stops_by_osm_id[n.stop.osm_id], sequence=old_last.sequence + 1 + i,
+                            distance_along_m=n.along_m, can_board=n.stop.can_board, can_alight=n.stop.can_alight)
+                for i, n in enumerate(plan.new_stops)])
+            RouteSegment.objects.bulk_create([
+                RouteSegment(pattern=pattern, from_occurrence=a, to_occurrence=b, distance_m=n.hop_m,
+                             geometry=make_linestring(n.geometry), source=source)
+                for a, b, n in zip([old_last] + occurrences, occurrences, plan.new_stops)])
+            added += len(plan.new_stops)
+        invalidate_network_cache()
+    return added
+
+
 def apply_extensions(plans: list[ExtensionPlan], route: MappedRoute) -> int:
     """Save every plan, or none if anything fails. Returns how many stops were added to patterns."""
     added = 0
     with transaction.atomic():
         source = _source_for(route)
-        stops_by_osm_id: dict[int, Stop] = {}
-        for plan in plans:
-            for new in plan.new_stops:
-                if new.stop.osm_id not in stops_by_osm_id:
-                    stops_by_osm_id[new.stop.osm_id], _ = Stop.objects.get_or_create(
-                        source=source, name=new.stop.name,
-                        latitude=new.stop.latitude, longitude=new.stop.longitude,
-                        defaults={"point": make_point(new.stop.latitude, new.stop.longitude),
-                                  "status": RecordStatus.DOCUMENTED})
+        stops_by_osm_id = _stops_for(plans, source)
         for plan in plans:
             count = len(plan.new_stops)
             pattern = plan.pattern
