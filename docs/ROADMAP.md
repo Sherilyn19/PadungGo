@@ -1,6 +1,6 @@
 # Roadmap
 
-These are future priorities, not promises of implemented functionality or a committed schedule. See [current capabilities](PRODUCT_REQUIREMENTS.md) and [verification results](REVIEW_2026-10-24.md) first.
+These are future priorities, not promises of implemented functionality or a committed schedule. See [current capabilities](PRODUCT_REQUIREMENTS.md) and [verification results](IMPLEMENTATION_REVIEW.md) first.
 
 | Priority | Improvement | Evidence needed before claiming completion |
 |---|---|---|

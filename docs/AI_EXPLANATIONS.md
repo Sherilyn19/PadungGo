@@ -45,4 +45,4 @@ A failed output can cause a second provider call; each call consumes budget. Ide
 - Regex and other output checks can reject useful answers or miss misleading language. A working sample is not a reliability evaluation across all trips.
 - A network/data change can make the original selection no longer match the recomputed top 50 options.
 
-The [API guide](API_DESIGN.md#explain-this-trip-ai-explanation) documents response states. The [dated review](REVIEW_2026-10-24.md) records a real hosted explanation, rather than only mocked tests.
+The [API guide](API_DESIGN.md#explain-this-trip-ai-explanation) documents response states. The [implementation review](IMPLEMENTATION_REVIEW.md) records a real hosted explanation, rather than only mocked tests.

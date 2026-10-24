@@ -249,7 +249,7 @@ fractional-distance, discount-wording and vehicle-subtype questions below
 remain unresolved.
 
 The regression tests contain literal expected new-table values. They do
-not generate expectations from the formula being tested. See the [dated review](REVIEW_2026-10-24.md) for test execution results; the arithmetic transcription alone is not a test-run claim.
+not generate expectations from the formula being tested. See the [implementation review](IMPLEMENTATION_REVIEW.md) for test execution results; the arithmetic transcription alone is not a test-run claim.
 
 ## Consistency findings and limits
 

@@ -93,4 +93,4 @@ npm.cmd run build
 
 Use `npm` on macOS/Linux. The build includes TypeScript checks. [GitHub Actions](../.github/workflows/ci.yml) runs tests, the migration check, and the frontend build on pull requests and pushes to main. It does not deploy. There is no separate lint command in the current frontend scripts.
 
-See the [review record](REVIEW_2026-10-24.md) for dated results and what these checks do not cover.
+See the [review record](IMPLEMENTATION_REVIEW.md) for dated results and what these checks do not cover.

@@ -52,7 +52,7 @@ The frontend uses React, TypeScript, Vite, Tailwind CSS, and MapLibre. The backe
 | [docs](docs/README.md) | Product, architecture, API, sources, operations, and review records |
 | [.github](.github) | Automated checks and contribution templates |
 
-The configured deployment uses Vercel for the frontend, Render for the API, and Supabase PostgreSQL/PostGIS. See [deployment](docs/DEPLOYMENT.md) for configuration and operating limits. The [dated review](docs/REVIEW_2026-10-24.md) records what was actually checked; a badge is not a guarantee of current service or data quality.
+The configured deployment uses Vercel for the frontend, Render for the API, and Supabase PostgreSQL/PostGIS. See [deployment](docs/DEPLOYMENT.md) for configuration and operating limits. The [implementation review](docs/IMPLEMENTATION_REVIEW.md) records what was actually checked; a badge is not a guarantee of current service or data quality.
 
 ## AI assistance
 

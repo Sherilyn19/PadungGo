@@ -34,7 +34,7 @@ Update this file at the end of each work session, so the next session can contin
 | GitHub repo + MIT license | License ✅. Repo is private and must go public before submission ⏳ |
 | 1-minute usage video | ⏳ |
 | Submit by Oct 23, 11:59 PM PHT | ⏳ |
-| Attend in person Oct 25 | ⏳ (user) |
+| Attend in person (event day) | ⏳ (user) |
 | Doc completeness / changelog / contribution readiness / demo | Docs are extensive; stale and duplicated sections need fixing ⏳ |
 | Implementation completeness / solution fit / UX | End-to-end search live; journey steps, loading, reduced motion and empty states done (#21). Current-service rule designed, not built ⏳ |
 | Security adherence | P0 fixes merged (#10, #12). Credential review: no findings so far; secret scanning must be enabled once public ⏳ |
@@ -116,7 +116,7 @@ Update this file at the end of each work session, so the next session can contin
 
 ## Open items
 
-- Submission tasks: see `docs/SUBMISSION.md` (public release, video, form, Oct 25 attendance).
+- Submission tasks: see `docs/SUBMISSION.md` (public release, video, form, in-person attendance).
 - Verify that production runs 47cd42a or later.
 - Current-service eligibility rule (PR 2): waiting on the open decisions above.
 - The frontend bundle is 1.27 MB because of MapLibre. Code splitting is an optional P3 item.
@@ -128,7 +128,7 @@ Update this file at the end of each work session, so the next session can contin
 - Ownership: Kiro = `frontend/**` (PR #30, draft, branch `feat/fare-estimates`). Codex = `backend/**` + `docs/API_DESIGN.md` on `feat/fare-estimates-backend`. Merge backend first.
 - Known gaps: the Modern table is aircon modern/electric only; the LTFRB "not less than 20%" wording conflict is unresolved (we use printed cells); there is no evidence of per-route vehicle type.
 
-## Oct 24, 2026 summary (read this first)
+## Follow-up summary (read this first)
 
 - Site: https://padung-go.app (Vercel custom domain). API: https://padunggo-api.onrender.com.
 - AI "Explain this trip": **working in production** (gpt-oss-20b via Groq). Fixed in #53, #56, #57, #58; #62 stops "not scarce" claims.
@@ -136,7 +136,7 @@ Update this file at the end of each work session, so the next session can contin
 - 03K is Scarce again. 42D stays excluded, so the old 17D to 42D demo is gone; use Ayala Center Cebu to Colon Obelisk.
 - #63 hides the sort picker (only fewest transfers works).
 - Open: owner presses the button once on the site; Vercel preview shows a harmless "kiro-agent" author notice; per-visitor daily AI cap not built.
-- Deadline check: the brief says Oct 23, 11:59 PM Asia/Manila; GitHub and Render timestamps are already Oct 24 Manila.
+- Follow-up fixes were pushed after the first submission; confirm with the organizers whether that is acceptable. Git history keeps the exact times.
 
 ## AI trip explanation (Oct 23, 2026, branch `feat/ai-trip-explanation`)
 

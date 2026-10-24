@@ -2,7 +2,7 @@
 
 The repository supplies a Render Docker blueprint for the API. The configured project uses Vercel for the frontend and Supabase PostgreSQL/PostGIS for the database. These are configuration descriptions, not a guarantee of availability or a claim that every deployed commit matches the checkout.
 
-The [October 24 review](REVIEW_2026-10-24.md) confirmed HTTP responses from the public frontend and API, PostGIS mode in the health response, and a real journey plus AI explanation. No production write or deployment was performed during that review.
+The [implementation review](IMPLEMENTATION_REVIEW.md) confirmed HTTP responses from the public frontend and API, PostGIS mode in the health response, and a real journey plus AI explanation. No production write or deployment was performed during that review.
 
 ## Backend
 

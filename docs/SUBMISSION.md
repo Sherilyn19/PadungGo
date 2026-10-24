@@ -1,8 +1,8 @@
 # Cebu Hacktoberfest 2026: alignment review
 
-Reviewed October 24, 2026. **PadungGo has strong implementation alignment with the supplied judging categories, but full competition compliance is not independently established.** The application, tests, deployment, documentation, and optional open-weight AI provide concrete evidence. Historical-data rights, current-service verification, attendance, and parts of the submission evidence remain unresolved or unverified.
+Reviewed in a follow-up pass. **PadungGo has strong implementation alignment with the supplied judging categories, but full competition compliance is not independently established.** The application, tests, deployment, documentation, and optional open-weight AI provide concrete evidence. Historical-data rights, current-service verification, attendance, and parts of the submission evidence remain unresolved or unverified.
 
-This is an evidence comparison, not a predicted score or an organizer's eligibility ruling. The general project overview is in the [README](../README.md); dated verification is in the [implementation review](REVIEW_2026-10-24.md).
+This is an evidence comparison, not a predicted score or an organizer's eligibility ruling. The general project overview is in the [README](../README.md); dated verification is in the [implementation review](IMPLEMENTATION_REVIEW.md).
 
 ## Source and interpretation
 
@@ -24,7 +24,7 @@ Checked items mean there is the evidence stated in the last column; they do not 
 | [x] | AI encouraged, optional; incorporated models must be open source/open weights | Application AI is implemented and a live response identified `openai/gpt-oss-20b`, with an Apache 2.0 open-weight model card. See [AI evidence](AI_EXPLANATIONS.md). Development-assistant use alone would not establish this. |
 | [x] | Submit repository plus a one-minute usage video after the development period; no pitches | Participant confirms the video and submission form have been submitted. This review did not inspect the uploaded video, link permissions, runtime, content, receipt, or submission timestamp. Do not list submission as still pending. |
 | [ ] | Demo includes actual application use and instructions to run in the repository and video | Repository run instructions are present. Uploaded video content and run-instruction coverage are unverified. No new submission is requested by this review. |
-| [ ] | Personally attend October 25, 2026 | Not yet confirmed; distinct from registration and online submission. |
+| [ ] | Personally attend the in-person event | Not yet confirmed; distinct from registration and online submission. |
 | [ ] | Judges and named core organizers cannot participate | Participant's role was not independently established. The supplied exclusions name Neriah “BJ” Ato, Sabrinah Yonell Yap, and Dorell James Galang, as well as judges. |
 | [ ] | Workshop/checkpoint expectations | October 10 notice describes a checkpoint; participant-supplied October 18 text describes a final checkpoint. The supplied evidence does not settle the eligibility consequence of missing checkpoints. Organizer clarification is needed before asserting an exemption or compliance. |
 

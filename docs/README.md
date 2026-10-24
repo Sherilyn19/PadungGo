@@ -16,6 +16,6 @@ Start with the [project overview](../README.md). These guides describe the curre
 | Operate the application | [Deployment](DEPLOYMENT.md), [security](SECURITY.md) |
 | Plan improvements | [Roadmap](ROADMAP.md) |
 | Review competition alignment | [Mechanics and judging comparison](SUBMISSION.md) |
-| Inspect verification evidence | [October 24 review](REVIEW_2026-10-24.md) |
+| Inspect verification evidence | [implementation review](IMPLEMENTATION_REVIEW.md) |
 
 Historical research is retained for provenance: [17D/42D research](RESEARCH_17D_42D_2026-10-20.md) and [retired demonstration audit](DEMO_JOURNEY_17D_42D.md). These are not current travel instructions.

@@ -11,7 +11,7 @@ tooltip "Few jeepneys"): **01B, 03K, 14B, 12K, 21F, 21G, 22G**.
 | Route | Basis (commuting reports) |
 |---|---|
 | 01B | Commuter report: operates only very occasionally. |
-| 03K | Latest commuter report (Oct 24, 2026): it operates, so the maintainer re-included it as Scarce. This supersedes the earlier "inactive" report. |
+| 03K | Latest commuter report (follow-up update): it operates, so the maintainer re-included it as Scarce. This supersedes the earlier "inactive" report. |
 | 14B | Maintainer report: not seen for roughly five years; maintainer kept it as Scarce rather than excluded. |
 | 12K | Maintainer-designated as scarce. |
 | 21F, 21G, 22G | Mandaue commuter: very rare; paths have changed (see Mandaue section). |
@@ -51,11 +51,11 @@ or replacement of traditional vehicles with modern vehicles.
 These are dated checks recorded by prior maintainers, not a new database census in the documentation review. Later data changes may supersede them.
 
 - Exclusions: none of 03C, 03D, 03G, 07C, 12N, 42D appears among the active
-  routes (checked 2026-10-23 on 90 routes; the 2026-10-24 list has 91, the extra
+  routes (checked on 90 routes; a later list has 91, the extra
   one being 03K, see below).
 - Scarcity: live journey plans returned `service_availability: "scarce"` for
   rides on all six scarce routes, with those journeys grouped last.
-- 03K was re-included as Scarce on 2026-10-24 (maintainer decision after a new
+- 03K was re-included as Scarce in a follow-up update (maintainer decision after a new
   commuter report). Checked the same day through the public API: a live plan
   (Fuente Osmena to Colon) returned a 03K ride with `service_availability: "scarce"`
   and `has_scarce_ride: true`. The 03K record in the list is "MABOLO - AYALA -
@@ -70,7 +70,7 @@ The planner does not hardcode route codes or UUIDs.
 The GTFS importer can create fresh copies of routes (active, not_flagged)
 under a different source title, which would undo these decisions. Review this list and reconcile exact record identities before any future import.
 
-## Mandaue: the return leg stops short (Oct 24 check)
+## Mandaue: the return leg stops short (follow-up check)
 
 An Admin export of 21A, 21D, 22A and 22D, plus live searches, shows each route is **one pattern** (direction "Unspecified") that holds both legs: out from Ibabao through Mandaue to the Carbon area, a turn-around of six stops that cannot be boarded or left, then a return leg north. The return leg **ends at M. Logarta Avenue**, about 3 km before Ibabao, so a trip from downtown Cebu to the Ibabao side of Mandaue has nowhere to get off. Checked live: boarding at Imus Avenue (a return-leg stop) reaches M. Logarta Avenue, but not the Mandaue City Police Office or Ibabao; Mandaue Police Office to Colon Obelisk works (21A, 21D, 22A, 22D). So the fix is stop data for the end of the return leg, not a larger search radius.
 
@@ -106,7 +106,7 @@ the same first stop, C. M. Cabahug (10.3244, 123.9502), and the stretch up to
 Ginebra San Miguel meets the stored start (Cebu North Road) about 90 m away.
 The available Admin action "Add stops at the start from an OpenStreetMap route (preview
 first)" can add those 12 stops, with road distances and shape from the map, in front
-of the selected routes. The October 24 documentation review did not independently verify the production state of this extension. Source: OpenStreetMap relation 3208066 (ODbL, credit
+of the selected routes. The documentation review did not independently verify the production state of this extension. Source: OpenStreetMap relation 3208066 (ODbL, credit
 OpenStreetMap contributors). Stored as documented, not field-verified. 21A and
 21D have no OpenStreetMap route of their own; they share the corridor, so the
 same stretch is used. OpenStreetMap's 22A takes a different road via SM City Cebu

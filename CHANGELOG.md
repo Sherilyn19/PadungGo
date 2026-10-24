@@ -2,14 +2,14 @@
 
 Significant project changes. Earlier dated entries describe their historical state, not necessarily current behavior.
 
-## Documentation review — 2026-10-24
+## Documentation review (follow-up pass)
 
 - Replaced the event-branded overview with a general project README and useful license/CI/contribution badges.
 - Organized commuter instructions, setup, architecture, database, API, data rights, AI, security, and deployment guides around the current implementation.
 - Retired obsolete personal schedules and pre-implementation checklists while retaining dated source and fare evidence.
 - Separated competition alignment from the public product overview; recorded the public repository and participant-confirmed completed video/form submission.
 - Documented historic data, unresolved feed permissions, approximate fare assumptions, incomplete timing, heuristic search, process-local limits, and AI fare-selection differences.
-- Recorded verification results and limits in [the October 24 review](docs/REVIEW_2026-10-24.md). No application behavior, license, data, or deployment changed in this documentation pass.
+- Recorded verification results and limits in [the implementation review](docs/IMPLEMENTATION_REVIEW.md). No application behavior, license, data, or deployment changed in this documentation pass.
 
 ## Unreleased
 
@@ -24,7 +24,7 @@ Significant project changes. Earlier dated entries describe their historical sta
   1.8 to 2.2 km away and none was within 0.8 km, so a larger radius would not help:
   stop data is missing. In Mandaue, the 21A, 21D, 22A and 22D return leg ends at
   M. Logarta Avenue, about 3 km before Ibabao. An earlier note here that quoted 12%
-  and 5.2 km used a rougher method and was corrected on 2026-10-24.
+  and 5.2 km used a rougher method and was corrected in a follow-up check.
 - "Explain this trip" is friendlier and no longer repeats the screen. The AI now
   writes a short, cheerful, plain-words walkthrough (which jeepney to hop on, where
   to hop off or change) and is no longer given, or allowed to mention, fares,
@@ -50,7 +50,7 @@ Significant project changes. Earlier dated entries describe their historical sta
 - The sort picker is hidden while the planner can only order by fewest transfers
   (#63). Cheapest, Fastest and Least walking always fell back to it. The API still
   accepts all four.
-- Route 03K is Scarce again (updated commuter report, Oct 24).
+- Route 03K is Scarce again (updated commuter report).
 - New demo journey for the video: Ayala Center Cebu to Colon Obelisk and back (17D to
   42D no longer works because 42D is excluded). Site address is now
   https://padung-go.app.
@@ -84,7 +84,7 @@ Significant project changes. Earlier dated entries describe their historical sta
   answer is checked against the planner's facts before display, and timeouts,
   quota or bad answers show an "unavailable" state without affecting the
   itinerary. Per-visitor throttle `DRF_EXPLAIN_THROTTLE` (6/min), a daily provider
-  cap, and caching. Disabled until `AI_API_KEY` is set. Initially unverified against the live hosted model; later October 24 checks returned real explanations (see the review record). No migration; ride segments of the plan response are
+  cap, and caching. Disabled until `AI_API_KEY` is set. Initially unverified against the live hosted model; later checks returned real explanations (see the review record). No migration; ride segments of the plan response are
   now typed with their `route_pattern_id` / occurrence IDs on the frontend.
 
 - Trip planning is now limited per visitor (30 searches a minute, adjustable with
@@ -288,7 +288,7 @@ Merged to `main`. Production deployment of #22 and #23 has not been verified yet
 
 ### Updated after participant clarification — October 17, 2026
 - Recorded completed registration, intentionally private development repository, organizer permission to initialize after October 3, and October 23 at 11:59 PM submission deadline (Philippine time used for planning).
-- Removed the resolved initialization-date blocker and retained public-release/submission and October 25 attendance tasks.
+- Removed the resolved initialization-date blocker and retained public-release/submission and in-person attendance tasks.
 - Added a sourced, limited JeepMe/JTransit reference review; no competitor code or transport data imported.
 - The earlier documentation ZIP remains a historical snapshot; repository documents contain these latest updates.
 

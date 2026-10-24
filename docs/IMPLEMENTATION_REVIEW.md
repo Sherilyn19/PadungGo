@@ -1,4 +1,4 @@
-# Implementation and documentation review — October 24, 2026
+# Implementation and documentation review (follow-up pass)
 
 Review scope: the current frontend, backend, domain models/migrations, planner, provider integrations, tests, environment examples, automated workflow, Docker/hosting files, data notes, and public documentation. Repository HEAD for the final local checks was `afb646afd2547f9a648274e3228bb98e1452026c`. New commits arrived during inspection; the final checks below supersede earlier counts.
 
@@ -29,11 +29,11 @@ The old documentation mixed planned and implemented behavior. It described a pri
 | Local Markdown links and headings | 134 local references across 30 public Markdown files passed | Includes documentation index and retained historical pages |
 | Terminology and whitespace | Public prose has no “MVP”; `git diff --check` passed | Legacy API literals preserved; no code changes |
 
-The live journey request used origin `(10.32263, 123.89862)`, destination `(10.279336, 123.855191)`, `sort_by: fewest_transfers`, `max_transfers: 1`, and `limit: 5`. The response's network-update date was October 24. The explanation request reused the returned ordered ride identifiers. Route results and identifiers can change with data updates.
+The live journey request used origin `(10.32263, 123.89862)`, destination `(10.279336, 123.855191)`, `sort_by: fewest_transfers`, `max_transfers: 1`, and `limit: 5`. The response included its network-update date. The explanation request reused the returned ordered ride identifiers. Route results and identifiers can change with data updates.
 
 The returned AI prose described boarding 04D, transferring at Ma. Cristina Street & m.p. yap, then alighting from 10O at Cebu South Road. It was a real accepted response, not a mock. Server-written notices are separate from prose and must remain visible. This sample does not establish reliability across all trips or confirm real-world operation.
 
-Prior repository records additionally describe October 24 direct/return AI checks and live throttle testing (60 requests allowed across two workers, then 429; forged forwarding prefixes did not bypass the configured identity). Those are retained as prior recorded evidence, not newly rerun load/security tests in this pass. The final local suite covers the current throttle and AI-check code.
+Prior repository records additionally describe direct/return AI checks and live throttle testing (60 requests allowed across two workers, then 429; forged forwarding prefixes did not bypass the configured identity). Those are retained as prior recorded evidence, not newly rerun load/security tests in this pass. The final local suite covers the current throttle and AI-check code.
 
 ## Important gaps
 
@@ -48,7 +48,7 @@ Prior repository records additionally describe October 24 direct/return AI check
 | API consistency | Historic routes can be planned while verified-only route details return 404. Nested endpoint validation is less strict than top-level validation. |
 | Security and operations | Default cache/throttle state is per worker; proxy-depth configuration matters. No fresh full-history secret scan, dependency audit, penetration test, backup restoration test, or exact deployed-commit comparison was performed. |
 | Quality and scalability | No full browser/accessibility audit, PostGIS integration CI, load/capacity measurements, or broad live-model evaluation. The frontend bundle warning remains. |
-| Competition | Public repository and completed submission are recorded. Uploaded video contents/timeliness, organizer role eligibility, checkpoint consequences and October 25 attendance are not independently confirmed. |
+| Competition | Public repository and completed submission are recorded. Uploaded video contents/timeliness, organizer role eligibility, checkpoint consequences and in-person attendance are not independently confirmed. |
 
 ## Documentation organization
 
@@ -68,4 +68,4 @@ This review is a dated record, so its figures above are kept as written. Later m
 - #67 added a `coverage` object to empty plan results (which end has no stop, distance to the nearest known stop, whether the other direction has trips).
 - At `main` commit `9ecf26c` the local suites reported **1,033 backend** and **151 frontend** tests passing. Treat any test count as a snapshot; rerun the suites before relying on one.
 
-Coverage measured on the live API on October 24 (25 random saved places per city, all searched from Colon Obelisk): about 80% of Cebu City places, about 24% of Mandaue places and none of the Lapu-Lapu places returned a trip. Where there was no stop within 500 m, the nearest known stop was a median 1.8 to 2.2 km away, and none was between 0.5 and 0.8 km, so a larger search radius would not help; stop data is missing. In Mandaue, the 21A, 21D, 22A and 22D return leg ends at M. Logarta Avenue, about 3 km before Ibabao (see the route availability record). Earlier informal figures of 12% and 5.2 km used a rougher method and should not be relied on. See [data sources](DATA_SOURCES.md).
+Coverage measured on the live API in a follow-up check (25 random saved places per city, all searched from Colon Obelisk): about 80% of Cebu City places, about 24% of Mandaue places and none of the Lapu-Lapu places returned a trip. Where there was no stop within 500 m, the nearest known stop was a median 1.8 to 2.2 km away, and none was between 0.5 and 0.8 km, so a larger search radius would not help; stop data is missing. In Mandaue, the 21A, 21D, 22A and 22D return leg ends at M. Logarta Avenue, about 3 km before Ibabao (see the route availability record). Earlier informal figures of 12% and 5.2 km used a rougher method and should not be relied on. See [data sources](DATA_SOURCES.md).
