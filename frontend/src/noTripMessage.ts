@@ -8,9 +8,6 @@ export interface NoTripMessage {
   suggestReverse: boolean
 }
 
-// Distances under this are close enough that "far" would be wrong.
-const FAR_METERS = 1500
-
 function which(coverage: CoverageHint): 'start' | 'destination' | 'both' | null {
   if (!coverage.origin_has_stop && !coverage.destination_has_stop) return 'both'
   if (!coverage.origin_has_stop) return 'start'
@@ -20,7 +17,7 @@ function which(coverage: CoverageHint): 'start' | 'destination' | 'both' | null 
 
 function distanceNote(meters: number | null): string {
   if (meters === null) return ''
-  return meters >= FAR_METERS ? ` The closest one we know is about ${formatDistance(meters)} away.` : ''
+  return ` The closest one we know is about ${formatDistance(meters)} away.`
 }
 
 // Explains an empty result using what the server found out. Falls back to the
