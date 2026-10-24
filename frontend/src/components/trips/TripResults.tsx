@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { JourneyOption, PlanResponse } from '../../api'
 import type { FareDisplay } from '../../fareDisplay'
 import { explainRanking, explainReason } from '../../format'
+import { noTripMessage } from '../../noTripMessage'
 import { scarceTripsListedLast } from '../../tripTimeline'
 import TripCard from './TripCard'
 
@@ -72,13 +73,15 @@ function Loading({ slow }: { slow: boolean }) {
 
 function Empty({ plan, maxTransfers, onAllowTransfer, onSwitchDirection }: Pick<Props, 'maxTransfers' | 'onAllowTransfer' | 'onSwitchDirection'> & { plan: PlanResponse }) {
   const noRoute = plan.reason === 'no_journey_within_mvp_limits'
+  // Says which end lacks coverage (or that only the trip back works) when the server knows.
+  const message = noTripMessage(plan.reason, plan.coverage, explainReason(plan.reason))
   return (
     <div className="card fade-up p-4 text-center" role="status">
       <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-500">
         <Route size={20} aria-hidden="true" />
       </span>
       <p className="mt-2 font-semibold text-ink">No trip found</p>
-      <p className="mt-1 text-sm text-ink-muted">{explainReason(plan.reason)}</p>
+      <p className="mt-1 text-sm text-ink-muted">{message.text}</p>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
         {maxTransfers === 0 && noRoute && (
           <button type="button" className="btn btn-primary" onClick={onAllowTransfer}>
@@ -86,7 +89,7 @@ function Empty({ plan, maxTransfers, onAllowTransfer, onSwitchDirection }: Pick<
           </button>
         )}
         {onSwitchDirection && noRoute && (
-          <button type="button" className="btn" onClick={onSwitchDirection}>
+          <button type="button" className={`btn ${message.suggestReverse ? 'btn-primary' : ''}`} onClick={onSwitchDirection}>
             <Undo2 size={15} aria-hidden="true" />
             Check the trip back
           </button>

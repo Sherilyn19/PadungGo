@@ -125,6 +125,20 @@ a bounding rectangle proves exact city inclusion. Boundary data/provider selecti
 is an open data decision. Identical endpoints produce a successful empty result
 with reason same_location, rather than a fabricated vehicle journey.
 
+### Why there is no trip: `coverage`
+
+When no trip is found, the response also carries `coverage` (null when trips exist):
+
+| Field | Meaning |
+|---|---|
+| `search_radius_m` | How close a stop must be to count (default 500) |
+| `origin_has_stop`, `destination_has_stop` | Whether an eligible stop is within the radius of each end |
+| `nearest_origin_stop_m`, `nearest_destination_stop_m` | Straight-line metres to the nearest eligible stop at any distance, rounded to 100 m; null if none is known |
+| `reverse_has_trips` | Only for `no_journey_within_mvp_limits`: whether the same two places work the other way round (routes may be recorded one way); null for other reasons |
+
+It describes coverage only. It never invents a stop or a route, and the distances
+are straight-line hints, not walking routes. Older clients ignore it.
+
 ### Successful response envelope (HTTP 200)
 
 | Field | Meaning |
