@@ -1,5 +1,6 @@
 import { ArrowDownWideNarrow, ArrowUpDown, ChevronDown, Search } from 'lucide-react'
 import type { Place, SortBy } from '../../api'
+import { hasSortChoice, SORT_OPTIONS } from '../../sortOptions'
 import LoadingButton from '../ui/LoadingButton'
 import PlaceInput from './PlaceInput'
 
@@ -20,13 +21,6 @@ interface Props {
   loading: boolean
   onSubmit: () => void
 }
-
-const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-  { value: 'fewest_transfers', label: 'Fewest transfers' },
-  { value: 'cheapest', label: 'Cheapest' },
-  { value: 'fastest', label: 'Fastest' },
-  { value: 'least_walking', label: 'Least walking' },
-]
 
 export default function SearchForm(props: Props) {
   const { origin, destination, picking, onPick, loading } = props
@@ -98,24 +92,27 @@ export default function SearchForm(props: Props) {
         </div>
       </div>
 
-      {/* Fixed columns: the button keeps its place and size while searching. */}
-      <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_8.75rem] gap-2">
-        <label className="relative min-w-0">
-          <span className="sr-only">Sort trips by</span>
-          <ArrowDownWideNarrow size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-brand-600" aria-hidden="true" />
-          <select
-            className="field cursor-pointer appearance-none pr-8 pl-9 font-medium"
-            value={props.sortBy}
-            onChange={(e) => props.onSortChange(e.target.value as SortBy)}
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={16} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-brand-600" aria-hidden="true" />
-        </label>
+      {/* The button keeps its place and size while searching. The sort picker
+          appears only when the planner can order trips more than one way. */}
+      <div className={`mt-2.5 grid gap-2 ${hasSortChoice ? 'grid-cols-[minmax(0,1fr)_8.75rem]' : 'grid-cols-1'}`}>
+        {hasSortChoice && (
+          <label className="relative min-w-0">
+            <span className="sr-only">Sort trips by</span>
+            <ArrowDownWideNarrow size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-brand-600" aria-hidden="true" />
+            <select
+              className="field cursor-pointer appearance-none pr-8 pl-9 font-medium"
+              value={props.sortBy}
+              onChange={(e) => props.onSortChange(e.target.value as SortBy)}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-brand-600" aria-hidden="true" />
+          </label>
+        )}
         <LoadingButton type="submit" disabled={!ready} loading={loading} loadingLabel="Finding…" icon={<Search size={17} aria-hidden="true" />} className="btn-primary w-full px-2">
           Find trips
         </LoadingButton>
