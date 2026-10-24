@@ -196,3 +196,51 @@ def test_only_a_superuser_can_use_it(client):
 
 def test_change_list_links_to_the_tool(staff):
     assert "Add routes from OpenStreetMap" in staff.get("/admin/transit/route/").content.decode()
+
+
+# --- walking links between nearby stops already in the data ---------------
+
+def _route_with_stops(code, stops):
+    from transit.models import PatternStop as PS
+    route = Route.objects.create(code=code, name=code, vehicle_class="jeepney")
+    pattern = RoutePattern.objects.create(route=route, variant_key=f"v-{code}", direction="unspecified", status="documented")
+    for i, stop in enumerate(stops):
+        PS.objects.create(pattern=pattern, stop=stop, sequence=i, distance_along_m=i * 500)
+
+
+def test_nearby_stops_of_different_routes_are_linked_once():
+    from transit.importers import stop_links as sl
+    a = Stop.objects.create(name="A near", latitude=LAT, longitude=123.9500)
+    a2 = Stop.objects.create(name="A end", latitude=LAT, longitude=123.9600)
+    b = Stop.objects.create(name="B near", latitude=LAT + 0.0010, longitude=123.9500)   # about 110 m away
+    b2 = Stop.objects.create(name="B end", latitude=LAT, longitude=123.9400)
+    far = Stop.objects.create(name="B far", latitude=LAT + 0.004, longitude=123.9500)    # about 440 m away
+    _route_with_stops("R1", [a, a2])
+    _route_with_stops("R2", [b2, b, far])
+    links = sl.plan_links()
+    pairs = {(l.from_name, l.to_name) for l in links}
+    assert pairs == {("A near", "B near"), ("B near", "A near")}
+    assert all(100 < l.distance_m < 125 for l in links)
+    assert sl.apply_links(links) == 2
+    assert sl.plan_links() == []                      # running again adds nothing
+    link = TransferConnection.objects.get(from_stop=a, to_stop=b)
+    assert link.status == "documented" and "not verified" in link.restrictions
+
+
+def test_stops_of_the_same_routes_are_not_linked():
+    from transit.importers import stop_links as sl
+    a = Stop.objects.create(name="Side one", latitude=LAT, longitude=123.9500)
+    b = Stop.objects.create(name="Side two", latitude=LAT + 0.0005, longitude=123.9500)
+    _route_with_stops("R3", [a, b])
+    assert sl.plan_links() == []
+
+
+def test_admin_previews_then_adds_links(staff):
+    a = Stop.objects.create(name="A near", latitude=LAT, longitude=123.9500)
+    b = Stop.objects.create(name="B near", latitude=LAT + 0.0010, longitude=123.9500)
+    _route_with_stops("R1", [a])
+    _route_with_stops("R2", [b])
+    page = staff.get("/admin/transit/transferconnection/link-nearby-stops/").content.decode()
+    assert "<strong>2</strong> links would be added" in page and TransferConnection.objects.count() == 0
+    assert staff.post("/admin/transit/transferconnection/link-nearby-stops/", {"step": "apply"}).status_code == 302
+    assert TransferConnection.objects.count() == 2
